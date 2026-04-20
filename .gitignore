@@ -4,6 +4,7 @@
 # Env
 .env
 .env.*
+!infra/.env.example
 
 # Node / web
 node_modules/
@@ -19,4 +20,3 @@ venv/
 
 # Logs
 *.log
-
