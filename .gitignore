@@ -1,0 +1,22 @@
+# macOS
+.DS_Store
+
+# Env
+.env
+.env.*
+
+# Node / web
+node_modules/
+dist/
+build/
+.next/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Logs
+*.log
+
