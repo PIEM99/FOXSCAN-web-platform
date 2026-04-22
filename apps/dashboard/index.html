@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FOXSCAN — Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --blue:#0071E3;--blue-l:#EBF4FF;
+    --green:#30D158;--green-l:#EDFAF1;
+    --purple:#BF5AF2;--purple-l:#F6EEFE;
+    --orange:#FF9F0A;--orange-l:#FFF5E5;
+    --red:#FF3B30;--red-l:#FFF0EF;
+    --text:#1D1D1F;--text2:#6E6E73;--text3:#86868B;
+    --bg:#FFFFFF;--bg2:#F5F5F7;--bg3:#E8E8ED;
+    --radius:14px;--shadow:0 2px 20px rgba(0,0,0,.08);
+  }
+  body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:var(--bg2);color:var(--text);min-height:100vh}
+
+  /* NAV */
+  nav{background:rgba(255,255,255,.85);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--bg3);position:sticky;top:0;z-index:100;padding:0 24px;height:52px;display:flex;align-items:center;justify-content:space-between}
+  .nav-brand{display:flex;align-items:center;gap:10px;text-decoration:none}
+  .nav-logo{width:28px;height:28px;background:var(--text);border-radius:7px;display:flex;align-items:center;justify-content:center}
+  .nav-logo svg{width:16px;height:16px;fill:white}
+  .nav-brand span{font-weight:700;font-size:16px;color:var(--text);letter-spacing:-.3px}
+  .nav-tabs{display:flex;gap:4px}
+  .nav-tab{padding:6px 14px;border-radius:8px;border:none;background:transparent;font-size:13px;font-weight:500;color:var(--text2);cursor:pointer;transition:.15s;font-family:inherit}
+  .nav-tab:hover{background:var(--bg2)}
+  .nav-tab.active{background:var(--bg2);color:var(--text)}
+  .nav-right{display:flex;align-items:center;gap:12px}
+  .user-pill{display:flex;align-items:center;gap:8px;padding:5px 12px 5px 5px;background:var(--bg2);border-radius:20px;cursor:pointer}
+  .user-avatar{width:26px;height:26px;background:var(--blue);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white}
+  .user-name{font-size:13px;font-weight:500;color:var(--text);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .btn-logout{padding:6px 14px;background:transparent;border:1px solid var(--bg3);border-radius:8px;font-size:13px;font-weight:500;color:var(--text2);cursor:pointer;transition:.15s;font-family:inherit}
+  .btn-logout:hover{background:var(--red-l);border-color:var(--red);color:var(--red)}
+
+  /* LAYOUT */
+  .container{max-width:1100px;margin:0 auto;padding:32px 24px}
+
+  /* WELCOME */
+  .welcome{margin-bottom:28px}
+  .welcome h1{font-size:24px;font-weight:700;letter-spacing:-.4px;color:var(--text)}
+  .welcome p{font-size:15px;color:var(--text2);margin-top:4px}
+
+  /* STATS GRID */
+  .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px}
+  .stat-card{background:var(--bg);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
+  .stat-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;font-size:18px}
+  .stat-card h3{font-size:22px;font-weight:700;letter-spacing:-.5px;margin-bottom:3px}
+  .stat-card p{font-size:12px;color:var(--text2);font-weight:500}
+
+  /* PANELS */
+  .panel{background:var(--bg);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+  .panel-header{padding:18px 20px;border-bottom:1px solid var(--bg2);display:flex;align-items:center;justify-content:space-between}
+  .panel-title{font-size:15px;font-weight:600;color:var(--text)}
+  .btn-primary{padding:8px 16px;background:var(--blue);color:white;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s}
+  .btn-primary:hover{background:#0062c4}
+  .btn-ghost{padding:7px 14px;background:var(--bg2);color:var(--text);border:none;border-radius:9px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;transition:.15s}
+  .btn-ghost:hover{background:var(--bg3)}
+
+  /* TABLE */
+  .table{width:100%;border-collapse:collapse}
+  .table th{padding:11px 20px;text-align:left;font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;background:var(--bg2)}
+  .table td{padding:14px 20px;font-size:14px;border-bottom:1px solid var(--bg2)}
+  .table tr:last-child td{border-bottom:none}
+  .table tr:hover td{background:#FAFAFA}
+  .badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:6px;font-size:11px;font-weight:600}
+  .badge-green{background:var(--green-l);color:#1A7A35}
+  .badge-blue{background:var(--blue-l);color:#004A9C}
+  .badge-orange{background:var(--orange-l);color:#7A4A00}
+
+  /* GRID 2COL */
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+
+  /* EMPTY STATE */
+  .empty-state{padding:48px 20px;text-align:center}
+  .empty-state .empty-icon{font-size:40px;margin-bottom:14px;opacity:.4}
+  .empty-state p{font-size:14px;color:var(--text2);margin-bottom:16px}
+
+  /* PLAN CARD */
+  .plan-card{padding:24px;background:var(--bg);border-radius:var(--radius);box-shadow:var(--shadow)}
+  .plan-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;background:var(--blue-l);color:var(--blue);border-radius:8px;font-size:12px;font-weight:700;margin-bottom:14px}
+  .plan-price{font-size:32px;font-weight:800;letter-spacing:-1px;color:var(--text);margin-bottom:4px}
+  .plan-price span{font-size:14px;font-weight:400;color:var(--text2)}
+  .plan-features{list-style:none;margin:16px 0;display:flex;flex-direction:column;gap:9px}
+  .plan-features li{display:flex;align-items:center;gap:9px;font-size:14px;color:var(--text)}
+  .plan-features li::before{content:"✓";color:var(--green);font-weight:700;flex-shrink:0}
+  .plan-upgrade{margin-top:20px;padding:24px;background:linear-gradient(135deg,#0071E3 0%,#6E40C9 100%);border-radius:12px;color:white;text-align:center}
+  .plan-upgrade h3{font-size:17px;font-weight:700;margin-bottom:6px}
+  .plan-upgrade p{font-size:13px;opacity:.85;margin-bottom:16px}
+  .btn-white{padding:10px 22px;background:white;color:var(--blue);border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
+
+  /* TABS CONTENT */
+  .tab-content{display:none}
+  .tab-content.active{display:block}
+
+  /* MODELS GRID */
+  .models-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;padding:20px}
+  .model-card{background:var(--bg2);border-radius:12px;overflow:hidden;cursor:pointer;transition:.2s}
+  .model-card:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+  .model-thumb{height:120px;background:linear-gradient(135deg,var(--blue-l),var(--purple-l));display:flex;align-items:center;justify-content:center;font-size:36px}
+  .model-info{padding:12px}
+  .model-info h4{font-size:13px;font-weight:600;margin-bottom:3px}
+  .model-info p{font-size:11px;color:var(--text2)}
+
+  @media(max-width:768px){
+    .stats-grid{grid-template-columns:repeat(2,1fr)}
+    .grid-2{grid-template-columns:1fr}
+    .models-grid{grid-template-columns:repeat(2,1fr)}
+    .nav-tabs{display:none}
+    .user-name{display:none}
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="../site/index.html" class="nav-brand">
+    <div class="nav-logo">
+      <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    <span>FOXSCAN</span>
+  </a>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showTab('projets', this)">Projets</button>
+    <button class="nav-tab" onclick="showTab('rapports', this)">Rapports</button>
+    <button class="nav-tab" onclick="showTab('modeles', this)">Modèles 3D</button>
+    <button class="nav-tab" onclick="showTab('abonnement', this)">Abonnement</button>
+  </div>
+  <div class="nav-right">
+    <div class="user-pill">
+      <div class="user-avatar" id="userAvatar">?</div>
+      <span class="user-name" id="userName">Chargement…</span>
+    </div>
+    <button class="btn-logout" onclick="logout()">Déconnexion</button>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="welcome">
+    <h1 id="welcomeTitle">Bonjour 👋</h1>
+    <p>Gérez vos projets de scan LiDAR et vos états des lieux.</p>
+    <p id="api-status" style="font-size:12px;color:var(--text3);margin-top:6px">Connexion API en cours…</p>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--blue-l)">📐</div>
+      <h3 id="statProjets">0</h3>
+      <p>Projets scannés</p>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--green-l)">📋</div>
+      <h3 id="statRapports">0</h3>
+      <p>Rapports générés</p>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--purple-l)">🧊</div>
+      <h3 id="statModeles">0</h3>
+      <p>Modèles 3D</p>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--orange-l)">☁️</div>
+      <h3>iCloud</h3>
+      <p>Synchronisation active</p>
+    </div>
+  </div>
+
+  <!-- TAB: PROJETS -->
+  <div id="tab-projets" class="tab-content active">
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Mes projets</span>
+        <button class="btn-primary" onclick="openApp()">+ Nouveau scan</button>
+      </div>
+      <div id="projets-list">
+        <div class="empty-state">
+          <div class="empty-icon">📱</div>
+          <p>Vos scans apparaissent ici après synchronisation iCloud.<br>Ouvrez l'app FOXSCAN sur votre iPhone pour commencer.</p>
+          <button class="btn-ghost" onclick="openApp()">Ouvrir l'app</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: RAPPORTS -->
+  <div id="tab-rapports" class="tab-content">
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Rapports PDF</span>
+        <button class="btn-ghost" onclick="openApp()">Générer via l'app</button>
+      </div>
+      <div id="rapports-list">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Rapport</th>
+              <th>Projet</th>
+              <th>Date</th>
+              <th>Statut</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="rapports-tbody">
+            <tr>
+              <td colspan="5">
+                <div class="empty-state">
+                  <div class="empty-icon">📄</div>
+                  <p>Aucun rapport encore. Générez vos premiers rapports depuis l'app iOS.</p>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: MODELES -->
+  <div id="tab-modeles" class="tab-content">
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Modèles 3D</span>
+        <button class="btn-ghost" onclick="openApp()">Scanner via l'app</button>
+      </div>
+      <div id="modeles-list">
+        <div class="empty-state">
+          <div class="empty-icon">🧊</div>
+          <p>Vos modèles 3D LiDAR apparaissent ici après synchronisation iCloud.</p>
+          <button class="btn-ghost" onclick="openApp()">Ouvrir l'app</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: ABONNEMENT -->
+  <div id="tab-abonnement" class="tab-content">
+    <div class="grid-2">
+      <div class="plan-card">
+        <div class="plan-badge">⭐ Votre plan actuel</div>
+        <div class="plan-price">Starter <span>/ mois</span></div>
+        <p style="font-size:13px;color:var(--text2)">Parfait pour débuter avec le scan LiDAR.</p>
+        <ul class="plan-features">
+          <li>5 scans par mois</li>
+          <li>Export PDF basique</li>
+          <li>Synchronisation iCloud</li>
+          <li>Support par email</li>
+        </ul>
+      </div>
+      <div class="plan-upgrade">
+        <h3>Passez au plan Pro</h3>
+        <p>Scans illimités, état des lieux IA, export avancé et accès prioritaire aux nouvelles fonctionnalités.</p>
+        <button class="btn-white">Voir les offres Pro</button>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:0">
+      <div class="panel-header">
+        <span class="panel-title">Historique de facturation</span>
+      </div>
+      <div class="empty-state">
+        <div class="empty-icon">💳</div>
+        <p>L'abonnement est géré via l'App Store Apple.<br>Consultez vos achats dans Réglages → Apple ID → Achats.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="./dashboard.js"></script>
+
+</body>
+</html>

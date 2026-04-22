@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FOXSCAN — L'état des lieux intelligent</title>
+<meta name="description" content="FOXSCAN est la solution d'état des lieux numérique: scan LiDAR iPhone, rapports PDF signés, modèles 3D et dashboard web pour les professionnels de l'immobilier."/>
+<link rel="canonical" href="https://foxscan.fr/"/>
+<meta property="og:type" content="website"/>
+<meta property="og:title" content="FOXSCAN — L'état des lieux intelligent"/>
+<meta property="og:description" content="Scan LiDAR, rapport PDF signé, synchronisation iCloud et dashboard web pour états des lieux."/>
+<meta property="og:url" content="https://foxscan.fr/"/>
+<meta property="og:site_name" content="FOXSCAN"/>
+<meta name="twitter:card" content="summary_large_image"/>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "FOXSCAN",
+  "applicationCategory": "BusinessApplication",
+  "operatingSystem": "iOS, Web",
+  "url": "https://foxscan.fr/",
+  "description": "Solution d'état des lieux numérique avec scan LiDAR, rapports PDF signés et dashboard web.",
+  "offers": {
+    "@type": "AggregateOffer",
+    "lowPrice": "29",
+    "highPrice": "199",
+    "priceCurrency": "EUR"
+  }
+}
+</script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+:root{
+  --bg:#FFFFFF;--bg2:#F5F5F7;--card:#FFFFFF;
+  --border:rgba(0,0,0,0.08);--border2:rgba(0,0,0,0.14);
+  --blue:#0071E3;--blue-l:#EBF4FF;
+  --green:#30D158;--green-l:#EDFAF1;
+  --purple:#BF5AF2;--purple-l:#F6EEFE;
+  --orange:#FF9F0A;--orange-l:#FFF5E5;
+  --text:#1D1D1F;--text2:#6E6E73;--text3:#86868B;
+  --shadow:0 2px 20px rgba(0,0,0,0.06);
+  --shadow-md:0 8px 40px rgba(0,0,0,0.10);
+  --r:18px;--r-sm:12px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden;-webkit-font-smoothing:antialiased;line-height:1.6}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;height:52px;padding:0 24px;display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,0.85);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid rgba(0,0,0,0.08)}
+.nav-logo{display:flex;align-items:center;gap:8px;font-weight:700;font-size:17px;letter-spacing:-.3px;color:var(--text);text-decoration:none}
+.nav-icon{width:26px;height:26px;background:var(--blue);border-radius:7px;display:flex;align-items:center;justify-content:center}
+.nav-links{display:flex;align-items:center;gap:28px;list-style:none}
+.nav-links a{color:var(--text2);text-decoration:none;font-size:13px;font-weight:500;transition:color .2s}
+.nav-links a:hover{color:var(--text)}
+.nav-cta{display:flex;gap:10px;align-items:center}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:8px 18px;border-radius:980px;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;border:none;text-decoration:none;font-family:inherit;white-space:nowrap}
+.btn-blue{background:var(--blue);color:#fff}
+.btn-blue:hover{background:#0077ED;transform:scale(1.02)}
+.btn-outline{background:transparent;color:var(--text);border:1.5px solid var(--border2)}
+.btn-outline:hover{background:var(--bg2)}
+.btn-lg{padding:14px 28px;font-size:15px}
+
+/* HERO */
+#hero{padding:120px 24px 80px;text-align:center;position:relative;overflow:hidden}
+.hero-glow{position:absolute;top:-200px;left:50%;transform:translateX(-50%);width:800px;height:500px;background:radial-gradient(ellipse at 50% 40%,rgba(0,113,227,0.07) 0%,transparent 70%);pointer-events:none}
+.hero-badge{display:inline-flex;align-items:center;gap:6px;background:var(--blue-l);border:1px solid rgba(0,113,227,0.2);color:var(--blue);border-radius:980px;padding:5px 14px 5px 10px;font-size:12px;font-weight:600;margin-bottom:24px}
+.badge-dot{width:6px;height:6px;background:var(--blue);border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.3)}}
+h1{font-size:clamp(44px,7vw,80px);font-weight:800;line-height:1.04;letter-spacing:-2.5px;margin-bottom:20px}
+h1 .blue{color:var(--blue)}
+.hero-sub{font-size:clamp(17px,2.5vw,21px);color:var(--text2);max-width:580px;margin:0 auto 36px;line-height:1.6}
+.hero-actions{display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;margin-bottom:60px}
+.hero-phone{position:relative;display:inline-block;filter:drop-shadow(0 40px 80px rgba(0,0,0,0.15));animation:float 6s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+
+/* SPECS */
+.specs-wrap{max-width:860px;margin:64px auto 0;padding:0 24px}
+.specs-grid{display:grid;grid-template-columns:repeat(4,1fr);background:var(--bg2);border-radius:var(--r);overflow:hidden;border:1px solid var(--border)}
+.spec-item{padding:28px 24px;border-right:1px solid var(--border)}
+.spec-item:last-child{border-right:none}
+.spec-num{font-size:30px;font-weight:800;letter-spacing:-1px;margin-bottom:4px}
+.spec-label{font-size:13px;color:var(--text2);font-weight:500}
+.spec-sub{font-size:11px;color:var(--text3);margin-top:2px}
+
+/* SECTIONS */
+.section-wrap{max-width:1080px;margin:0 auto;padding:100px 24px}
+.section-label{font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--blue);margin-bottom:12px}
+.section-title{font-size:clamp(32px,5vw,52px);font-weight:800;letter-spacing:-1.5px;line-height:1.08;margin-bottom:16px}
+.section-sub{font-size:18px;color:var(--text2);max-width:520px;line-height:1.6}
+
+/* FEATURES */
+#features{background:var(--bg2)}
+.features-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:56px}
+.feature-card{background:var(--card);border-radius:var(--r);padding:36px 32px;border:1px solid var(--border);transition:all .3s}
+.feature-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-md)}
+.feature-icon{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;margin-bottom:20px}
+.fi-blue{background:var(--blue-l)}.fi-green{background:var(--green-l)}.fi-purple{background:var(--purple-l)}
+.feature-title{font-size:19px;font-weight:700;margin-bottom:10px;letter-spacing:-.3px}
+.feature-desc{font-size:15px;color:var(--text2);line-height:1.65}
+.feature-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:18px}
+.tag{font-size:11px;font-weight:600;padding:3px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:980px;color:var(--text3)}
+
+/* HOW */
+.steps-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:32px;margin-top:56px;position:relative}
+.steps-line{position:absolute;top:27px;left:12%;right:12%;height:1px;background:linear-gradient(90deg,transparent,var(--border2),var(--border2),transparent)}
+.step{text-align:center;position:relative;z-index:1}
+.step-num{width:54px;height:54px;border-radius:50%;background:var(--card);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:20px;font-weight:800;color:var(--blue);box-shadow:var(--shadow)}
+.step-title{font-size:15px;font-weight:700;margin-bottom:8px}
+.step-desc{font-size:13px;color:var(--text2);line-height:1.6}
+
+/* DASHBOARD PREVIEW */
+.dash-preview-wrap{border-radius:20px;overflow:hidden;box-shadow:0 40px 100px rgba(0,0,0,0.10),0 0 0 1px var(--border);background:#fff}
+.dash-chrome{background:#F0F0F0;padding:12px 16px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)}
+.dot{width:12px;height:12px;border-radius:50%}
+.dot-r{background:#FF5F57}.dot-y{background:#FFBD2E}.dot-g{background:#28C840}
+.dash-url{margin-left:12px;flex:1;background:#fff;border:1px solid var(--border);border-radius:7px;padding:4px 12px;font-size:12px;color:var(--text3);display:flex;align-items:center;gap:6px;max-width:300px}
+.dash-body{display:flex;height:500px}
+.dash-sidebar{width:196px;min-width:196px;background:#FAFAFA;border-right:1px solid var(--border);display:flex;flex-direction:column;padding:16px 0}
+.dash-logo-row{padding:0 16px 16px;font-weight:800;font-size:15px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);margin-bottom:12px}
+.d-nav{display:flex;align-items:center;gap:9px;padding:8px 14px;font-size:13px;font-weight:500;color:var(--text2);cursor:pointer;transition:all .15s;margin:1px 8px;border-radius:9px}
+.d-nav:hover{background:rgba(0,0,0,0.04);color:var(--text)}
+.d-nav.active{background:var(--blue-l);color:var(--blue)}
+.dash-main{flex:1;overflow:hidden;display:flex;flex-direction:column}
+.dash-header{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px}
+.dash-search{flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:7px 12px;font-size:13px;color:var(--text3);display:flex;align-items:center;gap:8px}
+.dash-content{flex:1;overflow:auto;padding:20px}
+.dash-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.dash-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:16px;cursor:pointer;transition:all .2s}
+.dash-card:hover{border-color:var(--blue);transform:translateY(-1px);box-shadow:0 4px 16px rgba(0,113,227,0.08)}
+.dc-name{font-size:14px;font-weight:700;margin-bottom:3px}
+.dc-addr{font-size:12px;color:var(--text3)}
+.dc-badges{display:flex;gap:5px;margin-top:10px;flex-wrap:wrap}
+.dc-b{font-size:10px;font-weight:700;padding:2px 8px;border-radius:980px}
+.b-ok{background:var(--green-l);color:#1A9940;border:1px solid rgba(26,153,64,0.2)}
+.b-pdf{background:#FFF0F0;color:#E53535;border:1px solid rgba(229,53,53,0.2)}
+.b-3d{background:var(--blue-l);color:var(--blue);border:1px solid rgba(0,113,227,0.2)}
+.b-prog{background:#FFF9E5;color:#B07800;border:1px solid rgba(176,120,0,0.2)}
+
+/* PRICING */
+.pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:56px}
+.pricing-card{background:var(--card);border:1.5px solid var(--border);border-radius:var(--r);padding:36px 32px;position:relative;overflow:hidden;transition:all .3s}
+.pricing-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-md)}
+.pricing-card.featured{border-color:var(--blue);background:linear-gradient(160deg,#EBF4FF 0%,#fff 60%)}
+.feat-badge{position:absolute;top:18px;right:18px;background:var(--blue);color:#fff;font-size:10px;font-weight:800;padding:4px 10px;border-radius:980px;letter-spacing:.3px}
+.plan-name{font-size:13px;font-weight:700;color:var(--text2);letter-spacing:.5px;margin-bottom:12px;text-transform:uppercase}
+.plan-price{display:flex;align-items:flex-end;gap:2px;margin-bottom:6px}
+.p-cur{font-size:22px;font-weight:600;color:var(--text2);padding-bottom:8px}
+.p-amt{font-size:52px;font-weight:800;letter-spacing:-2px;line-height:1}
+.p-per{font-size:14px;color:var(--text3);padding-bottom:10px}
+.plan-desc{font-size:14px;color:var(--text3);margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid var(--border)}
+.plan-feats{display:flex;flex-direction:column;gap:11px;margin-bottom:28px}
+.plan-feat{display:flex;align-items:center;gap:9px;font-size:14px;color:var(--text2)}
+.f-check{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.f-yes{background:var(--green-l)}.f-no{background:var(--bg2)}
+.plan-cta{width:100%;padding:13px;border-radius:980px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s;border:none}
+.cta-p{background:var(--blue);color:#fff}.cta-p:hover{background:#0077ED;box-shadow:0 4px 16px rgba(0,113,227,0.3);transform:scale(1.02)}
+.cta-s{background:var(--bg2);color:var(--text);border:1.5px solid var(--border2)}.cta-s:hover{background:#EAEAEA}
+.pricing-footer{text-align:center;margin-top:28px;font-size:13px;color:var(--text3);display:flex;justify-content:center;gap:24px;flex-wrap:wrap}
+.pricing-footer span{display:flex;align-items:center;gap:5px}
+
+/* ARTICLES */
+.articles-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:56px}
+.article-card{display:block;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:28px 24px;text-decoration:none;color:inherit;transition:all .25s}
+.article-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-md);border-color:rgba(0,113,227,0.22)}
+.article-kicker{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--blue);margin-bottom:10px}
+.article-title{font-size:21px;font-weight:700;letter-spacing:-.4px;line-height:1.25;margin-bottom:10px}
+.article-desc{font-size:14px;color:var(--text2);line-height:1.65;margin-bottom:16px}
+.article-link{font-size:13px;color:var(--blue);font-weight:600}
+
+/* FOOTER */
+#footer-section{background:var(--bg2);border-top:1px solid var(--border)}
+footer{max-width:1080px;margin:0 auto;padding:60px 24px 40px}
+.footer-top{display:flex;justify-content:space-between;flex-wrap:wrap;gap:40px;margin-bottom:48px}
+.footer-brand{max-width:260px}
+.footer-logo-row{font-size:18px;font-weight:800;display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.footer-desc{font-size:14px;color:var(--text3);line-height:1.65}
+.fcol-title{font-size:11px;font-weight:700;color:var(--text2);letter-spacing:1px;text-transform:uppercase;margin-bottom:14px}
+.footer-links{display:flex;flex-direction:column;gap:9px}
+.footer-links a{font-size:14px;color:var(--text3);text-decoration:none;transition:color .2s}
+.footer-links a:hover{color:var(--text)}
+.footer-bottom{display:flex;justify-content:space-between;align-items:center;padding-top:28px;border-top:1px solid var(--border);flex-wrap:wrap;gap:12px}
+.footer-copy{font-size:13px;color:var(--text3)}
+
+/* ANIMATIONS */
+.reveal{opacity:0;transform:translateY(24px);transition:opacity .7s cubic-bezier(.16,1,.3,1),transform .7s cubic-bezier(.16,1,.3,1)}
+.reveal.visible{opacity:1;transform:none}
+.d1{transition-delay:.1s}.d2{transition-delay:.2s}.d3{transition-delay:.3s}.d4{transition-delay:.4s}
+
+/* RESPONSIVE */
+@media(max-width:900px){
+  .nav-links{display:none}
+  #hero{padding:90px 16px 60px}
+  .section-wrap{padding:70px 16px}
+  .features-grid,.pricing-grid{grid-template-columns:1fr}
+  .articles-grid{grid-template-columns:1fr}
+  .specs-grid{grid-template-columns:repeat(2,1fr)}
+  .steps-grid{grid-template-columns:repeat(2,1fr)}
+  .steps-line{display:none}
+  .dash-sidebar{display:none}
+  .dash-grid{grid-template-columns:1fr}
+  .footer-top{flex-direction:column}
+  footer{padding:48px 16px 32px}
+}
+</style>
+</head>
+<body>
+
+<nav id="main-nav">
+  <a href="index.html" class="nav-logo">
+    <div class="nav-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 4h10M3 8h7M3 12h8" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></div>
+    FOXSCAN
+  </a>
+  <ul class="nav-links">
+    <li><a href="#features">Fonctionnalités</a></li>
+    <li><a href="#how">Comment ça marche</a></li>
+    <li><a href="#pricing">Tarifs</a></li>
+    <li><a href="#articles">Articles</a></li>
+  </ul>
+  <div class="nav-cta">
+    <a href="login.html" class="btn btn-outline">Se connecter</a>
+    <a href="login.html" class="btn btn-blue">Commencer</a>
+  </div>
+</nav>
+
+<section id="hero">
+  <div class="hero-glow"></div>
+  <div class="hero-badge reveal"><span class="badge-dot"></span>Nouveau — Scan LiDAR ARKit 6</div>
+  <h1 class="reveal d1">L'état des lieux<br><span class="blue">réinventé.</span></h1>
+  <p class="hero-sub reveal d2">FOXSCAN transforme votre iPhone en scanner professionnel. Plans 2D, modèles 3D et rapports PDF signés — générés automatiquement.</p>
+  <div class="hero-actions reveal d3">
+    <a href="login.html" class="btn btn-blue btn-lg">Essai gratuit 14 jours</a>
+    <a href="#how" class="btn btn-outline btn-lg">Comment ça marche</a>
+  </div>
+  <div class="hero-phone reveal d2">
+    <svg width="250" height="500" viewBox="0 0 260 520" fill="none">
+      <rect x="3" y="3" width="254" height="514" rx="42" fill="#E8E8ED" stroke="#D1D1D6" stroke-width="1.5"/>
+      <rect x="12" y="12" width="236" height="496" rx="35" fill="#fff"/>
+      <rect x="96" y="20" width="68" height="26" rx="13" fill="#1D1D1F"/>
+      <text x="24" y="38" fill="#1D1D1F" font-size="10" font-family="Inter,sans-serif" font-weight="600">9:41</text>
+      <rect x="12" y="56" width="236" height="44" fill="#F5F5F7"/>
+      <text x="24" y="83" fill="#1D1D1F" font-size="13" font-family="Inter,sans-serif" font-weight="700">FOXSCAN</text>
+      <rect x="24" y="100" width="212" height="3" rx="2" fill="#E5E5EA"/>
+      <rect x="24" y="100" width="90" height="3" rx="2" fill="#0071E3"/>
+      <rect x="12" y="108" width="236" height="180" fill="#0A0E1A"/>
+      <g stroke="rgba(0,113,227,0.2)" stroke-width=".7">
+        <line x1="12" y1="128" x2="248" y2="128"/><line x1="12" y1="148" x2="248" y2="148"/><line x1="12" y1="168" x2="248" y2="168"/>
+        <line x1="12" y1="188" x2="248" y2="188"/><line x1="12" y1="208" x2="248" y2="208"/><line x1="12" y1="228" x2="248" y2="228"/>
+        <line x1="12" y1="248" x2="248" y2="248"/><line x1="12" y1="268" x2="248" y2="268"/>
+        <line x1="42" y1="108" x2="42" y2="288"/><line x1="82" y1="108" x2="82" y2="288"/><line x1="122" y1="108" x2="122" y2="288"/>
+        <line x1="162" y1="108" x2="162" y2="288"/><line x1="202" y1="108" x2="202" y2="288"/>
+      </g>
+      <path d="M44 120 L208 120 L208 218 L163 218 L163 268 L85 268 L85 218 L44 218 Z" stroke="#0071E3" stroke-width="2" fill="rgba(0,113,227,0.06)" stroke-linejoin="round"/>
+      <circle cx="130" cy="180" r="5" fill="#0071E3" opacity=".9"/>
+      <circle cx="130" cy="180" r="12" stroke="#0071E3" stroke-width="1" opacity=".4"/>
+      <circle cx="130" cy="180" r="22" stroke="#0071E3" stroke-width=".5" opacity=".2"/>
+      <g stroke="#0071E3" stroke-width=".5" opacity=".25">
+        <line x1="130" y1="180" x2="44" y2="120"/><line x1="130" y1="180" x2="208" y2="120"/>
+        <line x1="130" y1="180" x2="208" y2="218"/><line x1="130" y1="180" x2="163" y2="268"/>
+        <line x1="130" y1="180" x2="85" y2="268"/><line x1="130" y1="180" x2="44" y2="218"/>
+      </g>
+      <text x="112" y="116" fill="#60A5FA" font-size="8" font-family="monospace">4.80 m</text>
+      <rect x="22" y="116" width="72" height="18" rx="9" fill="rgba(48,209,88,0.2)" stroke="rgba(48,209,88,0.4)" stroke-width="1"/>
+      <circle cx="32" cy="125" r="3" fill="#30D158"/>
+      <text x="38" y="129" fill="#30D158" font-size="9" font-weight="600" font-family="Inter,sans-serif">SCAN ACTIF</text>
+      <rect x="12" y="288" width="236" height="210" fill="#fff"/>
+      <rect x="22" y="298" width="216" height="34" rx="10" fill="#F5F5F7" stroke="#E5E5EA" stroke-width="1"/>
+      <text x="34" y="319" fill="#86868B" font-size="11" font-family="Inter,sans-serif">État général du sol…</text>
+      <rect x="22" y="340" width="100" height="34" rx="10" fill="#EBF4FF" stroke="rgba(0,113,227,0.3)" stroke-width="1"/>
+      <text x="34" y="361" fill="#0071E3" font-size="11" font-weight="600" font-family="Inter,sans-serif">📷 Photo</text>
+      <rect x="130" y="340" width="108" height="34" rx="10" fill="#F5F5F7" stroke="#E5E5EA" stroke-width="1"/>
+      <text x="142" y="361" fill="#86868B" font-size="11" font-family="Inter,sans-serif">Note vocale 🎙</text>
+      <rect x="22" y="382" width="44" height="44" rx="9" fill="#EBF4FF"/>
+      <rect x="72" y="382" width="44" height="44" rx="9" fill="#EDFAF1"/>
+      <rect x="122" y="382" width="44" height="44" rx="9" fill="#F6EEFE"/>
+      <rect x="22" y="434" width="216" height="44" rx="12" fill="#0071E3"/>
+      <text x="130" y="461" fill="white" font-size="14" font-weight="700" font-family="Inter,sans-serif" text-anchor="middle">Étape suivante →</text>
+      <rect x="104" y="486" width="52" height="4" rx="2" fill="#C7C7CC"/>
+    </svg>
+    <div style="position:absolute;bottom:-14px;right:-10px;background:#fff;border:1px solid var(--border2);border-radius:14px;padding:10px 16px;display:flex;align-items:center;gap:10px;box-shadow:var(--shadow-md)">
+      <svg width="26" height="26" viewBox="0 0 26 26" fill="none"><rect width="26" height="26" rx="6" fill="#1C1C1E"/><path d="M13 5l2.3 4.2H18l-2.3 4.2H18l-5 8-5-8h2.3L8 9.2h2.7L13 5z" fill="white"/></svg>
+      <div><div style="font-size:11px;color:var(--text3)">Bientôt sur</div><div style="font-size:13px;font-weight:700">App Store</div></div>
+    </div>
+  </div>
+</section>
+
+<div class="specs-wrap reveal">
+  <div class="specs-grid">
+    <div class="spec-item"><div class="spec-num">±1 cm</div><div class="spec-label">Précision LiDAR</div><div class="spec-sub">Capteur ARKit 6</div></div>
+    <div class="spec-item"><div class="spec-num">~3 min</div><div class="spec-label">Scan par pièce</div><div class="spec-sub">Durée moyenne</div></div>
+    <div class="spec-item"><div class="spec-num">7 étapes</div><div class="spec-label">Processus guidé</div><div class="spec-sub">État des lieux complet</div></div>
+    <div class="spec-item"><div class="spec-num">iOS 17+</div><div class="spec-label">Compatibilité</div><div class="spec-sub">iPhone Pro requis</div></div>
+  </div>
+</div>
+
+<section id="features">
+  <div class="section-wrap">
+    <div class="reveal">
+      <div class="section-label">Fonctionnalités</div>
+      <h2 class="section-title">Tout ce qu'il vous faut,<br>dans votre poche.</h2>
+      <p class="section-sub">Du scan LiDAR au rapport PDF signé, FOXSCAN automatise chaque étape de l'état des lieux.</p>
+    </div>
+    <div class="features-grid reveal d1">
+      <div class="feature-card">
+        <div class="feature-icon fi-blue"><svg width="26" height="26" viewBox="0 0 26 26" fill="none"><path d="M13 2L2 7.5v11L13 24l11-5.5v-11L13 2z" stroke="#0071E3" stroke-width="1.5" stroke-linejoin="round"/><path d="M13 2v22M2 7.5l11 5.5 11-5.5" stroke="#0071E3" stroke-width="1.5" stroke-linejoin="round"/></svg></div>
+        <div class="feature-title">Scan LiDAR instantané</div>
+        <div class="feature-desc">Le capteur LiDAR de votre iPhone Pro mesure chaque recoin automatiquement. Plans 2D à l'échelle et modèles 3D USDZ générés en temps réel.</div>
+        <div class="feature-tags"><span class="tag">Plans 2D</span><span class="tag">USDZ 3D</span><span class="tag">±1 cm</span></div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon fi-green"><svg width="26" height="26" viewBox="0 0 26 26" fill="none"><rect x="3" y="3" width="20" height="20" rx="4" stroke="#30D158" stroke-width="1.5"/><path d="M8 13l3 3 7-7" stroke="#30D158" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="feature-title">État des lieux en 7 étapes</div>
+        <div class="feature-desc">Formulaire guidé pièce par pièce : photos indexées, notes vocales et signature biométrique pour les deux parties.</div>
+        <div class="feature-tags"><span class="tag">Signature biométrique</span><span class="tag">Photos indexées</span><span class="tag">PDF</span></div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon fi-purple"><svg width="26" height="26" viewBox="0 0 26 26" fill="none"><path d="M13 2C8 2 4 6 4 11c0 4.5 2.5 6.5 4 8l5 3 5-3c1.5-1.5 4-3.5 4-8 0-5-4-9-9-9z" stroke="#BF5AF2" stroke-width="1.5"/><path d="M13 6v5l3 2" stroke="#BF5AF2" stroke-width="2" stroke-linecap="round"/></svg></div>
+        <div class="feature-title">Synchronisation iCloud</div>
+        <div class="feature-desc">CloudKit synchronise vos projets entre l'app iOS et le dashboard web. Données chiffrées de bout en bout, accessibles partout.</div>
+        <div class="feature-tags"><span class="tag">CloudKit E2E</span><span class="tag">Temps réel</span><span class="tag">Multi-appareils</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="how" style="background:var(--bg)">
+  <div class="section-wrap" style="text-align:center">
+    <div class="reveal">
+      <div class="section-label">Comment ça marche</div>
+      <h2 class="section-title">De la clé au rapport<br>en 15 minutes.</h2>
+    </div>
+    <div class="steps-grid reveal d1">
+      <div class="steps-line"></div>
+      <div class="step"><div class="step-num">1</div><div class="step-title">Scanner la pièce</div><div class="step-desc">Pointez votre iPhone Pro. Le LiDAR cartographie l'espace en quelques minutes.</div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-title">Remplir le formulaire</div><div class="step-desc">7 étapes guidées pièce par pièce. Photos et notes intégrées.</div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-title">Signer numériquement</div><div class="step-desc">Signature biométrique sur écran pour le propriétaire et le locataire.</div></div>
+      <div class="step"><div class="step-num" style="color:var(--green)">4</div><div class="step-title">Rapport PDF prêt</div><div class="step-desc">PDF complet avec plans et photos, synchronisé sur iCloud.</div></div>
+    </div>
+  </div>
+</section>
+
+<section style="background:var(--bg2)">
+  <div class="section-wrap">
+    <div class="reveal" style="text-align:center;margin-bottom:40px">
+      <div class="section-label">Dashboard web</div>
+      <h2 class="section-title">Tous vos rapports,<br>depuis votre navigateur.</h2>
+      <p class="section-sub" style="margin:0 auto">Visualisez, téléchargez et partagez vos projets depuis le web, sans installation.</p>
+    </div>
+    <div class="dash-preview-wrap reveal d1">
+      <div class="dash-chrome">
+        <span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>
+        <div class="dash-url"><svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M6 1a5 5 0 100 10A5 5 0 006 1z" stroke="#86868B" stroke-width="1"/></svg>app.foxscan.fr/dashboard</div>
+      </div>
+      <div class="dash-body">
+        <div class="dash-sidebar">
+          <div class="dash-logo-row"><div style="width:20px;height:20px;background:var(--blue);border-radius:5px;display:flex;align-items:center;justify-content:center"><svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 4h10M3 8h7M3 12h8" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></div>FOXSCAN</div>
+          <div class="d-nav active"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.5"/></svg>Projets</div>
+          <div class="d-nav"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="2" y="1" width="12" height="14" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M5 6h6M5 9h6M5 12h3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>Rapports</div>
+          <div class="d-nav"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 1l7 4v6l-7 4-7-4V5z" stroke="currentColor" stroke-width="1.3"/></svg>Modèles 3D</div>
+          <div class="d-nav"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.5"/><path d="M8 5v4l2.5 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Abonnement</div>
+        </div>
+        <div class="dash-main">
+          <div class="dash-header">
+            <div class="dash-search"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4.5" stroke="#86868B" stroke-width="1.5"/><path d="M10 10l2.5 2.5" stroke="#86868B" stroke-width="1.5" stroke-linecap="round"/></svg>Rechercher un projet…</div>
+            <button style="padding:7px 16px;background:var(--blue);color:#fff;border:none;border-radius:980px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">+ Nouveau</button>
+          </div>
+          <div class="dash-content">
+            <div style="font-size:15px;font-weight:700;margin-bottom:14px;letter-spacing:-.3px">Mes projets <span style="font-weight:400;color:var(--text3);font-size:13px">— démo</span></div>
+            <div class="dash-grid">
+              <div class="dash-card"><div class="dc-name">Appartement Haussmann</div><div class="dc-addr">12 Bd Haussmann, 75008 Paris</div><div class="dc-badges"><span class="dc-b b-ok">Complet</span><span class="dc-b b-pdf">PDF</span><span class="dc-b b-3d">3D</span></div></div>
+              <div class="dash-card"><div class="dc-name">Studio Le Marais</div><div class="dc-addr">8 Rue de Bretagne, 75003 Paris</div><div class="dc-badges"><span class="dc-b b-prog">En cours</span></div></div>
+              <div class="dash-card"><div class="dc-name">Villa Vincennes</div><div class="dc-addr">5 Allée des Roses, 94300 Vincennes</div><div class="dc-badges"><span class="dc-b b-ok">Complet</span><span class="dc-b b-pdf">PDF</span><span class="dc-b b-3d">3D</span></div></div>
+              <div class="dash-card"><div class="dc-name">T3 Belleville</div><div class="dc-addr">42 Rue de Belleville, 75020 Paris</div><div class="dc-badges"><span class="dc-b b-ok">Complet</span><span class="dc-b b-pdf">PDF</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="pricing" style="background:var(--bg)">
+  <div class="section-wrap">
+    <div class="reveal" style="text-align:center">
+      <div class="section-label">Tarifs</div>
+      <h2 class="section-title">Simple, transparent,<br>sans surprise.</h2>
+      <p class="section-sub" style="margin:0 auto">Commencez gratuitement 14 jours. Aucune carte bancaire requise.</p>
+    </div>
+    <div class="pricing-grid reveal d1">
+      <div class="pricing-card">
+        <div class="plan-name">Starter</div>
+        <div class="plan-price"><span class="p-cur">€</span><span class="p-amt">29</span><span class="p-per">/mois</span></div>
+        <div class="plan-desc">Pour les agents indépendants qui démarrent avec le numérique.</div>
+        <div class="plan-feats">
+          <div class="plan-feat"><span class="f-check f-yes"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5L8 3" stroke="#30D158" stroke-width="1.5" stroke-linecap="round"/></svg></span>5 projets par mois</div>
+          <div class="plan-feat"><span class="f-check f-yes"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5L8 3" stroke="#30D158" stroke-width="1.5" stroke-linecap="round"/></svg></span>Rapports PDF</div>
+          <div class="plan-feat"><span class="f-check f-yes"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5L8 3" stroke="#30D158" stroke-width="1.5" stroke-linecap="round"/></svg></span>Sync iCloud</div>
+          <div class="plan-feat" style="color:var(--text3)"><span class="f-check f-no"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M3 3l4 4M7 3l-4 4" stroke="#C7C7CC" stroke-width="1.5" stroke-linecap="round"/></svg></span>Modèles 3D USDZ</div>
+          <div class="plan-feat" style="color:var(--text3)"><span class="f-check f-no"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M3 3l4 4M7 3l-4 4" stroke="#C7C7CC" stroke-width="1.5" stroke-linecap="round"/></svg></span>Multi-utilisateurs</div>
+        </div>
+        <button class="plan-cta cta-s" onclick="location.href='login.html'">Commencer l'essai</button>
+      </div>
+      <div class="pricing-card featured">
+        <div class="feat-badge">Recommandé</div>
+        <div class="plan-name">Pro</div>
+        <div class="plan-price"><span class="p-cur">€</span><span class="p-amt">79</span><span class="p-per">/mois</span></div>
+        <div class="plan-desc">Pour les professionnels qui veulent aller plus loin avec la 3D.</div>
+        <div class="plan-feats">
+          <div class="plan-feat"><span class="f-check f-yes"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5L8 3" stroke="#30D158" stroke-width="1.5" stroke-linecap="round"/></svg></span>Projets illimités</div>
+          <div class="plan-feat"><span class="f-check f-yes"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5L8 3" stroke="#30D158" stroke-width="1.5" stroke-linecap="round"/></svg></span>Modèles 3D USDZ</div>
+          <div class="plan-feat"><span class="f-check f-yes"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5L8 3" stroke="#30D158" stroke-width="1.5" stroke-linecap="round"/></svg></span>Exports multi-formats</div>
+          <div class="plan-feat"><span class="f-check f-yes"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5L8 3" stroke="#30D158" stroke-width="1.5" stroke-linecap="round"/></svg></span>Dashboard web complet</div>
+          <div class="plan-feat" style="color:var(--text3)"><span class="f-check f-no"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M3 3l4 4M7 3l-4 4" stroke="#C7C7CC" stroke-width="1.5" stroke-linecap="round"/></svg></span>Multi-utilisateurs</div>
+        </div>
+        <button class="plan-cta cta-p" onclick="location.href='login.html'">Essayer Pro gratuitement</button>
+      </div>
+      <div class="pricing-card">
+        <div class="plan-name">Agence</div>
+        <div class="plan-price"><span class="p-cur">€</span><span class="p-amt">199</span><span class="p-per">/mois</span></div>
+        <div class="plan-desc">Pour les cabinets et équipes avec besoins avancés.</div>
+        <div class="plan-feats">
+          <div class="plan-feat"><span class="f-check f-yes"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5L8 3" stroke="#30D158" stroke-width="1.5" stroke-linecap="round"/></svg></span>Tout Pro inclus</div>
+          <div class="plan-feat"><span class="f-check f-yes"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5L8 3" stroke="#30D158" stroke-width="1.5" stroke-linecap="round"/></svg></span>Multi-utilisateurs illimités</div>
+          <div class="plan-feat"><span class="f-check f-yes"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5L8 3" stroke="#30D158" stroke-width="1.5" stroke-linecap="round"/></svg></span>Accès API REST</div>
+          <div class="plan-feat"><span class="f-check f-yes"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5L8 3" stroke="#30D158" stroke-width="1.5" stroke-linecap="round"/></svg></span>Support dédié 24/7</div>
+          <div class="plan-feat"><span class="f-check f-yes"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5L8 3" stroke="#30D158" stroke-width="1.5" stroke-linecap="round"/></svg></span>Personnalisation logo</div>
+        </div>
+        <button class="plan-cta cta-s" onclick="location.href='mailto:contact@foxscan.fr'">Nous contacter</button>
+      </div>
+    </div>
+    <div class="pricing-footer reveal">
+      <span>🔒 Stripe sécurisé</span>
+      <span>⭐ 14 jours gratuits</span>
+      <span>✓ Annulation à tout moment</span>
+      <span>⏱ Sans engagement</span>
+    </div>
+  </div>
+</section>
+
+<section id="articles" style="background:var(--bg2)">
+  <div class="section-wrap">
+    <div class="reveal" style="text-align:center">
+      <div class="section-label">Ressources</div>
+      <h2 class="section-title">Guides état des lieux<br>et immobilier.</h2>
+      <p class="section-sub" style="margin:0 auto">Des articles pratiques pour améliorer vos états des lieux, votre conformité et votre productivité terrain.</p>
+    </div>
+    <div class="articles-grid reveal d1">
+      <a class="article-card" href="./articles/etat-des-lieux-numerique.html">
+        <div class="article-kicker">État des lieux</div>
+        <h3 class="article-title">État des lieux numérique: méthode complète 2026</h3>
+        <p class="article-desc">Checklist terrain, preuve photo, signature et export PDF: le process pro pour réduire les litiges locatifs.</p>
+        <span class="article-link">Lire l'article →</span>
+      </a>
+      <a class="article-card" href="./articles/lidar-immobilier-guide.html">
+        <div class="article-kicker">LiDAR</div>
+        <h3 class="article-title">Scan LiDAR en immobilier: guide concret pour agences</h3>
+        <p class="article-desc">Quand utiliser le LiDAR, comment fiabiliser les mesures et accélérer les états des lieux d'entrée/sortie.</p>
+        <span class="article-link">Lire l'article →</span>
+      </a>
+      <a class="article-card" href="./articles/sortie-locative-checklist.html">
+        <div class="article-kicker">Sortie locative</div>
+        <h3 class="article-title">Checklist sortie locative: éviter les oublis et contestations</h3>
+        <p class="article-desc">Pièces à contrôler, photos à capturer, réserves à formaliser et bonnes pratiques de clôture de dossier.</p>
+        <span class="article-link">Lire l'article →</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<div id="footer-section">
+  <footer>
+    <div class="footer-top">
+      <div class="footer-brand">
+        <div class="footer-logo-row"><div style="width:28px;height:28px;background:var(--blue);border-radius:8px;display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 4h10M3 8h7M3 12h8" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></div>FOXSCAN</div>
+        <div class="footer-desc">L'application iOS professionnelle pour les états des lieux numériques. LiDAR, rapports PDF, modèles 3D.</div>
+      </div>
+      <div><div class="fcol-title">Produit</div><div class="footer-links"><a href="#features">Fonctionnalités</a><a href="#pricing">Tarifs</a><a href="#articles">Articles</a><a href="login.html">Dashboard</a><a href="#">App Store</a></div></div>
+      <div><div class="fcol-title">Légal</div><div class="footer-links"><a href="#">Conditions Générales</a><a href="#">Confidentialité</a><a href="#">Mentions légales</a><a href="#">RGPD</a></div></div>
+      <div><div class="fcol-title">Support</div><div class="footer-links"><a href="#">Centre d'aide</a><a href="mailto:contact@foxscan.fr">Nous contacter</a><a href="#">Statut</a><a href="#">Changelog</a></div></div>
+    </div>
+    <div class="footer-bottom">
+      <span class="footer-copy">© 2025 FOXSCAN. Tous droits réservés.</span>
+    </div>
+  </footer>
+</div>
+
+<script>
+const obs = new IntersectionObserver(e => e.forEach(x => { if(x.isIntersecting) x.target.classList.add('visible'); }), {threshold:0,rootMargin:'0px 0px -40px 0px'});
+document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+setTimeout(() => document.querySelectorAll('.reveal').forEach(el => el.classList.add('visible')), 400);
+window.addEventListener('scroll', () => {
+  document.getElementById('main-nav').style.background = window.scrollY > 20 ? 'rgba(255,255,255,0.97)' : 'rgba(255,255,255,0.85)';
+});
+</script>
+</body>
+</html>
