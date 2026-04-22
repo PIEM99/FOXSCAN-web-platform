@@ -13,6 +13,7 @@ const settings = {
   dbPath: process.env.FOXSCAN_DB_PATH || path.join(__dirname, "data", "store.json"),
   jwtSecret: process.env.JWT_SECRET || "change-me",
   jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET || "change-me",
+  openaiApiKey: process.env.OPENAI_API_KEY || "",
   accessTtlSeconds: Number(process.env.JWT_ACCESS_TTL_SECONDS || 900),
   refreshTtlSeconds: Number(process.env.JWT_REFRESH_TTL_SECONDS || 60 * 60 * 24 * 30),
   requireActiveSubscription:
@@ -286,6 +287,14 @@ function upsertByID(items, id, payload) {
 
 app.get("/health", (req, res) => {
   res.json({ ok: true, service: "foxscan-api-node" });
+});
+
+app.get("/ai/health", (req, res) => {
+  res.json({
+    ok: true,
+    service: "foxscan-ai",
+    configured: Boolean(settings.openaiApiKey),
+  });
 });
 
 app.post("/auth/apple", (req, res) => {
