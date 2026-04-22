@@ -4,6 +4,23 @@ const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 
+function readEnvFromDotenv(key) {
+  const dotenvPath = path.join(__dirname, ".env");
+  if (!fs.existsSync(dotenvPath)) return "";
+  const lines = fs.readFileSync(dotenvPath, "utf-8").split(/\r?\n/);
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const sepIndex = trimmed.indexOf("=");
+    if (sepIndex <= 0) continue;
+    const k = trimmed.slice(0, sepIndex).trim();
+    if (k !== key) continue;
+    const value = trimmed.slice(sepIndex + 1).trim();
+    return value.replace(/^['"]|['"]$/g, "");
+  }
+  return "";
+}
+
 const app = express();
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: "2mb" }));
@@ -13,7 +30,7 @@ const settings = {
   dbPath: process.env.FOXSCAN_DB_PATH || path.join(__dirname, "data", "store.json"),
   jwtSecret: process.env.JWT_SECRET || "change-me",
   jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET || "change-me",
-  openaiApiKey: process.env.OPENAI_API_KEY || "",
+  openaiApiKey: process.env.OPENAI_API_KEY || readEnvFromDotenv("OPENAI_API_KEY") || "",
   accessTtlSeconds: Number(process.env.JWT_ACCESS_TTL_SECONDS || 900),
   refreshTtlSeconds: Number(process.env.JWT_REFRESH_TTL_SECONDS || 60 * 60 * 24 * 30),
   requireActiveSubscription:
@@ -285,6 +302,86 @@ function upsertByID(items, id, payload) {
   return items[items.length - 1];
 }
 
+function parseJsonSafe(value) {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
+function extractJsonObjectFromText(text) {
+  if (!text || typeof text !== "string") return null;
+  const direct = parseJsonSafe(text);
+  if (direct && typeof direct === "object") return direct;
+
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start < 0 || end <= start) return null;
+  return parseJsonSafe(text.slice(start, end + 1));
+}
+
+function normalizeOpenAIOutputText(responseBody) {
+  if (typeof responseBody?.output_text === "string" && responseBody.output_text.trim()) {
+    return responseBody.output_text;
+  }
+
+  const chunks = [];
+  const output = Array.isArray(responseBody?.output) ? responseBody.output : [];
+  for (const item of output) {
+    const content = Array.isArray(item?.content) ? item.content : [];
+    for (const part of content) {
+      if (typeof part?.text === "string" && part.text.trim()) chunks.push(part.text);
+    }
+  }
+  return chunks.join("\n").trim();
+}
+
+async function callOpenAIResponses(payload) {
+  if (!settings.openaiApiKey) {
+    const err = new Error("OPENAI_API_KEY is not configured on server");
+    err.status = 503;
+    throw err;
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 25000);
+  try {
+    const resp = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${settings.openaiApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+
+    const raw = await resp.text();
+    const json = parseJsonSafe(raw);
+    if (!resp.ok) {
+      const err = new Error(json?.error?.message || `OpenAI upstream error (${resp.status})`);
+      err.status = resp.status === 429 ? 429 : 502;
+      throw err;
+    }
+    if (!json) {
+      const err = new Error("OpenAI upstream returned non-JSON response");
+      err.status = 502;
+      throw err;
+    }
+    return json;
+  } catch (err) {
+    if (err.name === "AbortError") {
+      const timeoutErr = new Error("OpenAI request timeout");
+      timeoutErr.status = 504;
+      throw timeoutErr;
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 app.get("/health", (req, res) => {
   res.json({ ok: true, service: "foxscan-api-node" });
 });
@@ -295,6 +392,119 @@ app.get("/ai/health", (req, res) => {
     service: "foxscan-ai",
     configured: Boolean(settings.openaiApiKey),
   });
+});
+
+app.post("/ai/responses", requireCurrentUser, async (req, res, next) => {
+  try {
+    const body = req.body || {};
+    if (!body.input) {
+      return res.status(400).json({ ok: false, error: "invalid_request", detail: "input is required" });
+    }
+
+    const payload = {
+      model: body.model || "gpt-4.1-mini",
+      input: body.input,
+      instructions: body.instructions,
+      temperature: body.temperature,
+      max_output_tokens: body.max_output_tokens,
+      response_format: body.response_format,
+    };
+
+    Object.keys(payload).forEach((k) => payload[k] === undefined && delete payload[k]);
+
+    const upstream = await callOpenAIResponses(payload);
+    const outputText = normalizeOpenAIOutputText(upstream);
+    const outputJson = extractJsonObjectFromText(outputText);
+
+    return res.json({
+      ok: true,
+      id: upstream.id || null,
+      model: upstream.model || payload.model,
+      output_text: outputText || "",
+      output_json: outputJson || null,
+      usage: {
+        input_tokens: upstream?.usage?.input_tokens || 0,
+        output_tokens: upstream?.usage?.output_tokens || 0,
+        total_tokens: upstream?.usage?.total_tokens || 0,
+      },
+      raw: {
+        status: upstream.status || null,
+      },
+    });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+app.post("/ai/vision-ocr", requireCurrentUser, async (req, res, next) => {
+  try {
+    const body = req.body || {};
+    const prompt = body.prompt || "Extrais le texte OCR et les champs d'etat des lieux en JSON.";
+    const imageBase64 = body.image_base64;
+    const mimeType = body.mime_type || "image/jpeg";
+
+    if (!imageBase64 || typeof imageBase64 !== "string") {
+      return res
+        .status(400)
+        .json({ ok: false, error: "invalid_request", detail: "image_base64 is required" });
+    }
+
+    const imageDataUrl = imageBase64.startsWith("data:")
+      ? imageBase64
+      : `data:${mimeType};base64,${imageBase64}`;
+
+    const inputText = `${prompt}
+Retourne strictement un JSON avec:
+{
+  "text": "texte OCR brut",
+  "fields": {
+    "piece": "",
+    "etat_murs": "",
+    "sol": "",
+    "plafond": "",
+    "equipements": "",
+    "observations": ""
+  },
+  "confidence": 0.0
+}`;
+
+    const upstream = await callOpenAIResponses({
+      model: body.model || "gpt-4.1-mini",
+      input: [
+        {
+          role: "user",
+          content: [
+            { type: "input_text", text: inputText },
+            { type: "input_image", image_url: imageDataUrl },
+          ],
+        },
+      ],
+      temperature: 0.1,
+      max_output_tokens: body.max_output_tokens || 900,
+    });
+
+    const outputText = normalizeOpenAIOutputText(upstream);
+    const parsed = extractJsonObjectFromText(outputText) || {};
+
+    return res.json({
+      ok: true,
+      text: String(parsed.text || outputText || "").trim(),
+      fields: typeof parsed.fields === "object" && parsed.fields ? parsed.fields : {},
+      confidence:
+        typeof parsed.confidence === "number"
+          ? parsed.confidence
+          : typeof body.default_confidence === "number"
+            ? body.default_confidence
+            : 0.8,
+      usage: {
+        input_tokens: upstream?.usage?.input_tokens || 0,
+        output_tokens: upstream?.usage?.output_tokens || 0,
+        total_tokens: upstream?.usage?.total_tokens || 0,
+      },
+    });
+  } catch (err) {
+    return next(err);
+  }
 });
 
 app.post("/auth/apple", (req, res) => {
