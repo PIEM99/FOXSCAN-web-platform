@@ -1,6 +1,0 @@
-User-agent: *
-Allow: /
-Disallow: /dashboard/
-Disallow: /login.html
-
-Sitemap: https://foxscan.fr/sitemap.xml

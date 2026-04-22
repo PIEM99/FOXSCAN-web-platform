@@ -15,7 +15,6 @@ Toutes les routes ci-dessous sont préfixées par cette base URL.
 - `POST /auth/apple`
 - `POST /auth/refresh`
 - `POST /auth/logout`
-- `POST /subscriptions/status`  ← mise à jour statut abonnement (actif/inactif)
 
 ## Consentements
 
@@ -86,3 +85,4 @@ Réponse JSON standard recommandée:
 - JWT court + refresh token rotatif
 - Validation stricte des droits agence (`agency_id`)
 - Journalisation append-only pour l'audit
+
