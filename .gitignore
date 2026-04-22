@@ -20,6 +20,3 @@ venv/
 
 # Logs
 *.log
-
-# API local db
-apps/api/data/*.db
