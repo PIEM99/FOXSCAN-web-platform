@@ -19,6 +19,7 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: web/
           server-dir: public_html/
+          dangerous-clean-slate: true
           exclude: |
             **/.DS_Store
             **/.builds/**
