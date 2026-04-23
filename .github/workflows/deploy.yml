@@ -19,6 +19,7 @@ jobs:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           REMOTE_HOST: ${{ secrets.SSH_HOST }}
           REMOTE_USER: ${{ secrets.SSH_USER }}
+          REMOTE_PORT: ${{ secrets.SSH_PORT }}
           SOURCE: "web/"
           TARGET: "/home/${{ secrets.SSH_USER }}/domains/foxscan.fr/public_html/"
           EXCLUDE: ".DS_Store"
@@ -31,6 +32,7 @@ jobs:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           REMOTE_HOST: ${{ secrets.SSH_HOST }}
           REMOTE_USER: ${{ secrets.SSH_USER }}
+          REMOTE_PORT: ${{ secrets.SSH_PORT }}
           SOURCE: "apps/api/"
           TARGET: "/home/${{ secrets.SSH_USER }}/domains/foxscan.fr/nodejs/"
           EXCLUDE: ".DS_Store,node_modules/,data/"
@@ -43,8 +45,8 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
           script: |
             cd ~/domains/foxscan.fr/nodejs
             npm install --production --silent
-            # Hostinger Node.js apps se relancent via le panel ou :
             touch tmp/restart.txt 2>/dev/null || true
