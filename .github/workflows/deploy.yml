@@ -10,38 +10,33 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install lftp
-        run: sudo apt-get install -y lftp
-
       - name: Deploy web → public_html
-        run: |
-          lftp -u "${{ secrets.FTP_USER }}","${{ secrets.FTP_PASSWORD }}" ftp://${{ secrets.FTP_HOST }} <<'FTPEOF'
-          set ftp:ssl-allow no
-          set net:timeout 30
-          mirror -R --delete --verbose \
-            --exclude ^\.DS_Store$ \
-            --exclude ^\.builds/ \
-            web/ /home/u630423897/domains/foxscan.fr/public_html/
-          quit
-          FTPEOF
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USER }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: web/
+          server-dir: public_html/
+          dangerous-clean-slate: true
+          exclude: |
+            **/.DS_Store
+            **/.builds/**
 
   deploy-api:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install lftp
-        run: sudo apt-get install -y lftp
-
       - name: Deploy API → nodejs
-        run: |
-          lftp -u "${{ secrets.FTP_USER }}","${{ secrets.FTP_PASSWORD }}" ftp://${{ secrets.FTP_HOST }} <<'FTPEOF'
-          set ftp:ssl-allow no
-          set net:timeout 30
-          mirror -R --delete --verbose \
-            --exclude ^\.DS_Store$ \
-            --exclude ^node_modules/ \
-            --exclude ^data/ \
-            apps/api/ /home/u630423897/domains/foxscan.fr/nodejs/
-          quit
-          FTPEOF
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USER }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: apps/api/
+          server-dir: nodejs/
+          exclude: |
+            **/.DS_Store
+            **/node_modules/**
+            **/data/**
