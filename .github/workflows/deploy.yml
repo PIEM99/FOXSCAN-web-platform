@@ -3,6 +3,7 @@ name: Deploy to Hostinger
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   deploy-web:
@@ -16,16 +17,21 @@ jobs:
           server: ${{ secrets.FTP_HOST }}
           username: ${{ secrets.FTP_USER }}
           password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: web/
+          local-dir: ./web/
           server-dir: public_html/
+          dangerous-clean-slate: false
+          log-level: standard
           exclude: |
             **/.DS_Store
+            **/.git*
+            **/.git*/**
             **/.builds/**
             **/.well-known/**
             **/.htaccess
             **/cgi-bin/**
             **/error_log
             **/.ftpquota
+            **/.trash/**
 
   deploy-api:
     runs-on: ubuntu-latest
@@ -38,13 +44,24 @@ jobs:
           server: ${{ secrets.FTP_HOST }}
           username: ${{ secrets.FTP_USER }}
           password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: apps/api/
+          local-dir: ./apps/api/
           server-dir: nodejs/
+          dangerous-clean-slate: false
+          log-level: standard
           exclude: |
             **/.DS_Store
+            **/.git*
+            **/.git*/**
             **/node_modules/**
             **/data/**
+            data
+            data/**
             **/.env
+            .env
+            **/.env.*
             **/tmp/**
+            tmp
+            tmp/**
             **/logs/**
             **/*.log
+            **/.ftpquota
