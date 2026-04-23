@@ -18,8 +18,7 @@ jobs:
           username: ${{ secrets.FTP_USER }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: web/
-          server-dir: /
-          dangerous-clean-slate: true
+          server-dir: public_html/
           exclude: |
             **/.DS_Store
             **/.builds/**
@@ -37,7 +36,7 @@ jobs:
           username: ${{ secrets.FTP_USER }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: apps/api/
-          server-dir: ../nodejs/
+          server-dir: nodejs/
           exclude: |
             **/.DS_Store
             **/node_modules/**
