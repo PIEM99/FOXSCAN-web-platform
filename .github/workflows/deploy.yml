@@ -18,10 +18,26 @@ jobs:
           username: ${{ secrets.FTP_USER }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: web/
-          server-dir: /
+          server-dir: /public_html/
           exclude: |
             **/.DS_Store
             **/.builds/**
 
-  # L'API Node.js est déployée automatiquement par le git deploy
-  # intégré à Hostinger (panel → Node.js → Git). Entry point: apps/api/server.js
+  deploy-api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # apps/api/ → nodejs/ (racine domaine)
+      - name: Deploy API → nodejs
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USER }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: apps/api/
+          server-dir: /nodejs/
+          exclude: |
+            **/.DS_Store
+            **/node_modules/**
+            **/data/**
