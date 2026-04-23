@@ -26,22 +26,42 @@ app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: "2mb" }));
 
 // ── Static files (public_html) ────────────────────────────────────────────────
-// Sur Hostinger, Passenger route toutes les requêtes vers ce Node.
-// On sert donc nous-mêmes les fichiers statiques du site (HTML, CSS, JS, images)
-// AVANT de laisser les routes API répondre. Si rien ne matche, Express tombe
-// sur les routes /auth, /projects, /dashboard/session, etc.
-const STATIC_DIR = process.env.FOXSCAN_STATIC_DIR
-  || path.resolve(__dirname, "..", "..", "public_html")   // layout local dev
-  || path.resolve(__dirname, "..", "public_html");
-const STATIC_DIR_PROD = "/home/u630423897/domains/foxscan.fr/public_html";
-const staticRoot = fs.existsSync(STATIC_DIR_PROD) ? STATIC_DIR_PROD : STATIC_DIR;
-if (fs.existsSync(staticRoot)) {
-  app.use(express.static(staticRoot, {
-    extensions: ["html"],
-    index: "index.html",
-    fallthrough: true,
-  }));
+// Sur Hostinger, Passenger route toutes les requêtes vers ce Node → on sert
+// nous-mêmes les fichiers statiques. On tente plusieurs chemins possibles
+// car la racine FTP et la racine du domaine peuvent varier.
+const staticCandidates = [
+  process.env.FOXSCAN_STATIC_DIR,
+  "/home/u630423897/domains/foxscan.fr/public_html",
+  "/home/u630423897/public_html",
+  path.resolve(__dirname, "..", "..", "public_html"),
+  path.resolve(__dirname, "..", "public_html"),
+].filter(Boolean);
+
+const servedStaticRoots = [];
+for (const dir of staticCandidates) {
+  try {
+    if (fs.existsSync(dir) && fs.statSync(dir).isDirectory()) {
+      app.use(express.static(dir, { extensions: ["html"], index: "index.html", fallthrough: true }));
+      servedStaticRoots.push(dir);
+    }
+  } catch (_) { /* ignore */ }
 }
+console.log("[static] Serving from:", servedStaticRoots);
+
+// Diagnostic: liste ce que le serveur voit sur le disque
+app.get("/debug/files", (req, res) => {
+  const report = {};
+  for (const dir of staticCandidates) {
+    try {
+      report[dir] = fs.existsSync(dir)
+        ? { exists: true, entries: fs.readdirSync(dir).slice(0, 50) }
+        : { exists: false };
+    } catch (e) {
+      report[dir] = { error: String(e) };
+    }
+  }
+  res.json({ cwd: process.cwd(), __dirname, served: servedStaticRoots, candidates: report });
+});
 
 const settings = {
   port: Number(process.env.PORT || 8000),
