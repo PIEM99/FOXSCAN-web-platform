@@ -6,4 +6,16 @@ PassengerBaseURI /
 PassengerRestartDir /home/u630423897/domains/foxscan.fr/nodejs/tmp
 SetEnv NODE_OPTIONS "--require /home/u630423897/domains/foxscan.fr/public_html/.builds/config/preload-timestamp.js"
 SetEnv LSNODE_CONSOLE_LOG console.log
+
+RewriteEngine On
+
+# Bloque l'accès direct au dossier de build
 RewriteRule ^\.builds - [F,L]
+
+# Priorité aux fichiers/dossiers statiques qui existent réellement.
+# Apache les sert lui-même AVANT que Passenger ne route vers Node.
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+DirectoryIndex index.html
