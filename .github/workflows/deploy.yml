@@ -27,7 +27,6 @@ jobs:
             **/.git*/**
             **/.builds/**
             **/.well-known/**
-            **/.htaccess
             **/cgi-bin/**
             **/error_log
             **/.ftpquota
