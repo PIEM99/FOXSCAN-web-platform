@@ -1,0 +1,9 @@
+PassengerAppRoot /home/u630423897/domains/foxscan.fr/nodejs
+PassengerAppType node
+PassengerNodejs /opt/alt/alt-nodejs18/root/bin/node
+PassengerStartupFile server.js
+PassengerBaseURI /
+PassengerRestartDir /home/u630423897/domains/foxscan.fr/nodejs/tmp
+SetEnv NODE_OPTIONS "--require /home/u630423897/domains/foxscan.fr/public_html/.builds/config/preload-timestamp.js"
+SetEnv LSNODE_CONSOLE_LOG console.log
+RewriteRule ^\.builds - [F,L]

@@ -140,6 +140,38 @@ function hashToken(token) {
   return crypto.createHash("sha256").update(token).digest("hex");
 }
 
+function hashPassword(password, salt) {
+  return crypto
+    .createHash("sha256")
+    .update(salt + password + (process.env.PASSWORD_PEPPER || "foxscan-pepper"))
+    .digest("hex");
+}
+
+function findOrCreateUserFromEmail(store, { email, passwordHash, name }) {
+  let user = store.users.find((u) => u.email === email && u.authProvider === "email") || null;
+  const ts = nowIso();
+
+  if (user) {
+    return { user, created: false };
+  }
+
+  user = {
+    id: `usr_${crypto.randomUUID().replaceAll("-", "").slice(0, 16)}`,
+    authProvider: "email",
+    email,
+    passwordHash,
+    passwordSalt: crypto.randomBytes(16).toString("hex"),
+    name: name || email.split("@")[0],
+    agencyID: null,
+    subscriptionStatus: settings.defaultSubscriptionStatus,
+    createdAt: ts,
+    updatedAt: ts,
+  };
+
+  store.users.push(user);
+  return { user, created: true };
+}
+
 function decodeUnverifiedAppleClaims(idToken) {
   if (!idToken) return {};
   const parts = idToken.split(".");
@@ -507,6 +539,73 @@ Retourne strictement un JSON avec:
   }
 });
 
+app.post("/auth/email/register", (req, res) => {
+  const body = req.body || {};
+  const email = (body.email || "").trim().toLowerCase();
+  const password = body.password || "";
+  const name = (body.display_name || body.name || "").trim();
+
+  if (!email || !password) {
+    return res.status(400).json({ ok: false, detail: "email and password are required" });
+  }
+  if (password.length < 6) {
+    return res.status(400).json({ ok: false, detail: "password must be at least 6 characters" });
+  }
+
+  const store = readStore();
+  const existing = store.users.find((u) => u.email === email && u.authProvider === "email");
+  if (existing) {
+    return res.status(409).json({ ok: false, detail: "email already registered" });
+  }
+
+  const salt = crypto.randomBytes(16).toString("hex");
+  const passwordHash = hashPassword(password, salt);
+
+  const user = {
+    id: `usr_${crypto.randomUUID().replaceAll("-", "").slice(0, 16)}`,
+    authProvider: "email",
+    email,
+    passwordHash,
+    passwordSalt: salt,
+    name: name || email.split("@")[0],
+    agencyID: null,
+    subscriptionStatus: settings.defaultSubscriptionStatus,
+    createdAt: nowIso(),
+    updatedAt: nowIso(),
+  };
+
+  store.users.push(user);
+  const response = issueTokensForUser(store, user);
+  writeStore(store);
+  res.json(response);
+});
+
+app.post("/auth/email/login", (req, res) => {
+  const body = req.body || {};
+  const email = (body.email || "").trim().toLowerCase();
+  const password = body.password || "";
+
+  if (!email || !password) {
+    return res.status(400).json({ ok: false, detail: "email and password are required" });
+  }
+
+  const store = readStore();
+  const user = store.users.find((u) => u.email === email && u.authProvider === "email");
+
+  if (!user || !user.passwordHash || !user.passwordSalt) {
+    return res.status(401).json({ ok: false, detail: "Invalid email or password" });
+  }
+
+  const hash = hashPassword(password, user.passwordSalt);
+  if (hash !== user.passwordHash) {
+    return res.status(401).json({ ok: false, detail: "Invalid email or password" });
+  }
+
+  const response = issueTokensForUser(store, user);
+  writeStore(store);
+  res.json(response);
+});
+
 app.post("/auth/apple", (req, res) => {
   const body = req.body || {};
   const idToken = body.idToken || body.identityToken || null;
@@ -704,6 +803,62 @@ app.get("/models", requireCurrentUser, (req, res) => {
   }
 
   res.json({ ok: true, items: [] });
+});
+
+// ─── ADMIN ROUTES ────────────────────────────────────────────────────────────
+
+function requireAdminKey(req, res) {
+  const adminKey = process.env.ADMIN_SECRET_KEY || "";
+  const provided = req.body?.adminKey || req.header("x-admin-key") || "";
+  if (!adminKey || provided !== adminKey) {
+    res.status(403).json({ ok: false, detail: "Forbidden" });
+    return false;
+  }
+  return true;
+}
+
+app.get("/admin/users", (req, res) => {
+  const adminKey = process.env.ADMIN_SECRET_KEY || "";
+  const provided = req.header("x-admin-key") || "";
+  if (!adminKey || provided !== adminKey) {
+    return res.status(403).json({ ok: false, detail: "Forbidden" });
+  }
+
+  const store = readStore();
+  const users = store.users.map((u) => ({
+    id: u.id,
+    name: u.name,
+    email: u.email,
+    authProvider: u.authProvider || "apple",
+    subscriptionActive: u.subscriptionStatus === "active",
+    createdAt: u.createdAt,
+    updatedAt: u.updatedAt,
+  }));
+
+  res.json({ ok: true, users, total: users.length });
+});
+
+app.patch("/admin/users/:userId/subscription", (req, res) => {
+  const body = req.body || {};
+  if (!requireAdminKey(req, res)) return;
+
+  const store = readStore();
+  const user = store.users.find((u) => u.id === req.params.userId);
+  if (!user) return res.status(404).json({ ok: false, detail: "User not found" });
+
+  if (typeof body.subscriptionActive !== "boolean") {
+    return res.status(400).json({ ok: false, detail: "subscriptionActive (boolean) is required" });
+  }
+
+  user.subscriptionStatus = body.subscriptionActive ? "active" : "inactive";
+  user.updatedAt = nowIso();
+  writeStore(store);
+
+  res.json({
+    ok: true,
+    id: user.id,
+    subscriptionActive: user.subscriptionStatus === "active",
+  });
 });
 
 // Admin: activer tous les users (dev/beta seulement)

@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FOXSCAN — Admin</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',-apple-system,sans-serif;background:#F5F5F7;color:#1D1D1F;min-height:100vh;-webkit-font-smoothing:antialiased}
+
+/* LOGIN SCREEN */
+.login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.login-card{background:#fff;border-radius:20px;padding:40px;width:100%;max-width:380px;box-shadow:0 8px 40px rgba(0,0,0,.1)}
+.login-card h1{font-size:22px;font-weight:700;margin-bottom:6px}
+.login-card p{font-size:14px;color:#6E6E73;margin-bottom:28px}
+.field-label{font-size:12px;font-weight:600;color:#6E6E73;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.field-input{width:100%;padding:12px 14px;border:1.5px solid #E5E5EA;border-radius:10px;font-size:15px;font-family:inherit;outline:none;margin-bottom:14px;transition:.15s}
+.field-input:focus{border-color:#0071E3}
+.btn-primary{width:100%;padding:13px;background:#1D1D1F;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;transition:.15s}
+.btn-primary:hover{background:#000}
+.login-error{color:#FF3B30;font-size:13px;margin-top:10px;min-height:18px}
+
+/* ADMIN APP */
+.admin-app{display:none}
+nav{background:rgba(255,255,255,.9);backdrop-filter:blur(20px);border-bottom:1px solid #E8E8ED;padding:0 24px;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+.nav-brand{display:flex;align-items:center;gap:8px;font-weight:700;font-size:16px}
+.nav-brand span{background:#FF3B30;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;text-transform:uppercase;letter-spacing:.5px}
+.nav-right{display:flex;align-items:center;gap:12px}
+.btn-sm{padding:6px 14px;border-radius:8px;border:1px solid #E8E8ED;background:transparent;font-size:13px;font-weight:500;color:#6E6E73;cursor:pointer;font-family:inherit;transition:.15s}
+.btn-sm:hover{background:#F5F5F7}
+
+.container{max-width:1000px;margin:0 auto;padding:32px 24px}
+
+/* STATS */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:28px}
+.stat-card{background:#fff;border-radius:14px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+.stat-label{font-size:12px;color:#6E6E73;font-weight:500;margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px}
+.stat-value{font-size:28px;font-weight:700;letter-spacing:-.5px}
+.stat-value.green{color:#30D158}
+.stat-value.orange{color:#FF9F0A}
+
+/* TABLE */
+.table-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.table-title{font-size:17px;font-weight:700}
+.search-input{padding:8px 14px;border:1.5px solid #E5E5EA;border-radius:8px;font-size:14px;font-family:inherit;outline:none;width:220px;transition:.15s}
+.search-input:focus{border-color:#0071E3}
+
+.users-table{background:#fff;border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.06);overflow:hidden}
+.table-row{display:grid;grid-template-columns:1fr 1fr 100px 110px 110px;align-items:center;padding:14px 20px;border-bottom:1px solid #F5F5F7;transition:.1s}
+.table-row:last-child{border-bottom:none}
+.table-row:hover{background:#FAFAFA}
+.table-head{background:#F5F5F7;font-size:11px;font-weight:700;color:#6E6E73;text-transform:uppercase;letter-spacing:.5px}
+.table-head:hover{background:#F5F5F7}
+.user-name{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.user-email{font-size:13px;color:#6E6E73;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.user-provider{font-size:12px;color:#86868B}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600}
+.badge.active{background:#EDFAF1;color:#25A244}
+.badge.inactive{background:#FFF0EF;color:#D92B20}
+.badge::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.8}
+.date-cell{font-size:12px;color:#86868B}
+
+/* Toggle */
+.toggle-wrap{display:flex;align-items:center;gap:8px}
+.toggle{position:relative;width:40px;height:24px;cursor:pointer}
+.toggle input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;inset:0;background:#E5E5EA;border-radius:12px;transition:.2s}
+.toggle-slider::before{content:'';position:absolute;width:18px;height:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.toggle input:checked + .toggle-slider{background:#30D158}
+.toggle input:checked + .toggle-slider::before{transform:translateX(16px)}
+
+/* Empty */
+.empty{text-align:center;padding:48px 24px;color:#86868B;font-size:14px}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;right:24px;background:#1D1D1F;color:#fff;padding:12px 18px;border-radius:10px;font-size:14px;font-weight:500;box-shadow:0 4px 20px rgba(0,0,0,.2);transform:translateY(80px);opacity:0;transition:.3s;z-index:999}
+.toast.show{transform:translateY(0);opacity:1}
+
+@media(max-width:600px){
+  .stats{grid-template-columns:1fr 1fr}
+  .table-row{grid-template-columns:1fr 80px;gap:8px}
+  .col-email,.col-provider,.col-date{display:none}
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-screen" id="login-screen">
+  <div class="login-card">
+    <h1>Administration</h1>
+    <p>Accès réservé. Saisissez votre clé admin pour continuer.</p>
+    <div class="field-label">Clé admin</div>
+    <input class="field-input" id="admin-key-input" type="password" placeholder="••••••••••••" autocomplete="off"
+      onkeydown="if(event.key==='Enter') login()"/>
+    <button class="btn-primary" onclick="login()">Accéder au panneau</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- ADMIN APP -->
+<div class="admin-app" id="admin-app">
+  <nav>
+    <div class="nav-brand">
+      FOXSCAN <span>Admin</span>
+    </div>
+    <div class="nav-right">
+      <span id="nav-api" style="font-size:12px;color:#86868B"></span>
+      <button class="btn-sm" onclick="logout()">Déconnexion</button>
+    </div>
+  </nav>
+
+  <div class="container">
+    <!-- Stats -->
+    <div class="stats">
+      <div class="stat-card">
+        <div class="stat-label">Total utilisateurs</div>
+        <div class="stat-value" id="stat-total">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Abonnements actifs</div>
+        <div class="stat-value green" id="stat-active">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Inactifs</div>
+        <div class="stat-value orange" id="stat-inactive">—</div>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-header">
+      <div class="table-title">Utilisateurs</div>
+      <input class="search-input" id="search" type="text" placeholder="Rechercher…" oninput="renderTable()"/>
+    </div>
+
+    <div class="users-table">
+      <div class="table-row table-head">
+        <div>Nom</div>
+        <div class="col-email">Email</div>
+        <div class="col-provider">Provider</div>
+        <div class="col-date">Inscrit le</div>
+        <div>Abonnement</div>
+      </div>
+      <div id="users-body">
+        <div class="empty">Chargement…</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API_BASE = localStorage.getItem("foxscan_api_base_url") || "https://api.foxscan.fr";
+let adminKey = "";
+let allUsers = [];
+
+document.getElementById("nav-api").textContent = API_BASE;
+
+function showToast(msg, ok = true) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.style.background = ok ? "#1D1D1F" : "#FF3B30";
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 3000);
+}
+
+async function login() {
+  const key = document.getElementById("admin-key-input").value.trim();
+  if (!key) return;
+
+  const errEl = document.getElementById("login-error");
+  errEl.textContent = "";
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/users`, {
+      headers: { "x-admin-key": key }
+    });
+    if (!res.ok) throw new Error("Clé invalide");
+    const data = await res.json();
+    adminKey = key;
+    sessionStorage.setItem("foxscan_admin_key", key);
+    document.getElementById("login-screen").style.display = "none";
+    document.getElementById("admin-app").style.display = "block";
+    allUsers = data.users || [];
+    updateStats();
+    renderTable();
+  } catch (e) {
+    errEl.textContent = "Clé incorrecte ou API inaccessible.";
+  }
+}
+
+function logout() {
+  sessionStorage.removeItem("foxscan_admin_key");
+  adminKey = "";
+  document.getElementById("login-screen").style.display = "flex";
+  document.getElementById("admin-app").style.display = "none";
+  document.getElementById("admin-key-input").value = "";
+}
+
+function updateStats() {
+  const active = allUsers.filter(u => u.subscriptionActive).length;
+  document.getElementById("stat-total").textContent = allUsers.length;
+  document.getElementById("stat-active").textContent = active;
+  document.getElementById("stat-inactive").textContent = allUsers.length - active;
+}
+
+function formatDate(iso) {
+  if (!iso) return "—";
+  try { return new Date(iso).toLocaleDateString("fr-FR"); } catch { return "—"; }
+}
+
+function renderTable() {
+  const q = document.getElementById("search").value.toLowerCase();
+  const filtered = q
+    ? allUsers.filter(u =>
+        (u.name || "").toLowerCase().includes(q) ||
+        (u.email || "").toLowerCase().includes(q)
+      )
+    : allUsers;
+
+  const body = document.getElementById("users-body");
+  if (!filtered.length) {
+    body.innerHTML = `<div class="empty">Aucun utilisateur trouvé.</div>`;
+    return;
+  }
+
+  body.innerHTML = filtered.map(u => `
+    <div class="table-row" id="row-${u.id}">
+      <div>
+        <div class="user-name">${esc(u.name || "—")}</div>
+        <div class="user-email col-email">${esc(u.email || "—")}</div>
+      </div>
+      <div class="col-email" style="font-size:13px;color:#6E6E73">${esc(u.email || "—")}</div>
+      <div class="user-provider col-provider">${u.authProvider === "email" ? "📧 Email" : "🍎 Apple"}</div>
+      <div class="date-cell col-date">${formatDate(u.createdAt)}</div>
+      <div class="toggle-wrap">
+        <label class="toggle" title="${u.subscriptionActive ? 'Désactiver' : 'Activer'} l'abonnement">
+          <input type="checkbox" ${u.subscriptionActive ? "checked" : ""}
+            onchange="toggleSub('${u.id}', this.checked)"/>
+          <span class="toggle-slider"></span>
+        </label>
+        <span class="badge ${u.subscriptionActive ? 'active' : 'inactive'}">
+          ${u.subscriptionActive ? 'Actif' : 'Inactif'}
+        </span>
+      </div>
+    </div>
+  `).join("");
+}
+
+async function toggleSub(userId, active) {
+  const user = allUsers.find(u => u.id === userId);
+  if (!user) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/users/${userId}/subscription`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+      body: JSON.stringify({ subscriptionActive: active })
+    });
+    if (!res.ok) throw new Error("Erreur API");
+
+    user.subscriptionActive = active;
+    updateStats();
+    renderTable();
+    showToast(`${user.name} — abonnement ${active ? "activé ✓" : "désactivé"}`);
+  } catch (e) {
+    showToast("Erreur lors de la mise à jour", false);
+    user.subscriptionActive = !active; // rollback
+    renderTable();
+  }
+}
+
+// Auto-login si clé en session
+const saved = sessionStorage.getItem("foxscan_admin_key");
+if (saved) {
+  document.getElementById("admin-key-input").value = saved;
+  login();
+}
+</script>
+</body>
+</html>
