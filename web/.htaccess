@@ -1,11 +1,9 @@
-PassengerAppRoot /home/u630423897/domains/foxscan.fr/nodejs
+PassengerAppRoot /home/u630423897/public_html/nodejs
 PassengerAppType node
 PassengerNodejs /opt/alt/alt-nodejs18/root/bin/node
 PassengerStartupFile server.js
 PassengerBaseURI /
-PassengerRestartDir /home/u630423897/domains/foxscan.fr/nodejs/tmp
-SetEnv NODE_OPTIONS "--require /home/u630423897/domains/foxscan.fr/public_html/.builds/config/preload-timestamp.js"
-SetEnv LSNODE_CONSOLE_LOG console.log
+PassengerRestartDir /home/u630423897/public_html/nodejs/tmp
 
 RewriteEngine On
 
@@ -15,20 +13,4 @@ RewriteRule ^\.builds - [F,L]
 # Bypass Passenger pour la vérification de domaine Apple et autres .well-known
 RewriteRule ^\.well-known/ - [L]
 
-# Si un fichier statique existe dans public_html (html, css, js, images...),
-# Apache le sert directement. Sinon → Passenger/Node prend le relais.
-RewriteCond %{REQUEST_FILENAME} -f
-RewriteRule ^ - [L]
-
-RewriteCond %{REQUEST_FILENAME} -d
-RewriteRule ^ - [L]
-
-# Directory index pour les dossiers (charge index.html si présent)
 DirectoryIndex index.html
-
-# MIME types explicites (au cas où Hostinger en oublie)
-AddType text/html .html
-AddType text/css .css
-AddType application/javascript .js
-AddType application/json .json
-AddType image/svg+xml .svg
