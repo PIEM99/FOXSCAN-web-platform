@@ -5,48 +5,36 @@ on:
     branches: [main]
 
 jobs:
-  deploy:
+  deploy-web:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      # ── Site web → public_html/ ───────────────────────────────────────────
       - name: Deploy web → public_html
-        uses: easingthemes/ssh-deploy@main
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          REMOTE_HOST: ${{ secrets.SSH_HOST }}
-          REMOTE_USER: ${{ secrets.SSH_USER }}
-          REMOTE_PORT: ${{ secrets.SSH_PORT }}
-          SOURCE: "web/"
-          TARGET: "/home/${{ secrets.SSH_USER }}/domains/foxscan.fr/public_html/"
-          EXCLUDE: ".DS_Store"
-          ARGS: "-rlgoDzvc --delete"
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USER }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: web/
+          server-dir: public_html/
+          exclude: |
+            **/.DS_Store
 
-      # ── API Node.js → nodejs/ ─────────────────────────────────────────────
+  deploy-api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
       - name: Deploy API → nodejs
-        uses: easingthemes/ssh-deploy@main
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          REMOTE_HOST: ${{ secrets.SSH_HOST }}
-          REMOTE_USER: ${{ secrets.SSH_USER }}
-          REMOTE_PORT: ${{ secrets.SSH_PORT }}
-          SOURCE: "apps/api/"
-          TARGET: "/home/${{ secrets.SSH_USER }}/domains/foxscan.fr/nodejs/"
-          EXCLUDE: ".DS_Store,node_modules/,data/"
-          ARGS: "-rlgoDzvc"
-
-      # ── npm install + restart Node ────────────────────────────────────────
-      - name: Install deps & restart app
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: ${{ secrets.SSH_PORT }}
-          script: |
-            cd ~/domains/foxscan.fr/nodejs
-            npm install --production --silent
-            touch tmp/restart.txt 2>/dev/null || true
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USER }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: apps/api/
+          server-dir: nodejs/
+          exclude: |
+            **/.DS_Store
+            **/node_modules/**
+            **/data/**
