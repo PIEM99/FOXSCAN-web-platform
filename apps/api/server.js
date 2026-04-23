@@ -35,7 +35,7 @@ const settings = {
   refreshTtlSeconds: Number(process.env.JWT_REFRESH_TTL_SECONDS || 60 * 60 * 24 * 30),
   requireActiveSubscription:
     String(process.env.DASHBOARD_REQUIRE_ACTIVE_SUBSCRIPTION || "true").toLowerCase() === "true",
-  defaultSubscriptionStatus: process.env.DEFAULT_SUBSCRIPTION_STATUS || "inactive",
+  defaultSubscriptionStatus: process.env.DEFAULT_SUBSCRIPTION_STATUS || "active",
 };
 
 function nowIso() {
@@ -704,6 +704,26 @@ app.get("/models", requireCurrentUser, (req, res) => {
   }
 
   res.json({ ok: true, items: [] });
+});
+
+// Admin: activer tous les users (dev/beta seulement)
+app.post("/admin/activate-all-users", (req, res) => {
+  const body = req.body || {};
+  const adminKey = process.env.ADMIN_SECRET_KEY || "";
+  if (!adminKey || body.adminKey !== adminKey) {
+    return res.status(403).json({ ok: false, detail: "Forbidden" });
+  }
+  const store = readStore();
+  let count = 0;
+  store.users.forEach((u) => {
+    if (u.subscriptionStatus !== "active") {
+      u.subscriptionStatus = "active";
+      u.updatedAt = nowIso();
+      count++;
+    }
+  });
+  writeStore(store);
+  res.json({ ok: true, activated: count, total: store.users.length });
 });
 
 app.post("/inspections/sync", (req, res) => {
