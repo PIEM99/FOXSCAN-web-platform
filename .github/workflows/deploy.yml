@@ -10,7 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # web/ → racine FTP (= public_html/)
+      # web/ → public_html/ via FTP
       - name: Deploy web → public_html
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -23,21 +23,5 @@ jobs:
             **/.DS_Store
             **/.builds/**
 
-  deploy-api:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      # apps/api/ → nodejs/ (sous-dossier dans public_html)
-      - name: Deploy API → nodejs
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_HOST }}
-          username: ${{ secrets.FTP_USER }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: apps/api/
-          server-dir: /nodejs/
-          exclude: |
-            **/.DS_Store
-            **/node_modules/**
-            **/data/**
+  # L'API Node.js est déployée automatiquement par le git deploy
+  # intégré à Hostinger (panel → Node.js → Git). Entry point: apps/api/server.js
