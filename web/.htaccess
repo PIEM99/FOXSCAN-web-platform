@@ -1,16 +1,9 @@
-PassengerAppRoot /home/u630423897/public_html/nodejs
+PassengerAppRoot /home/u630423897/domains/foxscan.fr/nodejs
 PassengerAppType node
 PassengerNodejs /opt/alt/alt-nodejs18/root/bin/node
 PassengerStartupFile server.js
 PassengerBaseURI /
-PassengerRestartDir /home/u630423897/public_html/nodejs/tmp
-
-RewriteEngine On
-
-# Bloque l'accès direct au dossier de build
+PassengerRestartDir /home/u630423897/domains/foxscan.fr/nodejs/tmp
+SetEnv NODE_OPTIONS "--require /home/u630423897/domains/foxscan.fr/public_html/.builds/config/preload-timestamp.js"
+SetEnv LSNODE_CONSOLE_LOG console.log
 RewriteRule ^\.builds - [F,L]
-
-# Bypass Passenger pour la vérification de domaine Apple et autres .well-known
-RewriteRule ^\.well-known/ - [L]
-
-DirectoryIndex index.html
