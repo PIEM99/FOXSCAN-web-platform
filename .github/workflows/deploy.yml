@@ -10,6 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # web/ → racine FTP (= public_html/)
       - name: Deploy web → public_html
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -17,15 +18,17 @@ jobs:
           username: ${{ secrets.FTP_USER }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: web/
-          server-dir: public_html/
+          server-dir: /
           exclude: |
             **/.DS_Store
+            **/.builds/**
 
   deploy-api:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
+      # apps/api/ → nodejs/ (sous-dossier dans public_html)
       - name: Deploy API → nodejs
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -33,7 +36,7 @@ jobs:
           username: ${{ secrets.FTP_USER }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: apps/api/
-          server-dir: nodejs/
+          server-dir: /nodejs/
           exclude: |
             **/.DS_Store
             **/node_modules/**
