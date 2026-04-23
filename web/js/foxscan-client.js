@@ -1,5 +1,5 @@
 const API_BASE_KEY = "foxscan_api_base_url";
-const DEFAULT_API_BASE = "https://api.foxscan.fr";
+const DEFAULT_API_BASE = "https://foxscan.fr";
 
 export const SESSION_KEYS = {
   auth: "foxscan_auth",
