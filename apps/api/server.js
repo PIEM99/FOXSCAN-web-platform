@@ -25,6 +25,24 @@ const app = express();
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: "2mb" }));
 
+// ── Static files (public_html) ────────────────────────────────────────────────
+// Sur Hostinger, Passenger route toutes les requêtes vers ce Node.
+// On sert donc nous-mêmes les fichiers statiques du site (HTML, CSS, JS, images)
+// AVANT de laisser les routes API répondre. Si rien ne matche, Express tombe
+// sur les routes /auth, /projects, /dashboard/session, etc.
+const STATIC_DIR = process.env.FOXSCAN_STATIC_DIR
+  || path.resolve(__dirname, "..", "..", "public_html")   // layout local dev
+  || path.resolve(__dirname, "..", "public_html");
+const STATIC_DIR_PROD = "/home/u630423897/domains/foxscan.fr/public_html";
+const staticRoot = fs.existsSync(STATIC_DIR_PROD) ? STATIC_DIR_PROD : STATIC_DIR;
+if (fs.existsSync(staticRoot)) {
+  app.use(express.static(staticRoot, {
+    extensions: ["html"],
+    index: "index.html",
+    fallthrough: true,
+  }));
+}
+
 const settings = {
   port: Number(process.env.PORT || 8000),
   dbPath: process.env.FOXSCAN_DB_PATH || path.join(__dirname, "data", "store.json"),
