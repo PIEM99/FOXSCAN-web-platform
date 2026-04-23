@@ -20,3 +20,7 @@ venv/
 
 # Logs
 *.log
+
+# Data runtime (ne jamais écraser le serveur)
+apps/api/data/
+foxscan-web-deploy.zip
