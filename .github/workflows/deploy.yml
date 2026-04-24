@@ -7,60 +7,79 @@ on:
 
 jobs:
   deploy-web:
+    name: Deploy web → public_html (SSH/rsync)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Deploy web → public_html
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+      - name: Deploy web via SSH/rsync
+        uses: easingthemes/ssh-deploy@v5.1.0
         with:
-          server: ${{ secrets.FTP_HOST }}
-          username: ${{ secrets.FTP_USER }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./web/
-          server-dir: public_html/
-          dangerous-clean-slate: false
-          log-level: standard
-          exclude: |
-            **/.DS_Store
-            **/.git*
-            **/.git*/**
-            **/.builds/**
-            **/.well-known/**
-            **/cgi-bin/**
-            **/error_log
-            **/.ftpquota
-            **/.trash/**
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          REMOTE_HOST:     ${{ secrets.SSH_HOST }}
+          REMOTE_PORT:     ${{ secrets.SSH_PORT }}
+          REMOTE_USER:     ${{ secrets.SSH_USER }}
+          SOURCE: "web/"
+          TARGET: "domains/foxscan.fr/public_html/"
+          # rsync sans --delete : on ne supprime rien côté serveur
+          # -rltz : recursive, preserve symlinks/time, compress
+          # Exclusions strictes pour ne jamais toucher aux zones sensibles du serveur
+          ARGS: >-
+            -rltvz
+            --exclude='.DS_Store'
+            --exclude='.git*'
+            --exclude='.builds/'
+            --exclude='.well-known/'
+            --exclude='cgi-bin/'
+            --exclude='error_log'
+            --exclude='.ftpquota'
+            --exclude='.trash/'
+            --exclude='.env'
+            --exclude='.env.*'
+            --exclude='data/'
 
   deploy-api:
+    name: Deploy API → nodejs (SSH/rsync)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Deploy API → nodejs
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+      - name: Deploy apps/api via SSH/rsync
+        uses: easingthemes/ssh-deploy@v5.1.0
         with:
-          server: ${{ secrets.FTP_HOST }}
-          username: ${{ secrets.FTP_USER }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./apps/api/
-          server-dir: nodejs/
-          dangerous-clean-slate: false
-          log-level: standard
-          exclude: |
-            **/.DS_Store
-            **/.git*
-            **/.git*/**
-            **/node_modules/**
-            **/data/**
-            data
-            data/**
-            **/.env
-            .env
-            **/.env.*
-            **/tmp/**
-            tmp
-            tmp/**
-            **/logs/**
-            **/*.log
-            **/.ftpquota
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          REMOTE_HOST:     ${{ secrets.SSH_HOST }}
+          REMOTE_PORT:     ${{ secrets.SSH_PORT }}
+          REMOTE_USER:     ${{ secrets.SSH_USER }}
+          SOURCE: "apps/api/"
+          TARGET: "domains/foxscan.fr/nodejs/"
+          ARGS: >-
+            -rltvz
+            --exclude='.DS_Store'
+            --exclude='.git*'
+            --exclude='node_modules/'
+            --exclude='data/'
+            --exclude='tmp/'
+            --exclude='logs/'
+            --exclude='*.log'
+            --exclude='.env'
+            --exclude='.env.*'
+            --exclude='.ftpquota'
+
+      - name: Install prod deps + restart Passenger
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host:     ${{ secrets.SSH_HOST }}
+          port:     ${{ secrets.SSH_PORT }}
+          username: ${{ secrets.SSH_USER }}
+          key:      ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            cd ~/domains/foxscan.fr/nodejs
+            # Install dépendances production si Node dispo (sinon Hostinger le fait au restart)
+            if command -v npm >/dev/null 2>&1; then
+              npm install --omit=dev --no-audit --no-fund || true
+            fi
+            mkdir -p tmp
+            touch tmp/restart.txt
+            echo "✓ API redeployed and Passenger restart requested"

@@ -24,3 +24,7 @@ venv/
 # Data runtime (ne jamais écraser le serveur)
 apps/api/data/
 foxscan-web-deploy.zip
+.mcp.json
+
+# Claude Code (local)
+.claude/
