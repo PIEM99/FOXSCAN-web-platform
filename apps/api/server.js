@@ -22,6 +22,25 @@ function readEnvFromDotenv(key) {
   return "";
 }
 
+// Charge toutes les variables du .env dans process.env (sans override)
+// Hostinger Passenger ne le fait pas automatiquement.
+function loadDotenvIntoProcess() {
+  const dotenvPath = path.join(__dirname, ".env");
+  if (!fs.existsSync(dotenvPath)) return;
+  const lines = fs.readFileSync(dotenvPath, "utf-8").split(/\r?\n/);
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const sepIndex = trimmed.indexOf("=");
+    if (sepIndex <= 0) continue;
+    const key = trimmed.slice(0, sepIndex).trim();
+    if (!key || process.env[key] !== undefined) continue;
+    const value = trimmed.slice(sepIndex + 1).trim().replace(/^['"]|['"]$/g, "");
+    process.env[key] = value;
+  }
+}
+loadDotenvIntoProcess();
+
 const app = express();
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: "2mb" }));
