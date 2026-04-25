@@ -3,6 +3,7 @@ const express = require("express");
 const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
+const { jwtVerify, createRemoteJWKSet } = require("jose");
 
 function readEnvFromDotenv(key) {
   const dotenvPath = path.join(__dirname, ".env");
@@ -221,6 +222,69 @@ function decodeUnverifiedAppleClaims(idToken) {
   }
 }
 
+// ── OAuth providers : vérification JWT via JWKS distants ─────────────────────
+// Apple : https://appleid.apple.com/auth/keys
+// Google : https://www.googleapis.com/oauth2/v3/certs
+const APPLE_JWKS = createRemoteJWKSet(new URL("https://appleid.apple.com/auth/keys"));
+const GOOGLE_JWKS = createRemoteJWKSet(new URL("https://www.googleapis.com/oauth2/v3/certs"));
+
+function appleAudiences() {
+  return [
+    process.env.APPLE_WEB_CLIENT_ID, // ex: "fr.foxscan.web" (Services ID web)
+    process.env.APPLE_BUNDLE_ID,     // ex: "PE.FOXSCAN" (Bundle ID iOS)
+  ].filter(Boolean);
+}
+
+async function verifyAppleIdToken(idToken) {
+  if (!idToken) {
+    const err = new Error("idToken is required");
+    err.status = 400;
+    throw err;
+  }
+  const audiences = appleAudiences();
+  if (audiences.length === 0) {
+    const err = new Error("Apple Sign In not configured (APPLE_WEB_CLIENT_ID/APPLE_BUNDLE_ID)");
+    err.status = 503;
+    throw err;
+  }
+  try {
+    const { payload } = await jwtVerify(idToken, APPLE_JWKS, {
+      issuer: "https://appleid.apple.com",
+      audience: audiences,
+    });
+    return payload;
+  } catch (e) {
+    const err = new Error(`Invalid Apple ID token: ${e.code || e.message || "verification failed"}`);
+    err.status = 401;
+    throw err;
+  }
+}
+
+async function verifyGoogleIdToken(idToken) {
+  if (!idToken) {
+    const err = new Error("idToken is required");
+    err.status = 400;
+    throw err;
+  }
+  const audience = process.env.GOOGLE_CLIENT_ID;
+  if (!audience) {
+    const err = new Error("Google Sign In not configured (GOOGLE_CLIENT_ID)");
+    err.status = 503;
+    throw err;
+  }
+  try {
+    const { payload } = await jwtVerify(idToken, GOOGLE_JWKS, {
+      issuer: ["https://accounts.google.com", "accounts.google.com"],
+      audience,
+    });
+    return payload;
+  } catch (e) {
+    const err = new Error(`Invalid Google ID token: ${e.code || e.message || "verification failed"}`);
+    err.status = 401;
+    throw err;
+  }
+}
+
 function findUserById(store, userID) {
   return store.users.find((u) => u.id === userID) || null;
 }
@@ -242,6 +306,7 @@ function findOrCreateUserFromApple(store, { appleSub, email, name, agencyID, sub
 
   user = {
     id: `usr_${crypto.randomUUID().replaceAll("-", "").slice(0, 16)}`,
+    authProvider: "apple",
     appleSub,
     email: email || "",
     name: name || "Utilisateur FOXSCAN",
@@ -252,6 +317,43 @@ function findOrCreateUserFromApple(store, { appleSub, email, name, agencyID, sub
           ? "active"
           : "inactive"
         : settings.defaultSubscriptionStatus,
+    createdAt: ts,
+    updatedAt: ts,
+  };
+
+  store.users.push(user);
+  return user;
+}
+
+function findOrCreateUserFromGoogle(store, { googleSub, email, name, picture, agencyID }) {
+  // 1) Match d'abord par googleSub (identifiant stable Google)
+  // 2) Fallback : match par email vérifié (pour fusionner un compte existant)
+  let user =
+    store.users.find((u) => u.googleSub === googleSub) ||
+    (email ? store.users.find((u) => u.email === email && !u.googleSub) : null) ||
+    null;
+
+  const ts = nowIso();
+
+  if (user) {
+    user.googleSub = googleSub;
+    user.email = email || user.email;
+    user.name = name || user.name;
+    user.picture = picture || user.picture;
+    user.agencyID = agencyID || user.agencyID || null;
+    user.updatedAt = ts;
+    return user;
+  }
+
+  user = {
+    id: `usr_${crypto.randomUUID().replaceAll("-", "").slice(0, 16)}`,
+    authProvider: "google",
+    googleSub,
+    email: email || "",
+    name: name || (email ? email.split("@")[0] : "Utilisateur FOXSCAN"),
+    picture: picture || null,
+    agencyID: agencyID || null,
+    subscriptionStatus: settings.defaultSubscriptionStatus,
     createdAt: ts,
     updatedAt: ts,
   };
@@ -644,32 +746,92 @@ app.post("/auth/email/login", (req, res) => {
   res.json(response);
 });
 
-app.post("/auth/apple", (req, res) => {
-  const body = req.body || {};
-  const idToken = body.idToken || body.identityToken || null;
-  if (!body.demoMode && !idToken) {
-    return res.status(400).json({ ok: false, detail: "idToken or identityToken is required" });
+app.post("/auth/apple", async (req, res) => {
+  try {
+    const body = req.body || {};
+    const idToken = body.idToken || body.identityToken || null;
+
+    let claims;
+    if (body.demoMode === true && !idToken) {
+      // Mode démo (tests E2E uniquement) : aucune vérif JWT
+      claims = {
+        sub: `demo_sub_${crypto.randomBytes(4).toString("hex")}`,
+        email: "",
+      };
+    } else {
+      // Production : vraie vérification du JWT via JWKS Apple
+      // (signature, issuer, audience, exp tous validés)
+      claims = await verifyAppleIdToken(idToken);
+    }
+
+    const store = readStore();
+    const appleSub = String(claims.sub || "");
+    const email = String(claims.email || "");
+
+    // Apple n'envoie le "name" QUE lors de la 1ère connexion, dans le body (pas le JWT)
+    let displayName = "";
+    if (body.user && typeof body.user === "object" && body.user.name) {
+      const first = body.user.name.firstName || "";
+      const last = body.user.name.lastName || "";
+      displayName = `${first} ${last}`.trim();
+    } else if (typeof body.name === "string") {
+      displayName = body.name.trim();
+    }
+    if (!displayName) {
+      displayName = email ? email.split("@")[0] : "Utilisateur FOXSCAN";
+    }
+
+    const user = findOrCreateUserFromApple(store, {
+      appleSub,
+      email,
+      name: displayName,
+      agencyID: body.agencyID || null,
+      subscriptionActive:
+        typeof body.subscriptionActive === "boolean" ? body.subscriptionActive : undefined,
+    });
+
+    const response = issueTokensForUser(store, user);
+    writeStore(store);
+    res.json(response);
+  } catch (err) {
+    console.error("[/auth/apple]", err.message);
+    return res.status(err.status || 500).json({ ok: false, detail: err.message || "Apple sign-in failed" });
   }
+});
 
-  const store = readStore();
-  const claims = decodeUnverifiedAppleClaims(idToken || "");
+app.post("/auth/google", async (req, res) => {
+  try {
+    const body = req.body || {};
+    // GIS envoie un champ "credential" (id_token JWT) dans son callback
+    const idToken = body.idToken || body.credential || null;
 
-  const appleSub = claims.sub || `demo_sub_${crypto.randomBytes(4).toString("hex")}`;
-  const email = claims.email || "";
-  const name = email ? email.split("@")[0] : "Utilisateur FOXSCAN";
+    const claims = await verifyGoogleIdToken(idToken);
 
-  const user = findOrCreateUserFromApple(store, {
-    appleSub,
-    email,
-    name,
-    agencyID: body.agencyID || null,
-    subscriptionActive:
-      typeof body.subscriptionActive === "boolean" ? body.subscriptionActive : undefined,
-  });
+    if (claims.email_verified !== true) {
+      return res.status(401).json({ ok: false, detail: "Google account email not verified" });
+    }
 
-  const response = issueTokensForUser(store, user);
-  writeStore(store);
-  res.json(response);
+    const store = readStore();
+    const googleSub = String(claims.sub || "");
+    const email = String(claims.email || "");
+    const name = String(claims.name || (email ? email.split("@")[0] : "Utilisateur FOXSCAN"));
+    const picture = claims.picture || null;
+
+    const user = findOrCreateUserFromGoogle(store, {
+      googleSub,
+      email,
+      name,
+      picture,
+      agencyID: body.agencyID || null,
+    });
+
+    const response = issueTokensForUser(store, user);
+    writeStore(store);
+    res.json(response);
+  } catch (err) {
+    console.error("[/auth/google]", err.message);
+    return res.status(err.status || 500).json({ ok: false, detail: err.message || "Google sign-in failed" });
+  }
 });
 
 app.post("/auth/refresh", (req, res) => {

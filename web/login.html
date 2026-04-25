@@ -38,6 +38,11 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-
 .apple-btn:active{transform:scale(0.99)}
 .apple-logo{flex-shrink:0}
 
+/* Google Sign In Button (rendered by GIS) */
+.google-btn-wrap{display:flex;justify-content:center;align-items:center;width:100%;margin-bottom:16px;min-height:44px}
+.google-btn-wrap > div{width:100% !important}
+.google-btn-wrap iframe{margin:0 auto !important;width:100% !important}
+
 /* Divider */
 .divider{display:flex;align-items:center;gap:12px;margin:8px 0 20px;color:#86868B;font-size:13px}
 .divider::before,.divider::after{content:'';flex:1;height:1px;background:#E5E5EA}
@@ -100,6 +105,9 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-
       Continuer avec Apple
     </button>
 
+    <!-- Sign in with Google (rendu par le SDK GIS dans ce conteneur) -->
+    <div class="google-btn-wrap" id="google-signin-button"></div>
+
     <div class="divider">ou</div>
 
     <!-- Email form -->
@@ -158,6 +166,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-
   SDK Apple : https://appleid.apple.com/auth/authorize
 -->
 <script src="https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script type="module" src="./js/login.js"></script>
 </body>
 </html>

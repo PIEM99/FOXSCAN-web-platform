@@ -2,9 +2,13 @@ import {
   getApiBaseUrl,
   persistSession,
   signInWithAppleToken,
+  signInWithGoogleToken,
   signInWithEmail,
   registerWithEmail,
 } from "./foxscan-client.js";
+
+const GOOGLE_CLIENT_ID =
+  "807888976097-5ti0ns4ihj5kqjnu3646ju662fpkbgle.apps.googleusercontent.com";
 
 const loadingEl = document.getElementById("loading");
 
@@ -86,6 +90,66 @@ function bindEvents() {
   });
 }
 
+// ── Sign in with Google (Google Identity Services) ────────────────────────────
+
+async function handleGoogleCredentialResponse(response) {
+  const idToken = response?.credential;
+  if (!idToken) {
+    console.warn("Google: no credential in response", response);
+    return;
+  }
+  setLoading(true);
+  try {
+    const auth = await signInWithGoogleToken(idToken);
+    persistSession(auth);
+    redirectToDashboard();
+  } catch (error) {
+    setLoading(false);
+    const msg = error?.message || "";
+    alert("Connexion Google rejetée par l'API FOXSCAN" + (msg ? " : " + msg : ""));
+    console.error(error);
+  }
+}
+
+function initGoogle(retries = 50) {
+  // Le SDK GIS est chargé en async/defer → on retry jusqu'à ce que window.google soit dispo
+  const ready = window.google && window.google.accounts && window.google.accounts.id;
+  if (!ready) {
+    if (retries > 0) setTimeout(() => initGoogle(retries - 1), 100);
+    else console.warn("Google Identity Services SDK not available");
+    return;
+  }
+
+  try {
+    window.google.accounts.id.initialize({
+      client_id: GOOGLE_CLIENT_ID,
+      callback: handleGoogleCredentialResponse,
+      ux_mode: "popup",
+      auto_select: false,
+      cancel_on_tap_outside: true,
+      itp_support: true,
+    });
+
+    const container = document.getElementById("google-signin-button");
+    if (container) {
+      // Largeur en px (max 400 selon GIS) — adapté à la card 400px
+      const width = Math.min(container.clientWidth || 320, 400);
+      window.google.accounts.id.renderButton(container, {
+        type: "standard",
+        shape: "rectangular",
+        theme: "outline",
+        text: "continue_with",
+        size: "large",
+        width,
+        locale: "fr",
+        logo_alignment: "left",
+      });
+    }
+  } catch (error) {
+    console.error("Google init error:", error);
+  }
+}
+
 function initApiHint() {
   const hint = document.getElementById("api-base");
   if (hint) hint.textContent = getApiBaseUrl();
@@ -148,5 +212,6 @@ try {
 } catch (error) {
   console.error(error);
 }
+initGoogle();
 bindEvents();
 initApiHint();

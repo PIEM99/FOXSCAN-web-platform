@@ -100,11 +100,18 @@ export async function request(path, options = {}, retryOn401 = true) {
   return body;
 }
 
-export async function signInWithAppleToken(idToken) {
+export async function signInWithAppleToken(idToken, extra = {}) {
   return request("/auth/apple", {
     method: "POST",
-    body: JSON.stringify({ idToken }),
-  });
+    body: JSON.stringify({ idToken, ...extra }),
+  }, false);
+}
+
+export async function signInWithGoogleToken(idToken, extra = {}) {
+  return request("/auth/google", {
+    method: "POST",
+    body: JSON.stringify({ idToken, ...extra }),
+  }, false);
 }
 
 export async function signInWithEmail(email, password) {
