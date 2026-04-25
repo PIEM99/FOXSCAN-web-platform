@@ -28,3 +28,8 @@ foxscan-web-deploy.zip
 
 # Claude Code (local)
 .claude/
+
+# Clés privées (Apple .p8, certificats, etc.)
+*.p8
+*.pem
+*.key
