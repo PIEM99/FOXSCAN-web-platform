@@ -572,6 +572,8 @@ function renderProjects(){
 }
 
 // ── BROUILLONS ────────────────────────────────────────────────────────
+// V5 — Liste unifiée : web drafts (POST /drafts) + projets iPhone non
+// finalisés (sync via /inspections/sync). Distinction visuelle par badge.
 function renderDrafts(){
   const root=document.getElementById("drafts-list");
   const q=currentSearchQuery.toLowerCase();
@@ -583,17 +585,34 @@ function renderDrafts(){
     return;
   }
   root.innerHTML=filtered.map(d=>{
-    const deepLink=`foxscan://draft/${d.id}`;
-    const isExported=d.status==="exported";
+    const isIOS = d.source === "ios";
+    const deepLink = isIOS ? `foxscan://project/${d.id}` : `foxscan://draft/${d.id}`;
+    const isExported = d.status === "exported";
+    const sourceBadge = isIOS
+      ? `<span style="background:#EBF4FF;color:#0062c4;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;letter-spacing:.3px">📱 iPHONE</span>`
+      : `<span style="background:#F3E5FF;color:#6A1B9A;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;letter-spacing:.3px">🌐 WEB</span>`;
+    const openLabel = isIOS ? "Continuer dans l'app" : "Ouvrir dans l'app";
+    const statusBadge = isIOS && d.status === "in-progress"
+      ? `<span style='color:var(--orange);font-weight:600'>⏱ En cours sur iPhone</span>`
+      : isExported
+        ? "<span style='color:var(--green);font-weight:600'>✓ Ouvert dans l'app</span>"
+        : "";
+    // Pour les drafts iPhone, suppression passe par DELETE /projects/:id
+    // (déjà câblé côté backend) ; pour les drafts web, DELETE /drafts/:id.
+    const deleteHandler = isIOS
+      ? `confirmDeleteIosProject('${d.id}', '${escapeHtml(d.address || "ce brouillon")}')`
+      : `confirmDeleteDraft('${d.id}')`;
     return `
     <div class="draft-card" id="draft-${d.id}">
       <div class="draft-card-head">
         <div class="draft-card-info">
-          <div class="draft-card-title">${escapeHtml(d.address)}</div>
+          <div class="draft-card-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            ${escapeHtml(d.address)} ${sourceBadge}
+          </div>
           <div class="draft-card-meta">
             <span class="draft-card-type">${escapeHtml(propTypeLabel(d.propertyType))} · ${escapeHtml(edlTypeLabel(d.edlType))}</span>
-            <span>📅 ${escapeHtml(formatDateTime(d.scheduledAt))}</span>
-            ${isExported?"<span style='color:var(--green);font-weight:600'>✓ Ouvert dans l'app</span>":''}
+            ${d.scheduledAt ? `<span>📅 ${escapeHtml(formatDateTime(d.scheduledAt))}</span>` : ""}
+            ${statusBadge}
           </div>
         </div>
       </div>
@@ -603,16 +622,46 @@ function renderDrafts(){
         ${d.notes?`<div style="margin-top:6px;font-style:italic">💬 ${escapeHtml(d.notes)}</div>`:''}
       </div>
       <div class="draft-card-actions">
-        <a href="${deepLink}" class="btn-action primary" onclick="markExported('${d.id}')">
+        <a href="${deepLink}" class="btn-action primary" ${isIOS ? "" : `onclick="markExported('${d.id}')"`}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18M3 12h18M3 17h13M15 21l4-4 4 4M19 17v8"/></svg>
-          Ouvrir dans l'app
+          ${openLabel}
         </a>
-        <button class="btn-action danger" onclick="confirmDeleteDraft('${d.id}')">Supprimer</button>
+        <button class="btn-action danger" onclick="${deleteHandler}">Supprimer</button>
       </div>
     </div>
   `;
   }).join("");
 }
+
+// V5 — Suppression d'un projet iPhone surfacé en draft (depuis le tab
+// Brouillons). Appelle DELETE /projects/:id côté backend qui propage la
+// suppression au store + supprime aussi les reports/exports liés.
+window.confirmDeleteIosProject = async function(projectID, displayName) {
+  if (!confirm(`Supprimer définitivement « ${displayName} » ?\n\nCette suppression sera propagée à l'iPhone à la prochaine synchronisation.`)) return;
+  try {
+    const token = localStorage.getItem("foxscan_session_token") || localStorage.getItem("foxscan_token");
+    const resp = await fetch(`${window.FOXSCAN_API_BASE_URL || ""}/projects/${encodeURIComponent(projectID)}`, {
+      method: "DELETE",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!resp.ok) throw new Error("HTTP " + resp.status);
+    // Retire de la liste en mémoire (closure sur allDrafts module-scoped)
+    // et re-render immédiatement pour un feedback instantané.
+    allDrafts = allDrafts.filter(d => d.id !== projectID);
+    renderDrafts();
+    // Recharge en arrière-plan pour resynchroniser l'état serveur
+    // (au cas où la suppression aurait aussi touché d'autres listes).
+    if (typeof fetchDrafts === "function") {
+      try {
+        const fresh = await fetchDrafts();
+        allDrafts = fresh?.items || [];
+        renderDrafts();
+      } catch (_) { /* silencieux */ }
+    }
+  } catch (e) {
+    alert("Suppression impossible : " + e.message);
+  }
+};
 
 // ── MODAL NEW DRAFT ───────────────────────────────────────────────────
 window.openNewDraftModal=function(){

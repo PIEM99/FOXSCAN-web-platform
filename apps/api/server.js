@@ -1694,17 +1694,106 @@ function draftPublicShape(d) {
     exportedAt: d.exportedAt || null,
     createdAt: d.createdAt,
     updatedAt: d.updatedAt,
+    // V5 — Origine du brouillon ; "web" = créé via /drafts depuis le
+    // dashboard, "ios" = projet iPhone non finalisé surfacé en draft.
+    source: "web",
   };
 }
 
-// GET /drafts : liste les brouillons du user courant
+/// V5 — Projection d'un projet iPhone non-finalisé en "draft" pour
+/// l'unifier avec les brouillons web côté liste UI.
+/// On extrait l'adresse + locataire + dates depuis le `payload.report`
+/// pour avoir un rendu cohérent dans la même liste.
+function iosProjectToDraftShape(proj) {
+  const report = proj.payload?.report || {};
+  // Adresse priorisée : projet (extrait V5) > champs structurés du report
+  const address = proj.address && proj.address !== "(adresse à renseigner)"
+    ? proj.address
+    : [
+        [report.address, report.addressComplement].filter(Boolean).join(", "),
+        [report.postalCode, report.city].filter(Boolean).join(" "),
+      ].filter(Boolean).join(", ") || "(adresse à renseigner)";
+  // Mapping inspectionType (entry/exit/inventory) vers edlType web.
+  const edlTypeMap = {
+    "Entrée": "entry", "entry": "entry", "Sortie": "exit", "exit": "exit",
+    "Inventaire": "inventory", "inventory": "inventory",
+  };
+  const edlType = edlTypeMap[report.inspectionType] || "entry";
+  // Mapping propertyType : on prend le rawValue tel quel s'il match,
+  // sinon "apartment" par défaut.
+  const propertyTypeRaw = String(report.propertyType || "").toLowerCase();
+  const propertyType = ["studio", "T1", "T2", "T3", "T4", "T5+", "maison", "local-commercial"].includes(report.propertyType)
+    ? report.propertyType
+    : propertyTypeRaw.includes("maison") ? "maison"
+    : propertyTypeRaw.includes("local") || propertyTypeRaw.includes("commerc") ? "local-commercial"
+    : "apartment";
+  // Status iOS → status web
+  // - completed (finalisé) n'apparaît PAS dans /drafts (filtré côté caller)
+  // - in_progress + non finalisé → "in-progress"
+  // - pas encore commencé → "pending"
+  let status = "in-progress";
+  if (proj.status === "completed") status = "completed";
+  else if (!report.id || report.id === "") status = "pending";
+
+  return {
+    id: proj.id,
+    address,
+    propertyType,
+    edlType,
+    scheduledAt: proj.scheduledAt || null,
+    tenantName: report.tenantName || proj.tenantName || "",
+    tenantEmail: report.tenantEmail || "",
+    landlordName: report.landlordName || proj.landlordName || "",
+    notes: (report.notes || "").slice(0, 1000),
+    status,
+    exportedAt: null,
+    createdAt: proj.createdAt || proj.updatedAt,
+    updatedAt: proj.updatedAt,
+    source: "ios",
+    // Métadonnées spécifiques iOS pour le rendu dashboard.
+    isArchived: proj.isArchived === true,
+    iosProjectID: proj.id,  // pour les actions (delete, voir, etc.)
+  };
+}
+
+// GET /drafts : liste les brouillons du user courant.
+//
+// V5 — Fusionne 2 sources :
+//   • store.drafts[] : brouillons créés via le dashboard web (POST /drafts)
+//   • store.projects[] : projets iPhone non-finalisés (status !== "completed"
+//     et non archivés) → surfacés ici pour que l'agent voie depuis le web
+//     ce qui est en cours côté téléphone.
 app.get("/drafts", requireCurrentUser, (req, res) => {
   const store = readStore();
-  const drafts = (store.drafts || [])
-    .filter((d) => d.userID === req._user.id)
-    .sort((a, b) => new Date(b.scheduledAt || b.createdAt) - new Date(a.scheduledAt || a.createdAt))
+  const userID = req._user.id;
+
+  // Source A : brouillons web purs
+  const webDrafts = (store.drafts || [])
+    .filter((d) => d.userID === userID)
     .map(draftPublicShape);
-  res.json({ ok: true, items: drafts, total: drafts.length });
+
+  // Source B : projets iPhone non-finalisés et non archivés
+  const iosDrafts = (store.projects || [])
+    .filter((p) =>
+      p.userID === userID
+      && p.status !== "completed"
+      && p.isArchived !== true
+    )
+    .map(iosProjectToDraftShape);
+
+  // Merge + tri (plus récent en premier).
+  const allDrafts = [...webDrafts, ...iosDrafts].sort((a, b) => {
+    const aDate = new Date(a.scheduledAt || a.updatedAt || a.createdAt || 0);
+    const bDate = new Date(b.scheduledAt || b.updatedAt || b.createdAt || 0);
+    return bDate - aDate;
+  });
+
+  res.json({
+    ok: true,
+    items: allDrafts,
+    total: allDrafts.length,
+    counts: { web: webDrafts.length, ios: iosDrafts.length },
+  });
 });
 
 // POST /drafts : créer un brouillon
