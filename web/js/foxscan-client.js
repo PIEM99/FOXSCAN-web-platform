@@ -144,6 +144,158 @@ export async function fetchModels() {
   return request("/models", { method: "GET" });
 }
 
+export async function fetchExports() {
+  return request("/exports", { method: "GET" });
+}
+
+export async function fetchProperties() {
+  return request("/properties", { method: "GET" });
+}
+
+// Liste des fichiers contenus dans un export (utile pour les bundles JSON
+// qui contiennent PDF, photos, USDZ embarqués en base64)
+export async function fetchExportContents(exportID) {
+  return request(`/exports/${encodeURIComponent(exportID)}/contents`, { method: "GET" });
+}
+
+// Construit une URL authentifiée vers un fichier extrait d'un bundle.
+// Comme le navigateur ne peut pas envoyer de header Authorization sur un
+// <iframe src="..."> ou <img src="...">, on récupère le blob via fetch
+// et on génère un blob URL local.
+export async function getExportFileBlobURL(exportID, fileIndex) {
+  const token = localStorage.getItem(SESSION_KEYS.token);
+  if (!token) throw new Error("Not authenticated");
+  const url = `${getApiBaseUrl()}/exports/${encodeURIComponent(exportID)}/file/${encodeURIComponent(fileIndex)}`;
+  const response = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const blob = await response.blob();
+  return { blobUrl: URL.createObjectURL(blob), contentType: blob.type, size: blob.size };
+}
+
+// Génère et télécharge un PDF reconstruit côté serveur depuis les données
+// du bundle (utile quand l'app iOS n'a pas embarqué de PDF).
+export async function getGeneratedPDFBlobURL(exportID) {
+  const token = localStorage.getItem(SESSION_KEYS.token);
+  if (!token) throw new Error("Not authenticated");
+  const url = `${getApiBaseUrl()}/exports/${encodeURIComponent(exportID)}/generated-pdf`;
+  const response = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) {
+    const errBody = await response.text().catch(() => "");
+    throw new Error(`HTTP ${response.status}: ${errBody.slice(0, 100)}`);
+  }
+  const blob = await response.blob();
+  return { blobUrl: URL.createObjectURL(blob), contentType: "application/pdf", size: blob.size };
+}
+
+// ── Nouvelles routes /api/projects/* (extraction sur disque) ────────────────
+
+// Liste tous les projets EXTRAITS de l'utilisateur (issus de bundles JSON
+// uploadés et décortiqués sur disque). Différent de fetchProjects() qui
+// utilise l'ancien endpoint /projects pour la sync iOS.
+// V5 — accepte `includeArchived` pour masquer les projets archivés.
+export async function fetchExtractedProjects({ includeArchived = true } = {}) {
+  const qs = includeArchived ? "" : "?includeArchived=false";
+  return request(`/api/projects${qs}`, { method: "GET" });
+}
+
+export async function fetchProjectFiles(projectID) {
+  return request(`/api/projects/${encodeURIComponent(projectID)}/files`, { method: "GET" });
+}
+
+export async function fetchProjectMeta(projectID) {
+  return request(`/api/projects/${encodeURIComponent(projectID)}`, { method: "GET" });
+}
+
+// V5 — Récupère le rapport d'EDL complet (inspectionReport.json) du projet.
+// Contient les `comparisonItems`, `roomConditions`, `meters`, etc. — utilisé
+// par les onglets « Comparatifs » et « Travaux » du dashboard.
+export async function fetchProjectInspection(projectID) {
+  return request(`/api/projects/${encodeURIComponent(projectID)}/inspection`, { method: "GET" });
+}
+
+// Récupère le PDF intelligent (natif si dispo, sinon généré côté serveur)
+// pour un projet extrait. Retourne un blob URL utilisable dans <iframe>.
+export async function getProjectPDFBlobURL(projectID) {
+  const token = localStorage.getItem(SESSION_KEYS.token);
+  if (!token) throw new Error("Not authenticated");
+  const url = `${getApiBaseUrl()}/api/projects/${encodeURIComponent(projectID)}/report.pdf`;
+  const response = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) {
+    const errBody = await response.text().catch(() => "");
+    throw new Error(`HTTP ${response.status}: ${errBody.slice(0, 100)}`);
+  }
+  const blob = await response.blob();
+  const source = response.headers.get("X-FOXSCAN-PDF-Source") || "unknown";
+  return { blobUrl: URL.createObjectURL(blob), contentType: "application/pdf", size: blob.size, source };
+}
+
+// Sert un fichier individuel d'un projet extrait (ex: photo, USDZ, plan).
+export async function getProjectFileBlobURL(projectID, filePath) {
+  const token = localStorage.getItem(SESSION_KEYS.token);
+  if (!token) throw new Error("Not authenticated");
+  const url = `${getApiBaseUrl()}/api/projects/${encodeURIComponent(projectID)}/files/${filePath.split("/").map(encodeURIComponent).join("/")}`;
+  const response = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const blob = await response.blob();
+  return { blobUrl: URL.createObjectURL(blob), contentType: blob.type, size: blob.size };
+}
+
+export async function deleteExport(exportID) {
+  return request(`/exports/${encodeURIComponent(exportID)}`, { method: "DELETE" });
+}
+
+// ── BROUILLONS (drafts) ──────────────────────────────────────────────────
+// Un brouillon créé sur le dashboard web est ouvrable dans l'app iOS via
+// deep link `foxscan://draft/<id>` (le handler iOS pré-remplit le formulaire
+// EDL avec les infos du brouillon).
+export async function fetchDrafts() {
+  return request("/drafts", { method: "GET" });
+}
+export async function fetchDraft(draftID) {
+  return request(`/drafts/${encodeURIComponent(draftID)}`, { method: "GET" });
+}
+export async function createDraft(payload) {
+  return request("/drafts", { method: "POST", body: JSON.stringify(payload) });
+}
+export async function updateDraft(draftID, payload) {
+  return request(`/drafts/${encodeURIComponent(draftID)}`, { method: "PATCH", body: JSON.stringify(payload) });
+}
+export async function deleteDraft(draftID) {
+  return request(`/drafts/${encodeURIComponent(draftID)}`, { method: "DELETE" });
+}
+
+// Télécharge un fichier d'export en utilisant le Bearer token (sans transit du serveur tiers).
+// downloadPath ressemble à "/exports/files/usr_xxx/exp_xxx_filename.bin"
+export async function downloadExportFile(downloadPath, suggestedName) {
+  const token = localStorage.getItem(SESSION_KEYS.token);
+  if (!token) throw new Error("Not authenticated");
+  const url = `${getApiBaseUrl()}${downloadPath}`;
+  const response = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    throw new Error(`Download failed (${response.status}): ${text.slice(0, 120)}`);
+  }
+  const blob = await response.blob();
+  const blobUrl = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = blobUrl;
+  a.download = suggestedName || downloadPath.split("/").pop() || "export.bin";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+}
+
 export async function logoutApi() {
   const refreshToken = localStorage.getItem(SESSION_KEYS.refreshToken) || null;
   try {

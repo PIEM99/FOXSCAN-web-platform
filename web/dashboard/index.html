@@ -5,271 +5,803 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FOXSCAN — Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  *{margin:0;padding:0;box-sizing:border-box}
-  :root{
-    --blue:#0071E3;--blue-l:#EBF4FF;
-    --green:#30D158;--green-l:#EDFAF1;
-    --purple:#BF5AF2;--purple-l:#F6EEFE;
-    --orange:#FF9F0A;--orange-l:#FFF5E5;
-    --red:#FF3B30;--red-l:#FFF0EF;
-    --text:#1D1D1F;--text2:#6E6E73;--text3:#86868B;
-    --bg:#FFFFFF;--bg2:#F5F5F7;--bg3:#E8E8ED;
-    --radius:14px;--shadow:0 2px 20px rgba(0,0,0,.08);
-  }
-  body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:var(--bg2);color:var(--text);min-height:100vh}
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#FAFAF7;
+  --bg-soft:#F2F0EA;
+  --card:#FFFFFF;
+  --text:#0A0A0A;
+  --text-soft:#5A5A5A;
+  --text-mute:#A0A0A0;
+  --border:rgba(10,10,10,.08);
+  --border-strong:rgba(10,10,10,.14);
+  --orange:#FF8A3D;
+  --orange-d:#E5701F;
+  --orange-l:#FFEEDD;
+  --green:#1A9940;
+  --green-l:#EDFAF1;
+  --red:#E53935;
+  --red-l:#FFEFEE;
+  --shadow:0 4px 18px rgba(10,10,10,.04);
+  --shadow-md:0 12px 40px rgba(10,10,10,.10);
+  --shadow-orange:0 12px 32px rgba(255,138,61,.22);
+}
 
-  /* NAV */
-  nav{background:rgba(255,255,255,.85);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--bg3);position:sticky;top:0;z-index:100;padding:0 24px;height:52px;display:flex;align-items:center;justify-content:space-between}
-  .nav-brand{display:flex;align-items:center;gap:10px;text-decoration:none}
-  .nav-logo{width:28px;height:28px;background:var(--text);border-radius:7px;display:flex;align-items:center;justify-content:center}
-  .nav-logo svg{width:16px;height:16px;fill:white}
-  .nav-brand span{font-weight:700;font-size:16px;color:var(--text);letter-spacing:-.3px}
-  .nav-tabs{display:flex;gap:4px}
-  .nav-tab{padding:6px 14px;border-radius:8px;border:none;background:transparent;font-size:13px;font-weight:500;color:var(--text2);cursor:pointer;transition:.15s;font-family:inherit}
-  .nav-tab:hover{background:var(--bg2)}
-  .nav-tab.active{background:var(--bg2);color:var(--text)}
-  .nav-right{display:flex;align-items:center;gap:12px}
-  .user-pill{display:flex;align-items:center;gap:8px;padding:5px 12px 5px 5px;background:var(--bg2);border-radius:20px;cursor:pointer}
-  .user-avatar{width:26px;height:26px;background:var(--blue);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white}
-  .user-name{font-size:13px;font-weight:500;color:var(--text);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .btn-logout{padding:6px 14px;background:transparent;border:1px solid var(--bg3);border-radius:8px;font-size:13px;font-weight:500;color:var(--text2);cursor:pointer;transition:.15s;font-family:inherit}
-  .btn-logout:hover{background:var(--red-l);border-color:var(--red);color:var(--red)}
+body{
+  font-family:'Outfit','Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+  line-height:1.6;
+  display:flex;
+  overflow-x:hidden;
+}
 
-  /* LAYOUT */
-  .container{max-width:1100px;margin:0 auto;padding:32px 24px}
+/* ─────── SIDEBAR ─────── */
+.sidebar{
+  width:240px;
+  min-width:240px;
+  height:100vh;
+  position:sticky;
+  top:0;
+  background:var(--card);
+  border-right:1px solid var(--border);
+  padding:24px 16px;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.sidebar-brand{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:8px 12px;
+  margin-bottom:16px;
+}
+.sidebar-brand-icon{
+  width:32px;height:32px;background:var(--text);border-radius:8px;
+  display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:16px;
+}
+.sidebar-brand-name{font-size:17px;font-weight:700;letter-spacing:.01em}
 
-  /* WELCOME */
-  .welcome{margin-bottom:28px}
-  .welcome h1{font-size:24px;font-weight:700;letter-spacing:-.4px;color:var(--text)}
-  .welcome p{font-size:15px;color:var(--text2);margin-top:4px}
+.btn-new-draft{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  background:var(--text);color:#fff;border:none;border-radius:10px;
+  padding:13px 16px;font-size:13px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+  cursor:pointer;font-family:inherit;transition:.18s;
+  margin-bottom:16px;
+}
+.btn-new-draft:hover{background:var(--orange);transform:translateY(-1px);box-shadow:var(--shadow-orange)}
+.btn-new-draft svg{width:14px;height:14px}
 
-  /* STATS GRID */
-  .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px}
-  .stat-card{background:var(--bg);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
-  .stat-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;font-size:18px}
-  .stat-card h3{font-size:22px;font-weight:700;letter-spacing:-.5px;margin-bottom:3px}
-  .stat-card p{font-size:12px;color:var(--text2);font-weight:500}
+.sidebar-nav{display:flex;flex-direction:column;gap:2px;flex:1}
+.sidebar-link{
+  display:flex;align-items:center;gap:12px;
+  padding:10px 14px;border-radius:10px;
+  color:var(--text-soft);text-decoration:none;
+  font-size:14px;font-weight:500;letter-spacing:-.01em;
+  cursor:pointer;transition:.15s;border:none;background:transparent;font-family:inherit;text-align:left;
+}
+.sidebar-link:hover{background:var(--bg-soft);color:var(--text)}
+.sidebar-link.active{background:var(--orange-l);color:var(--orange-d);font-weight:600}
+.sidebar-link svg{width:18px;height:18px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:1.6}
 
-  /* PANELS */
-  .panel{background:var(--bg);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
-  .panel-header{padding:18px 20px;border-bottom:1px solid var(--bg2);display:flex;align-items:center;justify-content:space-between}
-  .panel-title{font-size:15px;font-weight:600;color:var(--text)}
-  .btn-primary{padding:8px 16px;background:var(--blue);color:white;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s}
-  .btn-primary:hover{background:#0062c4}
-  .btn-ghost{padding:7px 14px;background:var(--bg2);color:var(--text);border:none;border-radius:9px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;transition:.15s}
-  .btn-ghost:hover{background:var(--bg3)}
+.sidebar-footer{margin-top:auto;padding-top:16px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:2px}
+.sidebar-api{font-size:11px;color:var(--text-mute);padding:6px 14px}
+.btn-logout{
+  display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;
+  color:var(--text-soft);font-size:13px;font-weight:500;
+  cursor:pointer;border:none;background:transparent;font-family:inherit;text-align:left;width:100%;
+}
+.btn-logout:hover{background:var(--red-l);color:var(--red)}
 
-  /* TABLE */
-  .table{width:100%;border-collapse:collapse}
-  .table th{padding:11px 20px;text-align:left;font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;background:var(--bg2)}
-  .table td{padding:14px 20px;font-size:14px;border-bottom:1px solid var(--bg2)}
-  .table tr:last-child td{border-bottom:none}
-  .table tr:hover td{background:#FAFAFA}
-  .badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:6px;font-size:11px;font-weight:600}
-  .badge-green{background:var(--green-l);color:#1A7A35}
-  .badge-blue{background:var(--blue-l);color:#004A9C}
-  .badge-orange{background:var(--orange-l);color:#7A4A00}
+/* ─────── MAIN ─────── */
+.main{flex:1;min-width:0;padding:32px 40px 80px;max-width:1400px}
 
-  /* GRID 2COL */
-  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+/* TOP BAR avec search */
+.topbar{display:flex;align-items:center;gap:14px;margin-bottom:32px;flex-wrap:wrap}
+.search-wrap{flex:1;min-width:260px;position:relative}
+.search-input{
+  width:100%;padding:14px 16px 14px 44px;
+  background:var(--card);border:1px solid var(--border);border-radius:12px;
+  font-size:14px;font-family:inherit;color:var(--text);outline:none;transition:.15s;
+}
+.search-input:focus{border-color:var(--orange);box-shadow:0 0 0 3px rgba(255,138,61,.12)}
+.search-input::placeholder{color:var(--text-mute)}
+.search-icon{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:var(--text-mute);pointer-events:none}
 
-  /* EMPTY STATE */
-  .empty-state{padding:48px 20px;text-align:center}
-  .empty-state .empty-icon{font-size:40px;margin-bottom:14px;opacity:.4}
-  .empty-state p{font-size:14px;color:var(--text2);margin-bottom:16px}
+.user-pill{display:flex;align-items:center;gap:10px;padding:6px 14px 6px 6px;background:var(--card);border:1px solid var(--border);border-radius:980px}
+.user-avatar{width:30px;height:30px;background:linear-gradient(135deg,var(--orange),var(--orange-d));border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700}
+.user-name{font-size:13px;font-weight:600}
 
-  /* PLAN CARD */
-  .plan-card{padding:24px;background:var(--bg);border-radius:var(--radius);box-shadow:var(--shadow)}
-  .plan-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;background:var(--blue-l);color:var(--blue);border-radius:8px;font-size:12px;font-weight:700;margin-bottom:14px}
-  .plan-price{font-size:32px;font-weight:800;letter-spacing:-1px;color:var(--text);margin-bottom:4px}
-  .plan-price span{font-size:14px;font-weight:400;color:var(--text2)}
-  .plan-features{list-style:none;margin:16px 0;display:flex;flex-direction:column;gap:9px}
-  .plan-features li{display:flex;align-items:center;gap:9px;font-size:14px;color:var(--text)}
-  .plan-features li::before{content:"✓";color:var(--green);font-weight:700;flex-shrink:0}
-  .plan-upgrade{margin-top:20px;padding:24px;background:linear-gradient(135deg,#0071E3 0%,#6E40C9 100%);border-radius:12px;color:white;text-align:center}
-  .plan-upgrade h3{font-size:17px;font-weight:700;margin-bottom:6px}
-  .plan-upgrade p{font-size:13px;opacity:.85;margin-bottom:16px}
-  .btn-white{padding:10px 22px;background:white;color:var(--blue);border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
+/* WELCOME + STATS */
+.welcome{margin-bottom:32px}
+.welcome h1{font-size:32px;font-weight:700;letter-spacing:-.025em;line-height:1.1;margin-bottom:6px}
+.welcome p{font-size:15px;color:var(--text-soft)}
 
-  /* TABS CONTENT */
-  .tab-content{display:none}
-  .tab-content.active{display:block}
+/* PAGES */
+.page{display:none}
+.page.active{display:block;animation:fadeIn .25s ease-out}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 
-  /* MODELS GRID */
-  .models-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;padding:20px}
-  .model-card{background:var(--bg2);border-radius:12px;overflow:hidden;cursor:pointer;transition:.2s}
-  .model-card:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
-  .model-thumb{height:120px;background:linear-gradient(135deg,var(--blue-l),var(--purple-l));display:flex;align-items:center;justify-content:center;font-size:36px}
-  .model-info{padding:12px}
-  .model-info h4{font-size:13px;font-weight:600;margin-bottom:3px}
-  .model-info p{font-size:11px;color:var(--text2)}
+/* CARDS GRID */
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px}
 
-  @media(max-width:768px){
-    .stats-grid{grid-template-columns:repeat(2,1fr)}
-    .grid-2{grid-template-columns:1fr}
-    .models-grid{grid-template-columns:repeat(2,1fr)}
-    .nav-tabs{display:none}
-    .user-name{display:none}
-  }
+/* PROJECT CARD */
+.proj-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;transition:.2s;cursor:pointer}
+.proj-card:hover{border-color:var(--orange);box-shadow:var(--shadow-md);transform:translateY(-2px)}
+.proj-card-title{font-size:16px;font-weight:700;color:var(--text);letter-spacing:-.01em;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.proj-card-addr{font-size:13px;color:var(--text-soft);margin-bottom:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.proj-card-badges{display:flex;gap:6px;flex-wrap:wrap}
+.badge{display:inline-flex;align-items:center;padding:4px 10px;border-radius:980px;font-size:11px;font-weight:600;letter-spacing:.02em}
+.badge.complet{background:var(--green-l);color:var(--green)}
+.badge.attente{background:#FFF5E0;color:#A85F00}
+.badge.pdf{background:var(--red-l);color:var(--red)}
+.badge.scan{background:var(--orange-l);color:var(--orange-d)}
+.badge.photos{background:#E8F0FF;color:#1B5BCC}
+
+/* DRAFT CARD */
+.draft-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:14px;transition:.2s}
+.draft-card:hover{border-color:var(--orange);box-shadow:var(--shadow);transform:translateY(-2px)}
+.draft-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.draft-card-info{flex:1;min-width:0}
+.draft-card-title{font-size:16px;font-weight:700;letter-spacing:-.01em;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.draft-card-meta{font-size:12px;color:var(--text-soft);display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.draft-card-type{display:inline-flex;align-items:center;background:var(--bg-soft);color:var(--text);padding:3px 9px;border-radius:980px;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+.draft-card-details{font-size:13px;color:var(--text-soft);line-height:1.5}
+.draft-card-details strong{color:var(--text);font-weight:600}
+.draft-card-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:auto}
+.btn-action{display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:9px;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;font-family:inherit;border:none;transition:.15s;text-decoration:none}
+.btn-action.primary{background:var(--text);color:#fff;flex:1;justify-content:center}
+.btn-action.primary:hover{background:var(--orange);transform:translateY(-1px)}
+.btn-action.ghost{background:var(--bg-soft);color:var(--text)}
+.btn-action.ghost:hover{background:var(--border-strong)}
+.btn-action.danger{background:transparent;color:var(--red);border:1px solid var(--border)}
+.btn-action.danger:hover{background:var(--red-l);border-color:var(--red)}
+
+/* EMPTY STATE */
+.empty{text-align:center;padding:80px 24px;background:var(--card);border:1px dashed var(--border-strong);border-radius:16px}
+.empty-icon{font-size:42px;margin-bottom:16px;opacity:.5}
+.empty h3{font-size:18px;font-weight:600;margin-bottom:8px}
+.empty p{font-size:14px;color:var(--text-soft);max-width:380px;margin:0 auto 20px}
+.empty .btn-new-draft{margin:0 auto;display:inline-flex;width:auto;padding:11px 22px}
+
+/* TRIAL BANNER */
+.trial-banner{margin-bottom:24px;padding:16px 20px;border-radius:12px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.trial-banner.is-trial{background:linear-gradient(135deg,#FFF8EC,#FFF);border:1px solid rgba(255,159,10,.3)}
+.trial-banner.is-warning{background:linear-gradient(135deg,#FFEFEE,#FFF);border:1px solid rgba(255,59,48,.4)}
+.trial-banner.is-expired{background:#FFEFEE;border:2px solid var(--red)}
+.trial-banner.is-lifetime{background:linear-gradient(135deg,#EDFAF1,#FFF);border:1px solid rgba(48,209,88,.3)}
+.trial-banner-icon{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px}
+.trial-banner.is-trial .trial-banner-icon{background:linear-gradient(135deg,#FF9F0A,#FF6B00);color:#fff}
+.trial-banner.is-warning .trial-banner-icon{background:linear-gradient(135deg,#FF6B00,#FF3B30);color:#fff}
+.trial-banner.is-expired .trial-banner-icon{background:var(--red);color:#fff}
+.trial-banner.is-lifetime .trial-banner-icon{background:linear-gradient(135deg,#34C759,#1A9940);color:#fff}
+.trial-banner-content{flex:1;min-width:200px;font-size:13px;line-height:1.5}
+.trial-banner-content strong{font-weight:700;display:block;margin-bottom:2px}
+.trial-banner-cta{flex-shrink:0;padding:9px 16px;background:var(--text);color:#fff;border-radius:9px;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;text-decoration:none;border:none;cursor:pointer;font-family:inherit}
+.trial-banner-cta:hover{background:var(--orange)}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(10,10,10,.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:1000;display:none;align-items:center;justify-content:center;padding:24px}
+.modal-overlay.show{display:flex;animation:fadeIn .2s}
+.modal{background:var(--card);border-radius:18px;max-width:560px;width:100%;max-height:90vh;overflow-y:auto;padding:32px;position:relative;box-shadow:0 40px 80px rgba(0,0,0,.25)}
+.modal-close{position:absolute;top:18px;right:18px;width:34px;height:34px;border-radius:50%;border:none;background:var(--bg-soft);font-size:18px;cursor:pointer;color:var(--text);line-height:1;font-family:inherit}
+.modal-close:hover{background:var(--border-strong)}
+.modal h2{font-size:22px;font-weight:700;letter-spacing:-.01em;margin-bottom:6px}
+.modal-sub{font-size:13px;color:var(--text-soft);margin-bottom:24px;line-height:1.5}
+
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.field-row .field{margin-bottom:0}
+.field label{font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text-soft)}
+.field input,.field select,.field textarea{
+  width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:10px;
+  font-size:14px;font-family:inherit;background:var(--card);color:var(--text);outline:none;transition:.15s;
+}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--orange);box-shadow:0 0 0 3px rgba(255,138,61,.12)}
+.field textarea{resize:vertical;min-height:80px}
+.field-help{font-size:11px;color:var(--text-mute);margin-top:-2px}
+
+.modal-error{display:none;background:var(--red-l);color:var(--red);padding:10px 14px;border-radius:9px;font-size:13px;font-weight:500;margin-top:12px;border-left:3px solid var(--red)}
+.modal-error.show{display:block}
+
+.modal-submit{
+  width:100%;padding:14px;background:var(--text);color:#fff;border:none;border-radius:10px;
+  font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  cursor:pointer;font-family:inherit;transition:.18s;margin-top:8px;
+}
+.modal-submit:hover{background:var(--orange)}
+.modal-submit:disabled{opacity:.6;cursor:not-allowed}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--text);color:#fff;padding:14px 20px;border-radius:10px;font-size:13px;font-weight:500;box-shadow:0 12px 40px rgba(0,0,0,.25);transform:translateY(80px);opacity:0;transition:.3s;z-index:999;max-width:380px}
+.toast.show{transform:translateY(0);opacity:1}
+
+/* RESPONSIVE */
+@media(max-width:900px){
+  body{flex-direction:column}
+  .sidebar{width:100%;height:auto;position:relative;flex-direction:row;flex-wrap:wrap;padding:14px 16px;gap:6px}
+  .sidebar-brand{margin:0 8px 0 0}
+  .btn-new-draft{margin:0;padding:9px 14px;font-size:12px}
+  .sidebar-nav{flex-direction:row;flex-wrap:wrap;flex:1;gap:4px}
+  .sidebar-link{padding:8px 12px;font-size:12px}
+  .sidebar-footer{margin-top:0;padding-top:0;border-top:none;flex-direction:row;gap:4px;width:100%}
+  .sidebar-api{display:none}
+  .main{padding:20px 16px 80px;max-width:none}
+  .welcome h1{font-size:24px}
+  .cards-grid{grid-template-columns:1fr;gap:12px}
+  .field-row{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body>
 
-<nav>
-  <a href="../site/index.html" class="nav-brand">
-    <div class="nav-logo">
-      <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-    </div>
-    <span>FOXSCAN</span>
-  </a>
-  <div class="nav-tabs">
-    <button class="nav-tab active" onclick="showTab('projets', this)">Projets</button>
-    <button class="nav-tab" onclick="showTab('rapports', this)">Rapports</button>
-    <button class="nav-tab" onclick="showTab('modeles', this)">Modèles 3D</button>
-    <button class="nav-tab" onclick="showTab('abonnement', this)">Abonnement</button>
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="sidebar-brand-icon">F</div>
+    <div class="sidebar-brand-name">FOXSCAN</div>
   </div>
-  <div class="nav-right">
+
+  <button class="btn-new-draft" onclick="openNewDraftModal()">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    Nouveau brouillon
+  </button>
+
+  <nav class="sidebar-nav">
+    <button class="sidebar-link active" data-page="projets" onclick="showPage('projets')">
+      <svg viewBox="0 0 24 24"><path d="M3 7h18M3 12h18M3 17h18"/></svg>
+      Mes projets
+    </button>
+    <button class="sidebar-link" data-page="brouillons" onclick="showPage('brouillons')">
+      <svg viewBox="0 0 24 24"><path d="M14 3v6h6M14 3l6 6M6 3h8v6h6v12H6z"/></svg>
+      Brouillons
+      <span id="draftCount" style="margin-left:auto;background:var(--orange);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:980px;display:none">0</span>
+    </button>
+    <button class="sidebar-link" data-page="rapports" onclick="showPage('rapports')">
+      <svg viewBox="0 0 24 24"><path d="M14 3v6h6M14 3l6 6M6 3h8v6h6v12H6zM9 14h6M9 17h6"/></svg>
+      Rapports
+    </button>
+    <button class="sidebar-link" data-page="photos" onclick="showPage('photos')">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+      Photos
+    </button>
+    <button class="sidebar-link" data-page="comparatifs" onclick="showPage('comparatifs')">
+      <svg viewBox="0 0 24 24"><path d="M3 6h7M3 12h7M3 18h7M14 6h7M14 12h7M14 18h7M10.5 6L7 9.5M7 14.5L10.5 18"/></svg>
+      Comparatifs
+    </button>
+    <button class="sidebar-link" data-page="travaux" onclick="showPage('travaux')">
+      <svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+      Travaux
+    </button>
+    <button class="sidebar-link" data-page="modeles" onclick="showPage('modeles')">
+      <svg viewBox="0 0 24 24"><path d="M12 2l9 5v10l-9 5-9-5V7zM12 12v10M3 7l9 5 9-5"/></svg>
+      Modèles 3D
+    </button>
+  </nav>
+
+  <div class="sidebar-footer">
+    <button class="sidebar-link" data-page="compte" onclick="showPage('compte')">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg>
+      Mon compte
+    </button>
+    <div class="sidebar-api" id="apiStatus">Chargement…</div>
+    <button class="btn-logout" onclick="doLogout()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M15 17l5-5-5-5M20 12H9M9 3H5v18h4"/></svg>
+      Se déconnecter
+    </button>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="search-wrap">
+      <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      <input id="searchInput" class="search-input" type="text" placeholder="Rechercher un projet, un brouillon…" oninput="onSearch()"/>
+    </div>
     <div class="user-pill">
-      <div class="user-avatar" id="userAvatar">?</div>
-      <span class="user-name" id="userName">Chargement…</span>
-    </div>
-    <button class="btn-logout" onclick="logout()">Déconnexion</button>
-  </div>
-</nav>
-
-<div class="container">
-  <div class="welcome">
-    <h1 id="welcomeTitle">Bonjour 👋</h1>
-    <p>Gérez vos projets de scan LiDAR et vos états des lieux.</p>
-    <p id="api-status" style="font-size:12px;color:var(--text3);margin-top:6px">Connexion API en cours…</p>
-  </div>
-
-  <!-- STATS -->
-  <div class="stats-grid">
-    <div class="stat-card">
-      <div class="stat-icon" style="background:var(--blue-l)">📐</div>
-      <h3 id="statProjets">0</h3>
-      <p>Projets scannés</p>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon" style="background:var(--green-l)">📋</div>
-      <h3 id="statRapports">0</h3>
-      <p>Rapports générés</p>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon" style="background:var(--purple-l)">🧊</div>
-      <h3 id="statModeles">0</h3>
-      <p>Modèles 3D</p>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon" style="background:var(--orange-l)">☁️</div>
-      <h3>iCloud</h3>
-      <p>Synchronisation active</p>
+      <div class="user-avatar" id="userAvatar">U</div>
+      <div class="user-name" id="userName">—</div>
     </div>
   </div>
 
-  <!-- TAB: PROJETS -->
-  <div id="tab-projets" class="tab-content active">
-    <div class="panel">
-      <div class="panel-header">
-        <span class="panel-title">Mes projets</span>
-        <button class="btn-primary" onclick="openApp()">+ Nouveau scan</button>
+  <!-- TRIAL BANNER (dynamic) -->
+  <div id="trialBanner" style="display:none"></div>
+
+  <!-- PAGE : PROJETS -->
+  <section class="page active" id="page-projets">
+    <div class="welcome" style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px">
+      <div>
+        <h1 id="welcomeTitle">Bonjour 👋</h1>
+        <p>Vos projets scannés et états des lieux signés.</p>
       </div>
-      <div id="projets-list">
-        <div class="empty-state">
-          <div class="empty-icon">📱</div>
-          <p>Vos scans apparaissent ici après synchronisation iCloud.<br>Ouvrez l'app FOXSCAN sur votre iPhone pour commencer.</p>
-          <button class="btn-ghost" onclick="openApp()">Ouvrir l'app</button>
+      <!-- V5 — Toggle pour afficher/masquer les projets archivés -->
+      <button
+        id="toggleArchivedBtn"
+        type="button"
+        onclick="toggleArchivedProjects()"
+        style="padding:8px 14px;background:var(--bg2);border:1px solid var(--bg3);border-radius:10px;font-size:13px;color:var(--text2);cursor:pointer;font-family:inherit;font-weight:500"
+        title="Affiche ou masque les projets archivés depuis l'app">
+        🗂 Voir les archivés
+      </button>
+    </div>
+    <div id="projects-list" class="cards-grid">
+      <div class="empty"><div class="empty-icon">📁</div><h3>Chargement…</h3></div>
+    </div>
+  </section>
+
+  <!-- PAGE : BROUILLONS -->
+  <section class="page" id="page-brouillons">
+    <div class="welcome">
+      <h1>Brouillons</h1>
+      <p>Préparez vos états des lieux ici, puis ouvrez-les dans l'app FOXSCAN une fois sur place.</p>
+    </div>
+    <div id="drafts-list" class="cards-grid">
+      <div class="empty"><div class="empty-icon">📝</div><h3>Chargement…</h3></div>
+    </div>
+  </section>
+
+  <!-- PAGE : RAPPORTS -->
+  <section class="page" id="page-rapports">
+    <div class="welcome">
+      <h1>Rapports</h1>
+      <p>Tous vos PDFs d'EDL signés, prêts à être consultés ou téléchargés.</p>
+    </div>
+    <div id="rapports-list" class="cards-grid">
+      <div class="empty"><div class="empty-icon">📄</div><h3>Aucun rapport pour le moment</h3><p>Les rapports signés depuis l'app FOXSCAN apparaîtront ici automatiquement.</p></div>
+    </div>
+  </section>
+
+  <!-- PAGE : PHOTOS -->
+  <section class="page" id="page-photos">
+    <div class="welcome">
+      <h1>Photos</h1>
+      <p>Toutes les photos prises pendant vos états des lieux, regroupées par bien.</p>
+    </div>
+    <div id="photos-list">
+      <div class="empty"><div class="empty-icon">🖼</div><h3>Chargement…</h3></div>
+    </div>
+  </section>
+
+  <!-- PAGE : COMPARATIFS -->
+  <section class="page" id="page-comparatifs">
+    <div class="welcome">
+      <h1>Comparatifs d'état des lieux</h1>
+      <p>Différences détectées entre l'EDL d'entrée et l'EDL de sortie, pièce par pièce.</p>
+    </div>
+    <div id="comparatifs-list">
+      <div class="empty"><div class="empty-icon">📋</div><h3>Chargement…</h3></div>
+    </div>
+  </section>
+
+  <!-- PAGE : TRAVAUX -->
+  <section class="page" id="page-travaux">
+    <div class="welcome">
+      <h1>Grille d'évaluation des travaux</h1>
+      <p>Estimation des retenues sur dépôt de garantie par bien, calculée à partir des comparatifs.</p>
+    </div>
+    <div id="travaux-list">
+      <div class="empty"><div class="empty-icon">🔧</div><h3>Chargement…</h3></div>
+    </div>
+  </section>
+
+  <!-- PAGE : MODELES 3D -->
+  <section class="page" id="page-modeles">
+    <div class="welcome">
+      <h1>Modèles 3D</h1>
+      <p>Tous vos scans LiDAR USDZ, partageables avec vos prospects en un clic.</p>
+    </div>
+    <div id="modeles-list" class="cards-grid">
+      <div class="empty"><div class="empty-icon">🧊</div><h3>Aucun scan 3D pour le moment</h3><p>Les scans LiDAR réalisés sur iPhone apparaîtront ici.</p></div>
+    </div>
+  </section>
+
+  <!-- PAGE : COMPTE -->
+  <section class="page" id="page-compte">
+    <div class="welcome">
+      <h1>Mon compte</h1>
+      <p>Profil, abonnement, et données personnelles.</p>
+    </div>
+    <div class="cards-grid">
+      <div class="proj-card" style="cursor:default">
+        <div class="proj-card-title">Profil</div>
+        <div style="font-size:13px;color:var(--text-soft);line-height:1.8;margin-top:8px">
+          <div>Nom : <strong id="acctName" style="color:var(--text)">—</strong></div>
+          <div>Email : <strong id="acctEmail" style="color:var(--text)">—</strong></div>
+          <div>Provider : <strong id="acctProvider" style="color:var(--text)">—</strong></div>
+          <div>Statut : <strong id="acctStatus" style="color:var(--text)">—</strong></div>
+        </div>
+      </div>
+      <div class="proj-card" style="cursor:default">
+        <div class="proj-card-title">RGPD</div>
+        <div style="font-size:13px;color:var(--text-soft);line-height:1.6;margin-top:8px">Exporter ou supprimer vos données.</div>
+        <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+          <a href="mailto:privacy@foxscan.fr?subject=Demande%20RGPD%20-%20Export" class="btn-action ghost">Exporter mes données</a>
+          <a href="mailto:privacy@foxscan.fr?subject=Demande%20RGPD%20-%20Suppression" class="btn-action danger">Supprimer mon compte</a>
         </div>
       </div>
     </div>
-  </div>
+  </section>
 
-  <!-- TAB: RAPPORTS -->
-  <div id="tab-rapports" class="tab-content">
-    <div class="panel">
-      <div class="panel-header">
-        <span class="panel-title">Rapports PDF</span>
-        <button class="btn-ghost" onclick="openApp()">Générer via l'app</button>
-      </div>
-      <div id="rapports-list">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Rapport</th>
-              <th>Projet</th>
-              <th>Date</th>
-              <th>Statut</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="rapports-tbody">
-            <tr>
-              <td colspan="5">
-                <div class="empty-state">
-                  <div class="empty-icon">📄</div>
-                  <p>Aucun rapport encore. Générez vos premiers rapports depuis l'app iOS.</p>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
+</main>
 
-  <!-- TAB: MODELES -->
-  <div id="tab-modeles" class="tab-content">
-    <div class="panel">
-      <div class="panel-header">
-        <span class="panel-title">Modèles 3D</span>
-        <button class="btn-ghost" onclick="openApp()">Scanner via l'app</button>
+<!-- ───────── MODAL : NOUVEAU BROUILLON ───────── -->
+<div class="modal-overlay" id="draftModal" onclick="if(event.target===this)closeNewDraftModal()">
+  <div class="modal" role="dialog" aria-labelledby="draftModalTitle">
+    <button class="modal-close" onclick="closeNewDraftModal()" aria-label="Fermer">×</button>
+    <h2 id="draftModalTitle">Nouveau brouillon</h2>
+    <p class="modal-sub">Préparez l'EDL ici, puis ouvrez-le dans l'app FOXSCAN une fois sur place — tout sera pré-rempli.</p>
+
+    <form id="draftForm" onsubmit="submitNewDraft(event)">
+      <div class="field">
+        <label for="dfAddress">Adresse du bien *</label>
+        <input type="text" id="dfAddress" required maxlength="200" placeholder="12 rue de la République, 75011 Paris"/>
       </div>
-      <div id="modeles-list">
-        <div class="empty-state">
-          <div class="empty-icon">🧊</div>
-          <p>Vos modèles 3D LiDAR apparaissent ici après synchronisation iCloud.</p>
-          <button class="btn-ghost" onclick="openApp()">Ouvrir l'app</button>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="dfPropType">Type de bien *</label>
+          <select id="dfPropType" required>
+            <option value="">— Choisir —</option>
+            <option value="studio">Studio</option>
+            <option value="T1">T1</option>
+            <option value="T2">T2</option>
+            <option value="T3">T3</option>
+            <option value="T4">T4</option>
+            <option value="T5+">T5+</option>
+            <option value="maison">Maison</option>
+            <option value="local-commercial">Local commercial</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="dfEdlType">Type d'EDL *</label>
+          <select id="dfEdlType" required>
+            <option value="">— Choisir —</option>
+            <option value="entry">Entrée</option>
+            <option value="exit">Sortie</option>
+            <option value="inventory">Inventaire</option>
+          </select>
         </div>
       </div>
-    </div>
-  </div>
 
-  <!-- TAB: ABONNEMENT -->
-  <div id="tab-abonnement" class="tab-content">
-    <div class="grid-2">
-      <div class="plan-card">
-        <div class="plan-badge">⭐ Votre plan actuel</div>
-        <div class="plan-price">Starter <span>/ mois</span></div>
-        <p style="font-size:13px;color:var(--text2)">Parfait pour débuter avec le scan LiDAR.</p>
-        <ul class="plan-features">
-          <li>5 scans par mois</li>
-          <li>Export PDF basique</li>
-          <li>Synchronisation iCloud</li>
-          <li>Support par email</li>
-        </ul>
+      <div class="field">
+        <label for="dfScheduled">Date prévue *</label>
+        <input type="datetime-local" id="dfScheduled" required/>
       </div>
-      <div class="plan-upgrade">
-        <h3>Passez au plan Pro</h3>
-        <p>Scans illimités, état des lieux IA, export avancé et accès prioritaire aux nouvelles fonctionnalités.</p>
-        <button class="btn-white">Voir les offres Pro</button>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="dfTenantName">Locataire</label>
+          <input type="text" id="dfTenantName" maxlength="120" placeholder="Jean Dupont"/>
+        </div>
+        <div class="field">
+          <label for="dfTenantEmail">Email locataire</label>
+          <input type="email" id="dfTenantEmail" maxlength="120" placeholder="jean@example.com"/>
+        </div>
       </div>
-    </div>
-    <div class="panel" style="margin-top:0">
-      <div class="panel-header">
-        <span class="panel-title">Historique de facturation</span>
+
+      <div class="field">
+        <label for="dfLandlordName">Bailleur</label>
+        <input type="text" id="dfLandlordName" maxlength="120" placeholder="Mme Martin"/>
       </div>
-      <div class="empty-state">
-        <div class="empty-icon">💳</div>
-        <p>L'abonnement est géré via l'App Store Apple.<br>Consultez vos achats dans Réglages → Apple ID → Achats.</p>
+
+      <div class="field">
+        <label for="dfNotes">Notes pour l'agent</label>
+        <textarea id="dfNotes" maxlength="1000" placeholder="Digicode 1234, compteur EDF dans la cave, etc."></textarea>
+        <div class="field-help">Visible dans l'app lors du scan.</div>
       </div>
-    </div>
+
+      <div class="modal-error" id="draftError"></div>
+
+      <button type="submit" class="modal-submit" id="draftSubmit">Créer le brouillon</button>
+    </form>
   </div>
 </div>
 
-<script type="module" src="./dashboard.js"></script>
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import {
+  clearSession,
+  createDraft,
+  dashboardSession,
+  deleteDraft,
+  fetchDrafts,
+  fetchExports,
+  fetchExtractedProjects,
+  fetchModels,
+  fetchProjectFiles,
+  fetchProperties,
+  getApiBaseUrl,
+  getSessionUser,
+  logoutApi,
+} from "../js/foxscan-client.js";
+
+// State
+let allDrafts = [];
+let allProjects = [];
+let allBiens = [];
+let currentSearchQuery = "";
+
+// ── Helpers ───────────────────────────────────────────────────────────
+function escapeHtml(text=""){return String(text??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");}
+function showToast(msg,error=false){const t=document.getElementById("toast");t.textContent=msg;t.style.background=error?"#E53935":"var(--text)";t.classList.add("show");setTimeout(()=>t.classList.remove("show"),3500);}
+function formatDate(iso){if(!iso)return"—";try{return new Date(iso).toLocaleDateString("fr-FR",{day:"2-digit",month:"short",year:"numeric"});}catch{return"—";}}
+function formatDateTime(iso){if(!iso)return"—";try{const d=new Date(iso);return d.toLocaleDateString("fr-FR",{day:"2-digit",month:"short"})+" à "+d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});}catch{return"—";}}
+function edlTypeLabel(t){return{entry:"Entrée",exit:"Sortie",inventory:"Inventaire"}[t]||t;}
+function propTypeLabel(t){return{studio:"Studio",T1:"T1",T2:"T2",T3:"T3",T4:"T4","T5+":"T5+",maison:"Maison","local-commercial":"Local"}[t]||t;}
+
+// ── PAGES ─────────────────────────────────────────────────────────────
+window.showPage = function showPage(page){
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+  document.querySelectorAll(".sidebar-link").forEach(l=>l.classList.remove("active"));
+  const p=document.getElementById("page-"+page);if(p)p.classList.add("active");
+  const lnk=document.querySelector(`.sidebar-link[data-page="${page}"]`);if(lnk)lnk.classList.add("active");
+  document.getElementById("searchInput").value="";currentSearchQuery="";
+  renderAll();
+};
+
+// ── PROJETS ───────────────────────────────────────────────────────────
+function renderProjects(){
+  const root=document.getElementById("projects-list");
+  const q=currentSearchQuery.toLowerCase();
+  // Mix : biens + projets extraits
+  const items=[
+    ...allBiens.map(b=>({type:"bien",id:b.propertyID,title:b.address||"Bien sans adresse",addr:b.tenantName?"👤 "+b.tenantName:"",badges:[b.counts?.entry>0&&{cls:"complet",text:"Entrée"},b.counts?.exit>0&&{cls:"complet",text:"Sortie"},].filter(Boolean)})),
+    ...allProjects.map(p=>({type:"projet",id:p.projectID,title:p.name||p.projectID,addr:p.filesCount+" fichiers",badges:[(p.files||[]).some(f=>/\.pdf$/i.test(f.path))&&{cls:"pdf",text:"PDF"},(p.files||[]).some(f=>/\.usdz$/i.test(f.path))&&{cls:"scan",text:"3D"},(p.files||[]).some(f=>/\.(jpg|png|webp)$/i.test(f.path))&&{cls:"photos",text:"Photos"}].filter(Boolean)}))
+  ];
+  const filtered=q?items.filter(i=>(i.title+" "+i.addr).toLowerCase().includes(q)):items;
+  if(!filtered.length){
+    root.innerHTML=`<div class="empty"><div class="empty-icon">📁</div><h3>${q?'Aucun résultat':'Aucun projet pour le moment'}</h3><p>${q?'Essayez un autre mot-clé.':"Les projets et biens scannés depuis l'app apparaîtront ici."}</p></div>`;
+    return;
+  }
+  root.innerHTML=filtered.map(item=>`
+    <div class="proj-card">
+      <div class="proj-card-title">${escapeHtml(item.title)}</div>
+      <div class="proj-card-addr">${escapeHtml(item.addr)||"—"}</div>
+      <div class="proj-card-badges">${item.badges.map(b=>`<span class="badge ${b.cls}">${escapeHtml(b.text)}</span>`).join("")}</div>
+    </div>
+  `).join("");
+}
+
+// ── BROUILLONS ────────────────────────────────────────────────────────
+function renderDrafts(){
+  const root=document.getElementById("drafts-list");
+  const q=currentSearchQuery.toLowerCase();
+  const filtered=q?allDrafts.filter(d=>(d.address+" "+d.tenantName+" "+d.landlordName).toLowerCase().includes(q)):allDrafts;
+  document.getElementById("draftCount").textContent=String(allDrafts.length);
+  document.getElementById("draftCount").style.display=allDrafts.length?"inline-flex":"none";
+  if(!filtered.length){
+    root.innerHTML=`<div class="empty"><div class="empty-icon">📝</div><h3>${q?'Aucun résultat':'Aucun brouillon pour le moment'}</h3><p>${q?'Essayez un autre mot-clé.':"Préparez vos états des lieux ici, puis ouvrez-les dans l'app FOXSCAN sur place — toutes les infos sont pré-remplies."}</p>${!q?'<button class="btn-new-draft" onclick="openNewDraftModal()"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Créer un brouillon</button>':''}</div>`;
+    return;
+  }
+  root.innerHTML=filtered.map(d=>{
+    const deepLink=`foxscan://draft/${d.id}`;
+    const isExported=d.status==="exported";
+    return `
+    <div class="draft-card" id="draft-${d.id}">
+      <div class="draft-card-head">
+        <div class="draft-card-info">
+          <div class="draft-card-title">${escapeHtml(d.address)}</div>
+          <div class="draft-card-meta">
+            <span class="draft-card-type">${escapeHtml(propTypeLabel(d.propertyType))} · ${escapeHtml(edlTypeLabel(d.edlType))}</span>
+            <span>📅 ${escapeHtml(formatDateTime(d.scheduledAt))}</span>
+            ${isExported?"<span style='color:var(--green);font-weight:600'>✓ Ouvert dans l'app</span>":''}
+          </div>
+        </div>
+      </div>
+      <div class="draft-card-details">
+        ${d.tenantName?`<div>👤 Locataire : <strong>${escapeHtml(d.tenantName)}</strong></div>`:''}
+        ${d.landlordName?`<div>🏠 Bailleur : <strong>${escapeHtml(d.landlordName)}</strong></div>`:''}
+        ${d.notes?`<div style="margin-top:6px;font-style:italic">💬 ${escapeHtml(d.notes)}</div>`:''}
+      </div>
+      <div class="draft-card-actions">
+        <a href="${deepLink}" class="btn-action primary" onclick="markExported('${d.id}')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18M3 12h18M3 17h13M15 21l4-4 4 4M19 17v8"/></svg>
+          Ouvrir dans l'app
+        </a>
+        <button class="btn-action danger" onclick="confirmDeleteDraft('${d.id}')">Supprimer</button>
+      </div>
+    </div>
+  `;
+  }).join("");
+}
+
+// ── MODAL NEW DRAFT ───────────────────────────────────────────────────
+window.openNewDraftModal=function(){
+  document.getElementById("draftForm").reset();
+  document.getElementById("draftError").classList.remove("show");
+  // Set default date à dans 1 heure
+  const d=new Date();d.setHours(d.getHours()+1);d.setMinutes(0);
+  document.getElementById("dfScheduled").value=d.toISOString().slice(0,16);
+  document.getElementById("draftModal").classList.add("show");
+  setTimeout(()=>document.getElementById("dfAddress")?.focus(),50);
+};
+window.closeNewDraftModal=function(){document.getElementById("draftModal").classList.remove("show");};
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeNewDraftModal();});
+
+window.submitNewDraft=async function(e){
+  e.preventDefault();
+  const btn=document.getElementById("draftSubmit");const err=document.getElementById("draftError");
+  err.classList.remove("show");btn.disabled=true;btn.textContent="Création…";
+  const payload={
+    address:document.getElementById("dfAddress").value.trim(),
+    propertyType:document.getElementById("dfPropType").value,
+    edlType:document.getElementById("dfEdlType").value,
+    scheduledAt:document.getElementById("dfScheduled").value,
+    tenantName:document.getElementById("dfTenantName").value.trim(),
+    tenantEmail:document.getElementById("dfTenantEmail").value.trim(),
+    landlordName:document.getElementById("dfLandlordName").value.trim(),
+    notes:document.getElementById("dfNotes").value.trim(),
+  };
+  try{
+    const r=await createDraft(payload);
+    if(r?.draft){allDrafts.unshift(r.draft);}
+    closeNewDraftModal();
+    showPage("brouillons");
+    showToast("✓ Brouillon créé. Ouvrez-le sur place dans l'app FOXSCAN.");
+  }catch(err2){
+    err.textContent=err2.message||"Erreur lors de la création";err.classList.add("show");
+  }finally{
+    btn.disabled=false;btn.textContent="Créer le brouillon";
+  }
+};
+
+window.markExported=async function(id){
+  const draft=allDrafts.find(d=>d.id===id);if(!draft||draft.status==="exported")return;
+  // On marque comme "exporté" côté backend (asynchrone, ne bloque pas le clic)
+  try{
+    const {updateDraft}=await import("../js/foxscan-client.js");
+    await updateDraft(id,{status:"exported"});
+    draft.status="exported";draft.exportedAt=new Date().toISOString();
+    renderDrafts();
+  }catch{}
+};
+
+window.confirmDeleteDraft=async function(id){
+  const draft=allDrafts.find(d=>d.id===id);if(!draft)return;
+  if(!confirm(`Supprimer le brouillon pour "${draft.address}" ?\\n\\nL'action est définitive.`))return;
+  try{
+    await deleteDraft(id);
+    allDrafts=allDrafts.filter(d=>d.id!==id);
+    renderDrafts();
+    showToast("✓ Brouillon supprimé");
+  }catch(err){
+    showToast("Erreur : "+(err.message||"suppression impossible"),true);
+  }
+};
+
+// ── SEARCH ────────────────────────────────────────────────────────────
+window.onSearch=function(){currentSearchQuery=document.getElementById("searchInput").value;renderAll();};
+
+// ── TRIAL BANNER ──────────────────────────────────────────────────────
+function renderTrialBanner(user){
+  const root=document.getElementById("trialBanner");if(!user)return;
+  const status=user.accessStatus||"trial";const days=user.trialDaysRemaining||0;
+  const trialEnd=user.trialEndsAt?new Date(user.trialEndsAt).toLocaleDateString("fr-FR",{day:"2-digit",month:"long"}):"";
+  if(status==="lifetime"){root.style.display="";root.className="trial-banner is-lifetime";root.innerHTML=`<div class="trial-banner-icon">✓</div><div class="trial-banner-content"><strong>Accès à vie activé</strong>Vous êtes un Early Adopter FOXSCAN. Toutes les fonctionnalités présentes et futures, sans limite.</div>`;return;}
+  if(status==="subscription"){root.style.display="none";return;}
+  if(status==="expired"){root.style.display="";root.className="trial-banner is-expired";root.innerHTML=`<div class="trial-banner-icon">⚠</div><div class="trial-banner-content"><strong>Essai gratuit expiré</strong>Débloquez votre accès à vie pour 200 € (paiement unique).</div><a href="../index.html#pricing" class="trial-banner-cta">Débloquer 200€</a>`;return;}
+  const isWarn=days<=3;
+  root.style.display="";root.className="trial-banner "+(isWarn?"is-warning":"is-trial");
+  root.innerHTML=`<div class="trial-banner-icon">${isWarn?"⏱":"🎁"}</div><div class="trial-banner-content"><strong>${isWarn?`Plus que ${days} jour${days>1?"s":""} d'essai`:`${days} jours d'essai gratuit restants`}</strong>${isWarn?`Expire le ${trialEnd}. Bloquez votre accès à vie pour 200 €.`:`Profitez-en pour explorer. Pour bloquer à vie : 200 € paiement unique.`}</div><a href="../index.html#pricing" class="trial-banner-cta">Voir l'offre 200€</a>`;
+}
+
+// ── ACCOUNT ───────────────────────────────────────────────────────────
+function renderAccount(user){
+  if(!user)return;
+  document.getElementById("acctName").textContent=user.name||"—";
+  document.getElementById("acctEmail").textContent=user.email||"—";
+  let provider="Email";if(user.email?.includes("@privaterelay.appleid.com"))provider="Apple";else if(user.googleSub)provider="Google";
+  document.getElementById("acctProvider").textContent=provider;
+  document.getElementById("acctStatus").textContent={lifetime:"À vie ✓",subscription:"Abonnement actif",trial:`Essai · ${user.trialDaysRemaining||0}j`,expired:"Expiré"}[user.accessStatus]||"—";
+}
+
+// ── LOGOUT ────────────────────────────────────────────────────────────
+window.doLogout=function(){try{logoutApi().catch(()=>{});}catch{}try{clearSession();}catch{}window.location.href="../login.html";};
+
+// ── RENDER ALL ────────────────────────────────────────────────────────
+function renderAll(){renderProjects();renderDrafts();}
+
+// ── BOOTSTRAP BULLETPROOF : UI immediate, timeouts, render progressif ──
+// Principes :
+// 1. On RENDER l'UI immédiatement avec données vides → l'utilisateur peut cliquer dès la 1ère ms
+// 2. Chaque appel API a un timeout de 6s max → jamais de hang infini
+// 3. Au fur et à mesure que les Promises résolvent, on update l'affichage
+// 4. Si une API plante, les autres continuent → degraded mode pas blocking mode
+
+function withTimeout(promise, ms, label){
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(`Timeout ${label} (${ms}ms)`)), ms)),
+  ]);
+}
+
+async function bootstrap(){
+  console.log("[FOXSCAN] Bootstrap v2.2");
+
+  // ─── 1. Auth check (synchrone) ───
+  const localUser = getSessionUser();
+  if (!localUser.isAuthed) {
+    console.log("[FOXSCAN] Pas de session → redirect login");
+    window.location.href = "../login.html";
+    return;
+  }
+
+  // ─── 2. UI immédiate ─── (l'utilisateur peut déjà cliquer)
+  document.getElementById("userAvatar").textContent = (localUser.name||"U").charAt(0).toUpperCase();
+  document.getElementById("userName").textContent = localUser.name || "—";
+  const first = (localUser.name||"").split(" ")[0];
+  if (first) document.getElementById("welcomeTitle").textContent = `Bonjour, ${first} 👋`;
+  document.getElementById("apiStatus").textContent = "Chargement…";
+
+  // Render UI vide tout de suite → fini le "Chargement…" qui bloque
+  renderAll();
+  renderAccount(localUser); // au moins le nom/email s'affichent
+
+  // ─── 3. Appels API en parallèle, avec timeouts individuels ───
+  // Chaque appel se fire-and-forget : il met à jour le state + redraw quand il résout
+
+  withTimeout(dashboardSession(), 6000, "session")
+    .then(r => {
+      const user = r?.user || localUser;
+      console.log("[FOXSCAN] Session OK", user);
+      renderTrialBanner(user);
+      renderAccount(user);
+      document.getElementById("apiStatus").textContent = getApiBaseUrl().replace(/^https?:\/\//,"");
+    })
+    .catch(e => {
+      console.warn("[FOXSCAN] Session erreur :", e.message);
+      // Si 401 explicite → logout. Sinon mode degraded.
+      if (e?.status === 401) { clearSession(); window.location.href = "../login.html"; return; }
+      document.getElementById("apiStatus").textContent = "⚠ API hors-ligne";
+    });
+
+  withTimeout(fetchProperties(), 6000, "properties")
+    .then(r => {
+      allBiens = r?.items || [];
+      console.log("[FOXSCAN] Biens :", allBiens.length);
+      renderProjects();
+    })
+    .catch(e => console.warn("[FOXSCAN] fetchProperties erreur :", e.message));
+
+  withTimeout(fetchExtractedProjects(), 6000, "projects")
+    .then(async r => {
+      const raw = r?.items || [];
+      console.log("[FOXSCAN] Projets extraits :", raw.length);
+      // Charge les fichiers de chaque projet (mais on n'attend pas, on update au fur)
+      allProjects = raw.map(p => ({ ...p, files: [] })); // affiche tout de suite
+      renderProjects();
+      // Puis on enrichit avec les fichiers en arrière-plan
+      raw.forEach(p => {
+        withTimeout(fetchProjectFiles(p.projectID), 5000, "projectFiles")
+          .then(f => {
+            const idx = allProjects.findIndex(x => x.projectID === p.projectID);
+            if (idx >= 0) { allProjects[idx].files = f?.files || []; renderProjects(); }
+          })
+          .catch(() => {});
+      });
+    })
+    .catch(e => console.warn("[FOXSCAN] fetchExtractedProjects erreur :", e.message));
+
+  withTimeout(fetchDrafts(), 6000, "drafts")
+    .then(r => {
+      allDrafts = r?.items || [];
+      console.log("[FOXSCAN] Brouillons :", allDrafts.length);
+      renderDrafts();
+    })
+    .catch(e => console.warn("[FOXSCAN] fetchDrafts erreur :", e.message));
+}
+
+bootstrap();
+</script>
 
 </body>
 </html>
