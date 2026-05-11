@@ -79,6 +79,38 @@ async function refreshAccessToken() {
   return true;
 }
 
+/**
+ * V5.2.3 — Fetch authentifié bas niveau avec refresh automatique du
+ * access_token sur 401. Contrairement à `request()` qui décode/throw,
+ * ce helper retourne la `Response` brute → utilisable pour des bodies
+ * non-JSON (binaire PDF en upload, etc.) ou des cas où l'appelant veut
+ * inspecter le `Response` sans qu'on lui throw une exception.
+ *
+ * Le `Authorization` est injecté automatiquement à partir du
+ * localStorage. Si le 1er appel renvoie 401, on tente un refresh et on
+ * réémet la requête.
+ */
+export async function authedFetch(path, options = {}) {
+  const url = path.startsWith("http") ? path : `${getApiBaseUrl()}${path}`;
+  const send = () =>
+    fetch(url, {
+      ...options,
+      headers: {
+        ...(options.headers || {}),
+        ...getAuthHeaders({}),
+      },
+    });
+
+  let response = await send();
+  if (response.status === 401) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
+      response = await send();
+    }
+  }
+  return response;
+}
+
 export async function request(path, options = {}, retryOn401 = true) {
   const { response, body } = await rawRequest(path, options);
 

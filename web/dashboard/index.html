@@ -839,6 +839,7 @@ body{
 
 <script type="module">
 import {
+  authedFetch,
   clearSession,
   createDraft,
   dashboardSession,
@@ -975,11 +976,16 @@ function renderDrafts(){
 window.confirmDeleteIosProject = async function(projectID, displayName) {
   if (!confirm(`Supprimer définitivement « ${displayName} » ?\n\nCette suppression sera propagée à l'iPhone à la prochaine synchronisation.`)) return;
   try {
-    const token = localStorage.getItem("foxscan_session_token") || localStorage.getItem("foxscan_token");
-    const resp = await fetch(`${window.FOXSCAN_API_BASE_URL || ""}/projects/${encodeURIComponent(projectID)}`, {
+    // V5.2.3 — authedFetch gère le refresh auto du token sur 401, évite
+    // les erreurs "Token expired" quand l'agent est resté sur la page.
+    const resp = await authedFetch(`/projects/${encodeURIComponent(projectID)}`, {
       method: "DELETE",
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
+    if (resp.status === 401) {
+      showToast("Session expirée, reconnectez-vous.", true);
+      setTimeout(() => { window.location.href = "../login.html"; }, 1500);
+      return;
+    }
     if (!resp.ok) throw new Error("HTTP " + resp.status);
     // Retire de la liste en mémoire (closure sur allDrafts module-scoped)
     // et re-render immédiatement pour un feedback instantané.
@@ -1328,19 +1334,23 @@ window.submitEditDraft = async function(e){
 
   try {
     const { id, source } = currentEditTarget;
-    const token = localStorage.getItem("foxscan_session_token") || localStorage.getItem("foxscan_token");
-    const base = window.FOXSCAN_API_BASE_URL || "";
-    const url = source === "ios"
-      ? `${base}/projects/${encodeURIComponent(id)}`
-      : `${base}/drafts/${encodeURIComponent(id)}`;
-    const resp = await fetch(url, {
+    const path = source === "ios"
+      ? `/projects/${encodeURIComponent(id)}`
+      : `/drafts/${encodeURIComponent(id)}`;
+    // V5.2.3 — authedFetch gère le refresh auto du token sur 401.
+    // Sans ça, l'agent qui édite un brouillon après que sa session ait
+    // expiré reçoit un brut "Token expired" et perd ses modifs.
+    const resp = await authedFetch(path, {
       method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
+    if (resp.status === 401) {
+      err.textContent = "Session expirée — reconnectez-vous (vos modifs ne sont pas perdues, copiez-les avant).";
+      err.classList.add("show");
+      btn.disabled = false; btn.textContent = "Enregistrer";
+      return;
+    }
     if (!resp.ok){
       const txt = await resp.text().catch(()=>"");
       throw new Error(txt || ("HTTP " + resp.status));
@@ -1422,16 +1432,17 @@ async function uploadEdlPdf(file){
   progressDetail.textContent = "Détection du format et extraction des données…";
 
   try {
-    const token = localStorage.getItem("foxscan_session_token") || localStorage.getItem("foxscan_token");
-    const base = window.FOXSCAN_API_BASE_URL || "";
-    const resp = await fetch(`${base}/imports/edl`, {
+    // V5.2.3 — authedFetch gère le refresh auto du token sur 401.
+    const resp = await authedFetch(`/imports/edl`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/pdf",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
+      headers: { "Content-Type": "application/pdf" },
       body: file,
     });
+    if (resp.status === 401) {
+      showToast("Session expirée — reconnectez-vous puis réessayez.", true);
+      setTimeout(() => { window.location.href = "../login.html"; }, 1500);
+      return;
+    }
     const data = await resp.json().catch(() => ({}));
     if (!resp.ok) {
       throw new Error(data?.detail || ("Erreur HTTP " + resp.status));
