@@ -802,13 +802,27 @@ body{
 
       <div class="field-row">
         <div class="field">
-          <label for="edTenantName">Locataire</label>
+          <label for="edTenantName">Locataire principal</label>
           <input type="text" id="edTenantName" maxlength="120" placeholder="Jean Dupont"/>
         </div>
         <div class="field">
           <label for="edTenantEmail">Email locataire</label>
           <input type="email" id="edTenantEmail" maxlength="120" placeholder="jean@example.com"/>
         </div>
+      </div>
+
+      <!-- V5.2.4 — Co-locataires (couple, colocation). Le 1er reste sur
+           tenantName ; tous les autres sont stockés dans additionalTenants[]. -->
+      <div class="field" id="edAdditionalTenantsBlock">
+        <label style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+          <span>Co-locataires</span>
+          <button type="button" class="btn-action ghost" style="padding:5px 12px;font-size:11px" onclick="addCoTenantRow()">
+            <svg width="11" height="11" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            Ajouter
+          </button>
+        </label>
+        <div id="edAdditionalTenantsList" style="display:flex;flex-direction:column;gap:8px"></div>
+        <div class="field-help">Couple, colocation, mariage… Chacun pourra signer l'EDL côté iPhone.</div>
       </div>
 
       <div class="field">
@@ -910,7 +924,11 @@ function renderProjects(){
 function renderDrafts(){
   const root=document.getElementById("drafts-list");
   const q=currentSearchQuery.toLowerCase();
-  const filtered=q?allDrafts.filter(d=>(d.address+" "+d.tenantName+" "+d.landlordName).toLowerCase().includes(q)):allDrafts;
+  const filtered=q?allDrafts.filter(d=>{
+    // V5.2.4 — Recherche aussi dans les co-locataires.
+    const additional = (d.additionalTenants || []).map(t => t?.name || "").join(" ");
+    return (d.address+" "+d.tenantName+" "+additional+" "+d.landlordName).toLowerCase().includes(q);
+  }):allDrafts;
   document.getElementById("draftCount").textContent=String(allDrafts.length);
   document.getElementById("draftCount").style.display=allDrafts.length?"inline-flex":"none";
   if(!filtered.length){
@@ -919,6 +937,16 @@ function renderDrafts(){
   }
   root.innerHTML=filtered.map(d=>{
     const isIOS = d.source === "ios";
+    // V5.2.4 — Affichage de tous les locataires (principal + co-locataires)
+    const allTenantNames = [d.tenantName, ...(d.additionalTenants || []).map(t => t?.name)]
+      .map(n => (n || "").trim())
+      .filter(Boolean);
+    const tenantsLabel = allTenantNames.length
+      ? (allTenantNames.length === 1
+        ? allTenantNames[0]
+        : `${allTenantNames[0]} <span style="color:var(--text-soft);font-weight:500;font-size:12px">+${allTenantNames.length - 1} co-locataire${allTenantNames.length > 2 ? "s" : ""}</span>`)
+      : "";
+    const tenantsTooltip = allTenantNames.join(" · ");
     const deepLink = isIOS ? `foxscan://project/${d.id}` : `foxscan://draft/${d.id}`;
     const isExported = d.status === "exported";
     const sourceBadge = isIOS
@@ -950,7 +978,7 @@ function renderDrafts(){
         </div>
       </div>
       <div class="draft-card-details">
-        ${d.tenantName?`<div>👤 Locataire : <strong>${escapeHtml(d.tenantName)}</strong></div>`:''}
+        ${tenantsLabel?`<div title="${escapeHtml(tenantsTooltip)}">👤 ${allTenantNames.length > 1 ? "Locataires" : "Locataire"} : <strong>${tenantsLabel}</strong></div>`:''}
         ${d.landlordName?`<div>🏠 Bailleur : <strong>${escapeHtml(d.landlordName)}</strong></div>`:''}
         ${d.notes?`<div style="margin-top:6px;font-style:italic">💬 ${escapeHtml(d.notes)}</div>`:''}
       </div>
@@ -1287,6 +1315,8 @@ window.openEditDraft = function(id, source){
   setVal("edTenantEmail", draft.tenantEmail || "");
   setVal("edLandlordName", draft.landlordName || "");
   setVal("edNotes", draft.notes || "");
+  // V5.2.4 — Pré-remplit la liste des co-locataires
+  renderCoTenantsRows(draft.additionalTenants || []);
 
   // Sous-titre + warning iOS
   const sub = document.getElementById("editDraftSub");
@@ -1309,6 +1339,55 @@ window.closeEditDraftModal = function(){
   currentEditTarget = null;
 };
 
+// V5.2.4 — UI multi-locataires : rendu de la liste, ajout, suppression.
+function renderCoTenantsRows(tenants){
+  const list = document.getElementById("edAdditionalTenantsList");
+  if (!list) return;
+  // On stocke en mémoire les valeurs pour pouvoir reconstruire facilement
+  // (utile si l'utilisateur tape, ajoute une ligne → on perd pas ce qu'il a écrit).
+  list.innerHTML = (tenants || []).map((t, i) => coTenantRowHtml(t || {}, i)).join("");
+  if (!tenants.length) {
+    list.innerHTML = `<div style="color:var(--text-mute);font-size:12px;font-style:italic;padding:6px 0">Aucun co-locataire. Cliquez sur « Ajouter » si plusieurs personnes sont sur le bail.</div>`;
+  }
+}
+
+function coTenantRowHtml(t, idx){
+  return `<div class="co-tenant-row" data-idx="${idx}" style="display:grid;grid-template-columns:2fr 1.5fr 36px;gap:6px;align-items:center">
+    <input type="text" placeholder="Nom complet" value="${escapeHtml(t.name||"")}" maxlength="120" class="co-tenant-name" style="padding:9px 12px;border:1px solid var(--border);border-radius:9px;font-size:13px;font-family:inherit;outline:none"/>
+    <input type="email" placeholder="email (optionnel)" value="${escapeHtml(t.email||"")}" maxlength="120" class="co-tenant-email" style="padding:9px 12px;border:1px solid var(--border);border-radius:9px;font-size:13px;font-family:inherit;outline:none"/>
+    <button type="button" onclick="removeCoTenantRow(${idx})" title="Retirer ce co-locataire" style="width:36px;height:36px;border:1px solid var(--border);background:transparent;border-radius:9px;cursor:pointer;color:var(--text-soft);font-family:inherit;font-size:16px">×</button>
+  </div>`;
+}
+
+function readCoTenantsFromDOM(){
+  const rows = document.querySelectorAll(".co-tenant-row");
+  const out = [];
+  rows.forEach((row) => {
+    const name = (row.querySelector(".co-tenant-name")?.value || "").trim();
+    const email = (row.querySelector(".co-tenant-email")?.value || "").trim();
+    if (!name) return;  // co-locataire sans nom = invalide
+    out.push({ name, phone: "", email });
+  });
+  return out;
+}
+
+window.addCoTenantRow = function(){
+  const current = readCoTenantsFromDOM();
+  current.push({ name: "", phone: "", email: "" });
+  renderCoTenantsRows(current);
+  // Focus sur le nouveau champ
+  setTimeout(() => {
+    const inputs = document.querySelectorAll(".co-tenant-name");
+    inputs[inputs.length - 1]?.focus();
+  }, 50);
+};
+
+window.removeCoTenantRow = function(idx){
+  const current = readCoTenantsFromDOM();
+  current.splice(idx, 1);
+  renderCoTenantsRows(current);
+};
+
 window.submitEditDraft = async function(e){
   e.preventDefault();
   if (!currentEditTarget){ closeEditDraftModal(); return; }
@@ -1326,6 +1405,8 @@ window.submitEditDraft = async function(e){
     scheduledAt: document.getElementById("edScheduled").value || null,
     tenantName: document.getElementById("edTenantName").value.trim(),
     tenantEmail: document.getElementById("edTenantEmail").value.trim(),
+    // V5.2.4 — Co-locataires (couple/colocation).
+    additionalTenants: readCoTenantsFromDOM(),
     landlordName: document.getElementById("edLandlordName").value.trim(),
     notes: document.getElementById("edNotes").value.trim(),
   };

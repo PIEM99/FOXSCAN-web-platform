@@ -601,13 +601,64 @@ async function importEDL(pdfBuffer, { callOpenAI }) {
 // peut depuis le JSON normalisé. Les autres champs (signatures, etc.)
 // resteront vides côté projet importé — l'agent les remplit sur place.
 
+// V5.2.4 — Split d'un champ "locataires" multi-personnes ("CHILLA Sofiane
+// et Alice" / "MR DUPONT et MME MARTIN" / "X, Y et Z") en :
+//   principal : 1er nom complet
+//   additional : array d'objets { name, phone:"", email:"" }
+//
+// Heuristique :
+//   • séparateurs : " et ", " & ", " ET ", ",", "/"
+//   • si le 1er token contient un mot dont la majeure partie des
+//     caractères sont en MAJUSCULES (probable nom de famille), on
+//     préfixe les tokens suivants avec ce nom pour reconstituer
+//     "CHILLA Sofiane et Alice" → ["CHILLA Sofiane", "CHILLA Alice"].
+//     Pour les "MR LELIEVRE et MME COLAS" (couple avec noms distincts),
+//     le 2e token a déjà sa propre majuscule ⇒ on le laisse tel quel.
+function splitTenants(rawName) {
+  if (!rawName || typeof rawName !== "string") return { principal: "", additional: [] };
+  const cleaned = rawName.trim();
+  if (!cleaned) return { principal: "", additional: [] };
+
+  const tokens = cleaned
+    .split(/\s+(?:et|ET|&)\s+|\s*[,/]\s*/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  if (tokens.length <= 1) return { principal: cleaned, additional: [] };
+
+  // Détection du nom de famille partagé : 1er token = "<NOM EN MAJ> <Prénom>"
+  // et token suivant = "<Prénom seul>" (pas de majuscule longue).
+  const firstParts = tokens[0].split(/\s+/);
+  const firstWordIsAllCaps = firstParts[0] && firstParts[0].length >= 3 &&
+    firstParts[0] === firstParts[0].toUpperCase() &&
+    /[A-ZÀ-Ÿ]/.test(firstParts[0]);
+  const sharedSurname = firstWordIsAllCaps ? firstParts[0] : null;
+
+  const principal = tokens[0];
+  const additional = tokens.slice(1).map((t) => {
+    // Si le token suivant n'a pas de mot en majuscules → on lui préfixe
+    // le nom de famille détecté (si présent).
+    if (sharedSurname && !/\b[A-ZÀ-Ÿ]{3,}\b/.test(t)) {
+      return { name: `${sharedSurname} ${t}`.trim(), phone: "", email: "" };
+    }
+    return { name: t, phone: "", email: "" };
+  });
+
+  return { principal, additional };
+}
+
 function toFoxscanReport(edl, { reportId, projectId }) {
   const meta = edl.meta || {};
   const insp = meta.inspectionType === "exit" ? "Sortie"
             : meta.inspectionType === "inventory" ? "Inventaire"
             : "Entrée";
 
-  const tenantName = meta.tenantEntrantName || meta.tenantSortantName || "";
+  // V5.2.4 — Split du locataire principal qui peut contenir plusieurs
+  // personnes ("X et Y", "X, Y et Z") en principal + additionalTenants.
+  const rawTenantName = meta.tenantEntrantName || meta.tenantSortantName || "";
+  const splitResult = splitTenants(rawTenantName);
+  const tenantName = splitResult.principal;
+  const additionalTenants = splitResult.additional;
 
   const roomConditions = (edl.rooms || []).map((r) => ({
     roomName: r.name,
@@ -638,6 +689,9 @@ function toFoxscanReport(edl, { reportId, projectId }) {
     city: meta.city || "",
     tenantName,
     tenantEmail: "",
+    // V5.2.4 — Co-locataires (couple, colocation). Compatible avec le
+    // modèle iOS PropertyInspectionReport.AdditionalTenant.
+    additionalTenants,
     landlordName: meta.landlordName || "",
     agencyName: meta.agencyName || "",
     surfaceM2: meta.surfaceM2 || null,

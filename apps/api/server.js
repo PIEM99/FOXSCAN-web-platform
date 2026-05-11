@@ -1679,6 +1679,21 @@ function sanitizeDraftText(s, maxLen = 200) {
   return String(s || "").trim().replace(/[\x00-\x1F\x7F]/g, "").slice(0, maxLen);
 }
 
+// V5.2.4 — Sanitize d'un tableau de co-locataires. Whitelist stricte de
+// champs (name, phone, email) pour éviter qu'un payload malveillant
+// injecte des propriétés arbitraires. Max 10 co-locataires par EDL.
+function sanitizeAdditionalTenants(input) {
+  if (!Array.isArray(input)) return [];
+  return input.slice(0, 10).map((t) => {
+    const obj = t || {};
+    return {
+      name: sanitizeDraftText(obj.name, 120),
+      phone: sanitizeDraftText(obj.phone, 40),
+      email: sanitizeDraftText(obj.email, 120).toLowerCase(),
+    };
+  }).filter((t) => t.name.length > 0);  // un co-locataire sans nom = invalide
+}
+
 function draftPublicShape(d) {
   return {
     id: d.id,
@@ -1688,6 +1703,9 @@ function draftPublicShape(d) {
     scheduledAt: d.scheduledAt,
     tenantName: d.tenantName || "",
     tenantEmail: d.tenantEmail || "",
+    // V5.2.4 — Co-locataires (couple, colocation). Compatible avec le
+    // modèle iOS PropertyInspectionReport.AdditionalTenant.
+    additionalTenants: Array.isArray(d.additionalTenants) ? d.additionalTenants : [],
     landlordName: d.landlordName || "",
     notes: d.notes || "",
     status: d.status || "pending",  // pending | exported | completed
@@ -1743,6 +1761,9 @@ function iosProjectToDraftShape(proj) {
     scheduledAt: proj.scheduledAt || null,
     tenantName: report.tenantName || proj.tenantName || "",
     tenantEmail: report.tenantEmail || "",
+    // V5.2.4 — Co-locataires : on les lit depuis `payload.report.additionalTenants`
+    // (iOS les pousse sous cette forme). Compat : si vide ou absent, [].
+    additionalTenants: Array.isArray(report.additionalTenants) ? report.additionalTenants : [],
     landlordName: report.landlordName || proj.landlordName || "",
     notes: (report.notes || "").slice(0, 1000),
     status,
@@ -1825,6 +1846,8 @@ app.post("/drafts", requireCurrentUser, (req, res) => {
     scheduledAt,
     tenantName: sanitizeDraftText(body.tenantName, 120),
     tenantEmail: sanitizeDraftText(body.tenantEmail, 120).toLowerCase(),
+    // V5.2.4 — Co-locataires (couple/colocation). Whitelist : {name, phone, email}.
+    additionalTenants: sanitizeAdditionalTenants(body.additionalTenants),
     landlordName: sanitizeDraftText(body.landlordName, 120),
     notes: sanitizeDraftText(body.notes, 1000),
     status: "pending",
@@ -1861,6 +1884,10 @@ app.patch("/drafts/:id", requireCurrentUser, (req, res) => {
   if (typeof body.scheduledAt === "string") draft.scheduledAt = sanitizeDraftText(body.scheduledAt, 30);
   if (typeof body.tenantName === "string") draft.tenantName = sanitizeDraftText(body.tenantName, 120);
   if (typeof body.tenantEmail === "string") draft.tenantEmail = sanitizeDraftText(body.tenantEmail, 120).toLowerCase();
+  // V5.2.4 — Mise à jour des co-locataires si fournis (array remplacé en entier).
+  if (Array.isArray(body.additionalTenants)) {
+    draft.additionalTenants = sanitizeAdditionalTenants(body.additionalTenants);
+  }
   if (typeof body.landlordName === "string") draft.landlordName = sanitizeDraftText(body.landlordName, 120);
   if (typeof body.notes === "string") draft.notes = sanitizeDraftText(body.notes, 1000);
   if (body.status === "exported" && draft.status !== "exported") {
@@ -2126,6 +2153,11 @@ app.patch("/projects/:id", requireCurrentUser, (req, res) => {
       }
       if (typeof body.tenantEmail === "string") {
         r.tenantEmail = body.tenantEmail.trim().slice(0, 120).toLowerCase();
+      }
+      // V5.2.4 — Co-locataires : on mirror dans `payload.report.additionalTenants`
+      // qui est le format consommé directement par iOS (PropertyInspectionReport.AdditionalTenant).
+      if (Array.isArray(body.additionalTenants)) {
+        r.additionalTenants = sanitizeAdditionalTenants(body.additionalTenants);
       }
       if (typeof body.landlordName === "string") {
         r.landlordName = body.landlordName.trim().slice(0, 120);
