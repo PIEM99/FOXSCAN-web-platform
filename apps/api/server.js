@@ -2312,6 +2312,28 @@ app.get("/admin/diagnose/:userId", (req, res) => {
   const drafts = (store.drafts || []).filter((d) => d.userID === userId);
   const projects = (store.projects || []).filter((p) => p.userID === userId);
   const reports = (store.reports || []).filter((r) => r.userID === userId);
+
+  // V5.2.5 — Simule le rendu /drafts (unifié web + iOS) pour ce user
+  // afin de voir EXACTEMENT ce que le dashboard reçoit.
+  let unifiedDraftsResponse = null;
+  let unifiedDraftsError = null;
+  try {
+    const webDrafts = drafts.map(draftPublicShape);
+    const iosDrafts = (store.projects || [])
+      .filter((p) => p.userID === userId && p.status !== "completed" && p.isArchived !== true)
+      .map(iosProjectToDraftShape);
+    unifiedDraftsResponse = {
+      total: webDrafts.length + iosDrafts.length,
+      counts: { web: webDrafts.length, ios: iosDrafts.length },
+      sample: [...webDrafts, ...iosDrafts].slice(0, 5).map((d) => ({
+        id: d.id, source: d.source, address: d.address, tenantName: d.tenantName,
+        additionalTenants: d.additionalTenants, edlType: d.edlType,
+      })),
+    };
+  } catch (e) {
+    unifiedDraftsError = `${e.message}\n${e.stack}`;
+  }
+
   res.json({
     ok: true,
     user: user ? { id: user.id, email: user.email, name: user.name, createdAt: user.createdAt } : null,
@@ -2322,6 +2344,11 @@ app.get("/admin/diagnose/:userId", (req, res) => {
       projectsArchived: projects.filter((p) => p.isArchived === true).length,
       reports: reports.length,
     },
+    // Reflet de ce que GET /drafts renverrait pour ce user — permet de
+    // confirmer si l'erreur "je ne vois plus les drafts" vient du backend
+    // (réponse vide / crash mapper) ou du frontend (bug rendering).
+    drafts_endpoint_simulation: unifiedDraftsResponse,
+    drafts_endpoint_error: unifiedDraftsError,
     drafts: drafts.slice(0, 20).map((d) => ({
       id: d.id, address: d.address, edlType: d.edlType, status: d.status,
       scheduledAt: d.scheduledAt, createdAt: d.createdAt,
@@ -2329,6 +2356,10 @@ app.get("/admin/diagnose/:userId", (req, res) => {
     projects: projects.slice(0, 20).map((p) => ({
       id: p.id, projectName: p.projectName, address: p.address, status: p.status,
       isArchived: p.isArchived, origin: p.origin, createdAt: p.createdAt,
+      // Inclut le payload report partiellement pour diag des imports
+      report_tenant: p.payload?.report?.tenantName,
+      report_additional_tenants: p.payload?.report?.additionalTenants,
+      report_rooms_count: p.payload?.report?.roomConditions?.length,
     })),
   });
 });
