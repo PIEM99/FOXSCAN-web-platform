@@ -3262,6 +3262,150 @@ function safeFileName(input) {
     .slice(0, 180) || "export.bin";
 }
 
+// ─────────────────────────────────────────────────────────────────────
+// V5.2 — Import d'EDL externes (PDFs d'autres prestataires)
+//
+// POST /imports/edl  (body : raw PDF, Content-Type: application/pdf)
+//   → Parse le PDF (parser dédié si format reconnu, sinon IA Vision)
+//   → Crée un projet "in_progress" dans store.projects[] avec payload.report
+//     pré-rempli depuis les données extraites
+//   → Retourne le project + le JSON normalisé pour preview/edition côté UI
+//
+// L'agent peut ensuite ouvrir ce projet dans l'app iPhone (pull /api/projects
+// le ramène) ou éditer les champs depuis le dashboard.
+// ─────────────────────────────────────────────────────────────────────
+
+const { importEDL: importEDLImpl, toFoxscanReport } = require("./lib/edlImport");
+
+app.post(
+  "/imports/edl",
+  requireCurrentUser,
+  // Plafond du body raw spécifique aux PDFs d'EDL : 30 Mo couvre largement
+  // les rapports les plus lourds (avec photos). Si besoin, FOXSCAN_IMPORT_LIMIT.
+  express.raw({
+    type: ["application/pdf", "application/octet-stream"],
+    limit: process.env.FOXSCAN_IMPORT_LIMIT || "30mb",
+  }),
+  async (req, res) => {
+    const user = req._user;
+    const buf = req.body;
+    if (!Buffer.isBuffer(buf) || buf.length === 0) {
+      return res.status(400).json({ ok: false, detail: "PDF manquant" });
+    }
+    if (buf.length > 30 * 1024 * 1024) {
+      return res.status(413).json({ ok: false, detail: "PDF trop volumineux (max 30 Mo)" });
+    }
+    // Quick magic-bytes check : un vrai PDF commence par "%PDF-"
+    if (buf.slice(0, 4).toString("ascii") !== "%PDF") {
+      return res.status(400).json({ ok: false, detail: "Le fichier n'est pas un PDF valide" });
+    }
+
+    let normalized;
+    try {
+      normalized = await importEDLImpl(buf, { callOpenAI: callOpenAIResponses });
+    } catch (err) {
+      console.error(`[/imports/edl] user=${user.id} parse failed: ${err.message}`);
+      return res.status(err.status || 500).json({
+        ok: false,
+        detail: `Analyse du PDF impossible : ${err.message}`,
+      });
+    }
+
+    // Construit l'adresse "humaine" pour le top-level project (utilisé par
+    // /api/projects + dashboard listings).
+    const meta = normalized.meta || {};
+    const fullAddress = [
+      [meta.address, meta.addressComplement].filter(Boolean).join(", "),
+      [meta.postalCode, meta.city].filter(Boolean).join(" "),
+    ].filter((v) => v && v.trim().length).join(", ") || "(adresse à renseigner)";
+
+    // V5 — On crée le projet sous la même forme que ceux poussés par iOS
+    // via /inspections/sync, pour qu'il soit immédiatement visible :
+    //   • dashboard Brouillons (via /drafts unifié, status !== "completed")
+    //   • dashboard Calendrier (si scheduledAt renseigné plus tard)
+    //   • iPhone (via /api/projects → pull HomeView)
+    const store = readStore();
+    const projectID = crypto.randomUUID();
+    const reportID = crypto.randomUUID();
+
+    const reportPayload = toFoxscanReport(normalized, { reportId: reportID, projectId: projectID });
+
+    const tenantName = reportPayload.tenantName || "";
+    const landlordName = reportPayload.landlordName || "";
+    const inspectionType = reportPayload.inspectionType || "Entrée";
+
+    const project = {
+      id: projectID,
+      userID: user.id,
+      projectName: `Import ${normalized.sourceFormat || "EDL"} — ${fullAddress.slice(0, 60)}`,
+      createdAt: nowIso(),
+      updatedAt: nowIso(),
+      updatedAtDb: nowIso(),
+      status: "in_progress",
+      address: fullAddress,
+      tenantName,
+      landlordName,
+      inspectionType,
+      // V5.1 — Origine du projet : permet à l'UI de badger "Importé" sur
+      // les cards et de filtrer côté reporting.
+      origin: "import",
+      importedSourceFormat: normalized.sourceFormat || null,
+      importedConfidence: normalized.confidence || null,
+      isArchived: false,
+      archivedAt: null,
+      scheduledAt: null,
+      propertyImageFileName: null,
+      payload: {
+        report: reportPayload,
+      },
+    };
+
+    store.projects = store.projects || [];
+    store.projects.push(project);
+
+    // V5.2 — Pushed aussi en store.reports[] pour que GET /projects/:id
+    // (utilisé par l'iPhone pour pré-remplir l'EDL) renvoie le report avec
+    // les rooms/items extraits — sinon iOS verrait juste un projet vide.
+    store.reports = store.reports || [];
+    store.reports.push({
+      id: reportID,
+      userID: user.id,
+      projectID,
+      projectName: project.projectName,
+      fileName: `${reportID}.pdf`,
+      createdAt: nowIso(),
+      payload: reportPayload,
+      address: fullAddress,
+      tenantName,
+      isFinalized: false,
+      finalizedAt: null,
+      origin: "import",
+      createdAtDb: nowIso(),
+    });
+    writeStore(store);
+
+    console.log(`[/imports/edl] user=${user.id} project=${projectID} format=${normalized.sourceFormat} rooms=${(normalized.rooms || []).length}`);
+
+    res.json({
+      ok: true,
+      project: {
+        id: projectID,
+        projectName: project.projectName,
+        address: project.address,
+        tenantName,
+        landlordName,
+        inspectionType,
+        sourceFormat: normalized.sourceFormat,
+        confidence: normalized.confidence,
+      },
+      // Le JSON normalisé est inclus pour permettre à l'UI d'afficher une
+      // preview détaillée avant que l'agent aille sur place. L'UI peut
+      // ensuite faire PATCH /projects/:id pour corriger les champs.
+      extracted: normalized,
+    });
+  }
+);
+
 app.post(
   "/exports/upload",
   requireCurrentUser,

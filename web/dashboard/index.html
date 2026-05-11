@@ -313,6 +313,81 @@ body{
   .cal-title{font-size:18px}
 }
 
+/* ─────── IMPORTER UN EDL (V5.2) ─────── */
+.import-dropzone{
+  border:2px dashed var(--border-strong);
+  border-radius:18px;
+  padding:60px 40px;
+  text-align:center;
+  background:var(--card);
+  transition:.18s;
+  cursor:pointer;
+  position:relative;
+}
+.import-dropzone:hover, .import-dropzone.dragging{
+  border-color:var(--orange); background:#FFFAF4;
+}
+.import-dropzone .icon{
+  width:64px;height:64px;border-radius:18px;
+  background:var(--orange-l);color:var(--orange-d);
+  display:inline-flex;align-items:center;justify-content:center;
+  margin-bottom:18px;
+}
+.import-dropzone h3{font-size:18px;font-weight:700;margin-bottom:6px}
+.import-dropzone p{font-size:13px;color:var(--text-soft);max-width:520px;margin:0 auto}
+.import-dropzone button{margin-top:18px}
+.import-info{
+  margin-top:18px;background:var(--bg-soft);border-radius:12px;padding:14px 18px;
+  font-size:12px;color:var(--text-soft);max-width:680px;margin-left:auto;margin-right:auto;line-height:1.55;
+}
+.import-info strong{color:var(--text)}
+
+.import-progress{
+  background:var(--card);border:1px solid var(--border);border-radius:14px;
+  padding:24px;margin-top:24px;display:none;
+}
+.import-progress.show{display:block}
+.import-progress-bar{height:6px;background:var(--bg-soft);border-radius:3px;overflow:hidden;margin-top:14px}
+.import-progress-bar-fill{
+  height:100%;background:linear-gradient(90deg,var(--orange),var(--orange-d));
+  width:0%;transition:width .25s;
+}
+.import-progress-bar-fill.indeterminate{
+  width:30%;animation:indeterm 1.4s ease-in-out infinite;
+}
+@keyframes indeterm{
+  0% { margin-left:-30% }
+  100% { margin-left:100% }
+}
+
+.import-result{
+  background:var(--card);border:1px solid var(--border);border-radius:14px;
+  padding:24px;margin-top:24px;display:none;
+}
+.import-result.show{display:block}
+.import-result-head{
+  display:flex;align-items:center;gap:14px;margin-bottom:18px;flex-wrap:wrap;
+}
+.import-result-badge{
+  background:var(--green-l);color:var(--green);
+  padding:4px 12px;border-radius:980px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+}
+.import-result-fields{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:18px;
+}
+.import-result-field{
+  background:var(--bg-soft);border-radius:10px;padding:11px 14px;
+}
+.import-result-field-label{
+  font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-soft);margin-bottom:3px;
+}
+.import-result-field-value{font-size:14px;font-weight:600;color:var(--text)}
+.import-rooms-summary{
+  background:var(--bg-soft);border-radius:10px;padding:14px;margin-bottom:18px;
+  font-size:13px;color:var(--text-soft);
+}
+.import-rooms-summary strong{color:var(--text)}
+
 /* TOAST */
 .toast{position:fixed;bottom:24px;right:24px;background:var(--text);color:#fff;padding:14px 20px;border-radius:10px;font-size:13px;font-weight:500;box-shadow:0 12px 40px rgba(0,0,0,.25);transform:translateY(80px);opacity:0;transition:.3s;z-index:999;max-width:380px}
 .toast.show{transform:translateY(0);opacity:1}
@@ -357,6 +432,10 @@ body{
       <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
       Calendrier
       <span id="calCount" style="margin-left:auto;background:var(--text);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:980px;display:none">0</span>
+    </button>
+    <button class="sidebar-link" data-page="importer" onclick="showPage('importer')">
+      <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+      Importer un EDL
     </button>
     <button class="sidebar-link" data-page="brouillons" onclick="showPage('brouillons')">
       <svg viewBox="0 0 24 24"><path d="M14 3v6h6M14 3l6 6M6 3h8v6h6v12H6z"/></svg>
@@ -476,6 +555,36 @@ body{
       </div>
       <div id="cal-unscheduled-list" class="cal-unscheduled-list"></div>
     </div>
+  </section>
+
+  <!-- PAGE : IMPORTER UN EDL (V5.2) -->
+  <section class="page" id="page-importer">
+    <div class="welcome">
+      <h1>Importer un EDL existant</h1>
+      <p>Déposez un PDF d'état des lieux (autre prestataire, ancien EDL papier, etc.). FOXSCAN extrait automatiquement l'adresse, le locataire, les pièces et les états — vous pourrez compléter sur place dans l'app.</p>
+    </div>
+
+    <div id="importDropzone" class="import-dropzone" tabindex="0">
+      <input type="file" id="importFileInput" accept="application/pdf,.pdf" style="display:none"/>
+      <div class="icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+      </div>
+      <h3>Glissez votre PDF ici ou cliquez pour sélectionner</h3>
+      <p>Formats acceptés : PDFs numériques (SNEXI, Oracio, BailFacile…) ou scannés (constats papier numérisés, formulaires manuscrits).</p>
+      <button class="btn-action primary" type="button" onclick="document.getElementById('importFileInput').click()" style="margin-top:18px">Choisir un fichier</button>
+    </div>
+
+    <div class="import-info">
+      💡 <strong>Comment ça marche</strong> — Les PDFs <strong>numériques structurés</strong> (texte natif) sont analysés instantanément et <strong>gratuitement</strong>. Les PDFs <strong>scannés ou manuscrits</strong> passent par une IA Vision (~30 s d'analyse, ~0,20 € par EDL). L'EDL importé apparaît immédiatement dans vos brouillons et sur votre iPhone.
+    </div>
+
+    <div id="importProgress" class="import-progress">
+      <div style="font-size:14px;font-weight:600">⏳ <span id="importProgressLabel">Analyse du PDF en cours…</span></div>
+      <div class="import-progress-bar"><div class="import-progress-bar-fill indeterminate"></div></div>
+      <div style="font-size:12px;color:var(--text-soft);margin-top:8px" id="importProgressDetail">Cela peut prendre jusqu'à 60 secondes pour les PDFs scannés.</div>
+    </div>
+
+    <div id="importResult" class="import-result"></div>
   </section>
 
   <!-- PAGE : BROUILLONS -->
@@ -767,6 +876,8 @@ window.showPage = function showPage(page){
   const lnk=document.querySelector(`.sidebar-link[data-page="${page}"]`);if(lnk)lnk.classList.add("active");
   document.getElementById("searchInput").value="";currentSearchQuery="";
   renderAll();
+  // V5.2 — Init paresseuse de l'onglet Importer la 1ère fois qu'on le voit.
+  if (page === "importer") initImportPage();
 };
 
 // ── PROJETS ───────────────────────────────────────────────────────────
@@ -1252,6 +1363,186 @@ window.submitEditDraft = async function(e){
     btn.disabled = false; btn.textContent = "Enregistrer";
   }
 };
+
+// ── IMPORT D'UN EDL EXISTANT (V5.2) ──────────────────────────────────
+// Pipeline UX :
+//   1. drag-drop ou clic → user sélectionne un PDF
+//   2. on POST le binaire à /imports/edl (Content-Type: application/pdf)
+//   3. backend : pdf-parse → parser SNEXI gratuit OU IA Vision payante
+//   4. on affiche les données extraites + un CTA pour ouvrir le brouillon
+//
+// L'EDL importé est créé immédiatement comme projet iOS-style → visible
+// dans /drafts unifié ET sur l'iPhone via /api/projects.
+function initImportPage(){
+  const dz = document.getElementById("importDropzone");
+  const input = document.getElementById("importFileInput");
+  if (!dz || !input || dz.dataset.bound === "1") return;
+  dz.dataset.bound = "1";
+
+  const handleFile = async (file) => {
+    if (!file) return;
+    if (file.type !== "application/pdf" && !/\.pdf$/i.test(file.name)) {
+      showToast("Seuls les fichiers PDF sont acceptés", true);
+      return;
+    }
+    if (file.size > 30 * 1024 * 1024) {
+      showToast("PDF trop volumineux (max 30 Mo)", true);
+      return;
+    }
+    await uploadEdlPdf(file);
+  };
+
+  input.addEventListener("change", (e) => handleFile(e.target.files?.[0]));
+
+  dz.addEventListener("click", (e) => {
+    // Le clic sur le bouton "Choisir un fichier" déclenche déjà le picker —
+    // on évite un double-déclenchement quand on clique sur le bouton.
+    if (e.target.closest("button")) return;
+    input.click();
+  });
+
+  dz.addEventListener("dragover", (e) => {
+    e.preventDefault(); dz.classList.add("dragging");
+  });
+  dz.addEventListener("dragleave", () => dz.classList.remove("dragging"));
+  dz.addEventListener("drop", (e) => {
+    e.preventDefault(); dz.classList.remove("dragging");
+    handleFile(e.dataTransfer?.files?.[0]);
+  });
+}
+
+async function uploadEdlPdf(file){
+  const progress = document.getElementById("importProgress");
+  const progressLabel = document.getElementById("importProgressLabel");
+  const progressDetail = document.getElementById("importProgressDetail");
+  const result = document.getElementById("importResult");
+  result.classList.remove("show");
+  progress.classList.add("show");
+  progressLabel.textContent = `Analyse de ${file.name}…`;
+  progressDetail.textContent = "Détection du format et extraction des données…";
+
+  try {
+    const token = localStorage.getItem("foxscan_session_token") || localStorage.getItem("foxscan_token");
+    const base = window.FOXSCAN_API_BASE_URL || "";
+    const resp = await fetch(`${base}/imports/edl`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/pdf",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: file,
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      throw new Error(data?.detail || ("Erreur HTTP " + resp.status));
+    }
+    progress.classList.remove("show");
+    renderImportResult(data);
+    // Refresh la liste des brouillons pour que le nouveau projet
+    // apparaisse aussi dans l'onglet Brouillons.
+    refreshDraftsAfterImport();
+  } catch (err) {
+    progress.classList.remove("show");
+    showToast("Import impossible : " + (err.message || "erreur inconnue"), true);
+  }
+}
+
+function renderImportResult(data){
+  const root = document.getElementById("importResult");
+  const ex = data.extracted || {};
+  const meta = ex.meta || {};
+  const sourceLabel = data.project?.sourceFormat === "snexi" ? "Parser dédié SNEXI"
+                   : data.project?.sourceFormat === "vision" ? "IA Vision"
+                   : "Analyse texte";
+  const confidence = data.project?.confidence
+    ? Math.round(data.project.confidence * 100) + "%"
+    : "—";
+
+  const fields = [
+    ["Type d'EDL", meta.inspectionType === "exit" ? "Sortie" : meta.inspectionType === "inventory" ? "Inventaire" : "Entrée"],
+    ["Adresse", meta.address || data.project?.address || "—"],
+    ["Code postal / ville", [meta.postalCode, meta.city].filter(Boolean).join(" ") || "—"],
+    ["Type de bien", meta.propertyType || "—"],
+    ["Surface", meta.surfaceM2 ? meta.surfaceM2 + " m²" : "—"],
+    ["Locataire entrant", meta.tenantEntrantName || "—"],
+    ["Locataire sortant", meta.tenantSortantName || "—"],
+    ["Bailleur", meta.landlordName || "—"],
+    ["Agence", meta.agencyName || "—"],
+    ["Date", meta.date || "—"],
+  ];
+
+  const rooms = ex.rooms || [];
+  const totalItems = rooms.reduce((n, r) => n + (r.items?.length || 0), 0);
+
+  const metersHtml = (() => {
+    const m = ex.meters || {};
+    const bits = [];
+    if (m.waterCold?.index) bits.push(`💧 Eau froide : <strong>${escapeHtml(m.waterCold.index)}</strong>`);
+    if (m.waterHot?.index) bits.push(`🔥 Eau chaude : <strong>${escapeHtml(m.waterHot.index)}</strong>`);
+    if (m.electricity?.hp) bits.push(`⚡ HP : <strong>${escapeHtml(m.electricity.hp)}</strong>`);
+    if (m.electricity?.hc) bits.push(`⚡ HC : <strong>${escapeHtml(m.electricity.hc)}</strong>`);
+    if (m.gas?.present === true) bits.push(`🛢 Gaz : <strong>présent</strong>`);
+    return bits.length ? `<div style="margin-bottom:12px;font-size:13px;color:var(--text-soft)">${bits.join(" &nbsp;·&nbsp; ")}</div>` : "";
+  })();
+
+  const boilerHtml = ex.boiler?.brand
+    ? `<div style="margin-bottom:12px;font-size:13px;color:var(--text-soft)">🔥 Chaudière : <strong>${escapeHtml(ex.boiler.brand)}</strong>${ex.boiler.maintenanceDone === true ? ' · entretien fait ✓' : ex.boiler.maintenanceDone === false ? ' · entretien <strong style="color:var(--red)">non</strong>' : ''}</div>` : "";
+
+  const smokeHtml = ex.smokeDetector?.present !== null && ex.smokeDetector?.present !== undefined
+    ? `<div style="margin-bottom:12px;font-size:13px;color:var(--text-soft)">🚨 Détecteur fumée : <strong>${ex.smokeDetector.present ? "présent" : "absent"}</strong>${ex.smokeDetector.rooms?.length ? ` (${ex.smokeDetector.rooms.map(escapeHtml).join(", ")})` : ""}</div>` : "";
+
+  root.innerHTML = `
+    <div class="import-result-head">
+      <span class="import-result-badge">✓ Importé</span>
+      <div style="flex:1;min-width:200px">
+        <div style="font-size:16px;font-weight:700">${escapeHtml(data.project?.address || "EDL importé")}</div>
+        <div style="font-size:12px;color:var(--text-soft);margin-top:2px">${escapeHtml(sourceLabel)} · Confiance ${confidence}</div>
+      </div>
+    </div>
+
+    <div class="import-result-fields">
+      ${fields.map(([label, value]) => `
+        <div class="import-result-field">
+          <div class="import-result-field-label">${escapeHtml(label)}</div>
+          <div class="import-result-field-value">${escapeHtml(String(value))}</div>
+        </div>
+      `).join("")}
+    </div>
+
+    ${metersHtml}
+    ${boilerHtml}
+    ${smokeHtml}
+
+    <div class="import-rooms-summary">
+      📐 <strong>${rooms.length} pièce${rooms.length > 1 ? "s" : ""} détectée${rooms.length > 1 ? "s" : ""}</strong> avec <strong>${totalItems} éléments</strong> au total.
+      ${rooms.length ? "<br/>" + rooms.map((r) => `<span style="display:inline-block;background:var(--card);border:1px solid var(--border);padding:3px 9px;border-radius:980px;font-size:11px;font-weight:600;margin:4px 4px 0 0">${escapeHtml(r.name)} <span style="color:var(--text-soft)">· ${r.items?.length || 0}</span></span>`).join("") : ""}
+    </div>
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <a href="foxscan://project/${escapeHtml(data.project?.id || "")}" class="btn-action primary" style="flex:1;justify-content:center;min-width:200px">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18M3 12h18M3 17h13M15 21l4-4 4 4M19 17v8"/></svg>
+        Ouvrir dans l'app iPhone
+      </a>
+      <button class="btn-action ghost" style="min-width:160px" onclick="showPage('brouillons')">
+        Voir dans Brouillons
+      </button>
+      <button class="btn-action ghost" style="min-width:140px" onclick="document.getElementById('importFileInput').click()">
+        Importer un autre PDF
+      </button>
+    </div>
+  `;
+  root.classList.add("show");
+  root.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+async function refreshDraftsAfterImport(){
+  try {
+    const r = await fetchDrafts();
+    allDrafts = r?.items || [];
+    renderDrafts();
+    renderCalendar();
+  } catch {}
+}
 
 // ── SEARCH ────────────────────────────────────────────────────────────
 window.onSearch=function(){currentSearchQuery=document.getElementById("searchInput").value;renderAll();};
