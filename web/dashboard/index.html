@@ -646,22 +646,81 @@ body{
   </div>
 </div>
 
-<!-- ───────── MODAL : ÉDITER DATE D'UN EDL ───────── -->
-<div class="modal-overlay" id="editDateModal" onclick="if(event.target===this)closeEditDateModal()">
-  <div class="modal" role="dialog" aria-labelledby="editDateTitle" style="max-width:480px">
-    <button class="modal-close" onclick="closeEditDateModal()" aria-label="Fermer">×</button>
-    <h2 id="editDateTitle">Modifier la date</h2>
-    <p class="modal-sub" id="editDateSub">—</p>
+<!-- ───────── MODAL : ÉDITION COMPLÈTE D'UN BROUILLON (web + iPhone) ───────── -->
+<div class="modal-overlay" id="editDraftModal" onclick="if(event.target===this)closeEditDraftModal()">
+  <div class="modal" role="dialog" aria-labelledby="editDraftTitle">
+    <button class="modal-close" onclick="closeEditDraftModal()" aria-label="Fermer">×</button>
+    <h2 id="editDraftTitle">Modifier le brouillon</h2>
+    <p class="modal-sub" id="editDraftSub">—</p>
 
-    <form id="editDateForm" onsubmit="submitEditDate(event)">
+    <form id="editDraftForm" onsubmit="submitEditDraft(event)">
       <div class="field">
-        <label for="edScheduled">Nouvelle date prévue</label>
-        <input type="datetime-local" id="edScheduled" required/>
+        <label for="edAddress">Adresse du bien *</label>
+        <input type="text" id="edAddress" maxlength="200" required placeholder="12 rue de la République, 75011 Paris"/>
       </div>
-      <div class="modal-error" id="editDateError"></div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="edPropType">Type de bien</label>
+          <select id="edPropType">
+            <option value="">— Inchangé —</option>
+            <option value="studio">Studio</option>
+            <option value="T1">T1</option>
+            <option value="T2">T2</option>
+            <option value="T3">T3</option>
+            <option value="T4">T4</option>
+            <option value="T5+">T5+</option>
+            <option value="maison">Maison</option>
+            <option value="local-commercial">Local commercial</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="edEdlType">Type d'EDL</label>
+          <select id="edEdlType">
+            <option value="">— Inchangé —</option>
+            <option value="entry">Entrée</option>
+            <option value="exit">Sortie</option>
+            <option value="inventory">Inventaire</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="edScheduled">Date prévue</label>
+        <input type="datetime-local" id="edScheduled"/>
+        <div class="field-help">Laisser vide pour ne pas planifier.</div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="edTenantName">Locataire</label>
+          <input type="text" id="edTenantName" maxlength="120" placeholder="Jean Dupont"/>
+        </div>
+        <div class="field">
+          <label for="edTenantEmail">Email locataire</label>
+          <input type="email" id="edTenantEmail" maxlength="120" placeholder="jean@example.com"/>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="edLandlordName">Bailleur</label>
+        <input type="text" id="edLandlordName" maxlength="120" placeholder="Mme Martin"/>
+      </div>
+
+      <div class="field">
+        <label for="edNotes">Notes pour l'agent</label>
+        <textarea id="edNotes" maxlength="1000" placeholder="Digicode 1234, compteur EDF dans la cave, etc."></textarea>
+      </div>
+
+      <div id="edIosWarning" style="display:none;background:#FFF8EC;border-left:3px solid #FF9F0A;padding:10px 14px;border-radius:6px;font-size:12px;color:#A85F00;margin-bottom:12px">
+        💡 Cet EDL est en cours sur l'iPhone. Les modifications seront prises en compte à la prochaine ouverture de l'app.
+      </div>
+
+      <div class="modal-error" id="editDraftError"></div>
+
       <div style="display:flex;gap:10px;margin-top:8px">
-        <button type="button" class="btn-action ghost" style="flex:1;justify-content:center" onclick="closeEditDateModal()">Annuler</button>
-        <button type="submit" class="modal-submit" id="editDateSubmit" style="flex:2;margin-top:0">Enregistrer</button>
+        <button type="button" class="btn-action ghost" style="flex:1;justify-content:center" onclick="closeEditDraftModal()">Annuler</button>
+        <button type="submit" class="modal-submit" id="editDraftSubmit" style="flex:2;margin-top:0">Enregistrer</button>
       </div>
     </form>
   </div>
@@ -788,6 +847,10 @@ function renderDrafts(){
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18M3 12h18M3 17h13M15 21l4-4 4 4M19 17v8"/></svg>
           ${openLabel}
         </a>
+        <button class="btn-action ghost" onclick="openEditDraft('${d.id}', '${d.source || 'web'}')" title="Modifier le brouillon">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Modifier
+        </button>
         <button class="btn-action danger" onclick="${deleteHandler}">Supprimer</button>
       </div>
     </div>
@@ -1070,52 +1133,92 @@ window.calCellClick = function(ymd){
   if (scheduled) scheduled.value = `${ymd}T09:00`;
 };
 
-// ── ÉDITION DE LA DATE D'UN EDL ───────────────────────────────────────
-let currentEditTarget = null;  // { id, source }
+// ── ÉDITION COMPLÈTE D'UN BROUILLON (web + iPhone) ────────────────────
+// V5.1 — Le modal d'édition couvre tous les champs (adresse, locataire,
+// dates, type) pour les drafts web ET les projets iPhone non finalisés.
+// Le backend bascule entre PATCH /drafts/:id et PATCH /projects/:id
+// selon l'origine du brouillon (champ `source`).
+let currentEditTarget = null;  // { id, source, draft }
 
+// Helper utilisé aussi par le calendrier (gardé pour rétrocompat des
+// gestionnaires onclick existants).
 window.openEditDate = function(id, source){
-  const draft = (allDrafts || []).find(d => d.id === id);
-  if (!draft){ showToast("EDL introuvable", true); return; }
-  currentEditTarget = { id, source: source || draft.source || "web", draft };
-  const overlay = document.getElementById("editDateModal");
-  const input = document.getElementById("edScheduled");
-  const sub = document.getElementById("editDateSub");
-  const err = document.getElementById("editDateError");
-  err.classList.remove("show");
-  if (sub) sub.textContent = `${draft.address || "(adresse à renseigner)"} — ${edlTypeLabel(draft.edlType)}`;
-  if (input){
-    // Pré-remplit avec la date actuelle ou aujourd'hui à 09:00.
-    if (draft.scheduledAt){
-      const p = parseScheduled(draft.scheduledAt);
-      input.value = p ? `${p.ymd}T${p.hh}:${p.mm}` : "";
-    } else {
-      const t = new Date(); t.setHours(9,0,0,0);
-      const ymd = `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}-${String(t.getDate()).padStart(2,"0")}`;
-      input.value = `${ymd}T09:00`;
-    }
-  }
-  overlay.classList.add("show");
+  window.openEditDraft(id, source);
 };
 
-window.closeEditDateModal = function(){
-  document.getElementById("editDateModal").classList.remove("show");
+window.openEditDraft = function(id, source){
+  const draft = (allDrafts || []).find(d => d.id === id);
+  if (!draft){ showToast("Brouillon introuvable", true); return; }
+  const resolvedSource = source || draft.source || "web";
+  currentEditTarget = { id, source: resolvedSource, draft };
+
+  // Pré-remplit tous les champs
+  const setVal = (idAttr, val) => {
+    const el = document.getElementById(idAttr);
+    if (el) el.value = val ?? "";
+  };
+  setVal("edAddress", draft.address || "");
+  setVal("edPropType", draft.propertyType || "");
+  setVal("edEdlType", draft.edlType || "");
+  if (draft.scheduledAt){
+    const p = parseScheduled(draft.scheduledAt);
+    setVal("edScheduled", p ? `${p.ymd}T${p.hh}:${p.mm}` : "");
+  } else {
+    setVal("edScheduled", "");
+  }
+  setVal("edTenantName", draft.tenantName || "");
+  setVal("edTenantEmail", draft.tenantEmail || "");
+  setVal("edLandlordName", draft.landlordName || "");
+  setVal("edNotes", draft.notes || "");
+
+  // Sous-titre + warning iOS
+  const sub = document.getElementById("editDraftSub");
+  if (sub){
+    sub.textContent = resolvedSource === "ios"
+      ? "Brouillon iPhone — les modifications seront propagées à l'app."
+      : "Brouillon créé depuis le dashboard.";
+  }
+  const warning = document.getElementById("edIosWarning");
+  if (warning) warning.style.display = resolvedSource === "ios" ? "block" : "none";
+
+  const err = document.getElementById("editDraftError");
+  err.classList.remove("show");
+
+  document.getElementById("editDraftModal").classList.add("show");
+};
+
+window.closeEditDraftModal = function(){
+  document.getElementById("editDraftModal").classList.remove("show");
   currentEditTarget = null;
 };
 
-window.submitEditDate = async function(e){
+window.submitEditDraft = async function(e){
   e.preventDefault();
-  if (!currentEditTarget){ closeEditDateModal(); return; }
-  const btn = document.getElementById("editDateSubmit");
-  const err = document.getElementById("editDateError");
+  if (!currentEditTarget){ closeEditDraftModal(); return; }
+  const btn = document.getElementById("editDraftSubmit");
+  const err = document.getElementById("editDraftError");
   err.classList.remove("show");
-  const newValue = document.getElementById("edScheduled").value;
-  if (!newValue){ err.textContent = "Date obligatoire"; err.classList.add("show"); return; }
   btn.disabled = true; btn.textContent = "Enregistrement…";
+
+  // Construit le body PATCH. Pour les selects "type", on n'envoie pas
+  // si vide pour ne pas écraser la valeur courante côté backend.
+  const propType = document.getElementById("edPropType").value;
+  const edlType = document.getElementById("edEdlType").value;
+  const body = {
+    address: document.getElementById("edAddress").value.trim(),
+    scheduledAt: document.getElementById("edScheduled").value || null,
+    tenantName: document.getElementById("edTenantName").value.trim(),
+    tenantEmail: document.getElementById("edTenantEmail").value.trim(),
+    landlordName: document.getElementById("edLandlordName").value.trim(),
+    notes: document.getElementById("edNotes").value.trim(),
+  };
+  if (propType) body.propertyType = propType;
+  if (edlType) body.edlType = edlType;
+
   try {
     const { id, source } = currentEditTarget;
     const token = localStorage.getItem("foxscan_session_token") || localStorage.getItem("foxscan_token");
     const base = window.FOXSCAN_API_BASE_URL || "";
-    // iOS → PATCH /projects/:id ; Web → PATCH /drafts/:id
     const url = source === "ios"
       ? `${base}/projects/${encodeURIComponent(id)}`
       : `${base}/drafts/${encodeURIComponent(id)}`;
@@ -1125,16 +1228,23 @@ window.submitEditDate = async function(e){
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify({ scheduledAt: newValue }),
+      body: JSON.stringify(body),
     });
-    if (!resp.ok) throw new Error("HTTP " + resp.status);
+    if (!resp.ok){
+      const txt = await resp.text().catch(()=>"");
+      throw new Error(txt || ("HTTP " + resp.status));
+    }
     // Maj locale immédiate
-    const draft = allDrafts.find(d => d.id === id);
-    if (draft) draft.scheduledAt = newValue;
-    closeEditDateModal();
+    const idx = allDrafts.findIndex(d => d.id === id);
+    if (idx >= 0){
+      Object.assign(allDrafts[idx], body);
+      if (propType) allDrafts[idx].propertyType = propType;
+      if (edlType) allDrafts[idx].edlType = edlType;
+    }
+    closeEditDraftModal();
     renderCalendar();
     renderDrafts();
-    showToast("✓ Date mise à jour");
+    showToast("✓ Brouillon mis à jour");
   } catch (e2) {
     err.textContent = e2.message || "Erreur lors de la mise à jour";
     err.classList.add("show");

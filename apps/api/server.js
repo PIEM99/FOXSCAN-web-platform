@@ -2076,6 +2076,77 @@ app.patch("/projects/:id", requireCurrentUser, (req, res) => {
   if (typeof body.projectName === "string" && body.projectName.length) {
     project.projectName = body.projectName;
   }
+
+  // V5.1 — Édition depuis le dashboard web des champs de "draft" sur un
+  // projet iPhone non finalisé (status !== "completed"). Permet à
+  // l'agent de compléter/corriger l'adresse, le locataire, etc. depuis
+  // l'onglet Brouillons ou le Calendrier, et que la modif soit propagée
+  // à l'iPhone à la prochaine sync.
+  //
+  // Garde-fou : on refuse l'édition de ces champs si le projet est
+  // terminé (status === "completed") — un EDL signé ne doit pas voir
+  // ses métadonnées altérées rétroactivement.
+  const canEditDraftFields = project.status !== "completed";
+  if (canEditDraftFields) {
+    // Top-level (utilisé pour les listings, /api/projects, etc.)
+    if (typeof body.address === "string" && body.address.trim().length) {
+      project.address = body.address.trim().slice(0, 200);
+    }
+    if (typeof body.tenantName === "string") {
+      project.tenantName = body.tenantName.trim().slice(0, 120);
+    }
+    if (typeof body.landlordName === "string") {
+      project.landlordName = body.landlordName.trim().slice(0, 120);
+    }
+    if (typeof body.inspectionType === "string") {
+      // Accepte les valeurs iOS ("Entrée"/"Sortie"/"Inventaire") ou
+      // les keys web ("entry"/"exit"/"inventory") — on stocke en clair.
+      project.inspectionType = body.inspectionType;
+    }
+
+    // payload.report : la source de vérité pour l'app iPhone. On
+    // mirror les changements pour que l'iPhone les voie lors du pull.
+    if (project.payload && typeof project.payload === "object") {
+      if (!project.payload.report) project.payload.report = {};
+      const r = project.payload.report;
+      if (typeof body.address === "string" && body.address.trim().length) {
+        r.address = body.address.trim().slice(0, 200);
+      }
+      if (typeof body.addressComplement === "string") {
+        r.addressComplement = body.addressComplement.trim().slice(0, 200);
+      }
+      if (typeof body.postalCode === "string") {
+        r.postalCode = body.postalCode.trim().slice(0, 20);
+      }
+      if (typeof body.city === "string") {
+        r.city = body.city.trim().slice(0, 100);
+      }
+      if (typeof body.tenantName === "string") {
+        r.tenantName = body.tenantName.trim().slice(0, 120);
+      }
+      if (typeof body.tenantEmail === "string") {
+        r.tenantEmail = body.tenantEmail.trim().slice(0, 120).toLowerCase();
+      }
+      if (typeof body.landlordName === "string") {
+        r.landlordName = body.landlordName.trim().slice(0, 120);
+      }
+      if (typeof body.notes === "string") {
+        r.notes = body.notes.trim().slice(0, 1000);
+      }
+      // Mapping web edlType → iOS inspectionType.
+      if (typeof body.edlType === "string") {
+        const map = { entry: "Entrée", exit: "Sortie", inventory: "Inventaire" };
+        r.inspectionType = map[body.edlType] || r.inspectionType;
+      }
+      if (typeof body.inspectionType === "string") {
+        r.inspectionType = body.inspectionType;
+      }
+      if (typeof body.propertyType === "string") {
+        r.propertyType = body.propertyType;
+      }
+    }
+  }
+
   project.updatedAt = nowIso();
   project.updatedAtDb = nowIso();
 
@@ -2088,6 +2159,10 @@ app.patch("/projects/:id", requireCurrentUser, (req, res) => {
       archivedAt: project.archivedAt,
       scheduledAt: project.scheduledAt,
       propertyImageFileName: project.propertyImageFileName,
+      address: project.address,
+      tenantName: project.tenantName,
+      landlordName: project.landlordName,
+      inspectionType: project.inspectionType,
       updatedAt: project.updatedAt,
     },
   });
