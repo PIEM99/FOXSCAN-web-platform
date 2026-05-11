@@ -1740,16 +1740,41 @@ function isPlaceholderAddress(s) {
   return PLACEHOLDER_ADDRESSES.has(s.trim());
 }
 
+// V5.3.3 — Reconstitue une adresse propre depuis un report en filtrant
+// les placeholders ET en évitant la duplication code postal/ville si
+// déjà présent dans le champ address principal.
+function rebuildAddressFromReport(report) {
+  if (!report || typeof report !== "object") return "";
+  // Filtre l'adresse principale si c'est un placeholder.
+  const rawAddress = (report.address && !isPlaceholderAddress(report.address))
+    ? String(report.address).trim()
+    : "";
+  const complement = (report.addressComplement || "").trim();
+  const postalCode = (report.postalCode || "").trim();
+  const city = (report.city || "").trim();
+
+  // 1ère ligne = adresse + éventuel complément.
+  const line1 = [rawAddress, complement].filter(Boolean).join(", ");
+
+  // 2e ligne = postal + ville, MAIS uniquement si l'adresse principale
+  // ne les contient pas déjà (évite les doublons type "15 rue X, 69007
+  // Lyon, 69007 Lyon"). Le check est conservatif : présence du
+  // code postal dans line1 suffit.
+  const cityLine = [postalCode, city].filter(Boolean).join(" ").trim();
+  const alreadyHasCity = postalCode && line1.includes(postalCode);
+  const line2 = alreadyHasCity ? "" : cityLine;
+
+  return [line1, line2].filter((s) => s && s.length > 0).join(", ");
+}
+
 function iosProjectToDraftShape(proj) {
   const report = proj.payload?.report || {};
-  // V5.3.2 — Adresse priorisée :
-  //   1) reconstituée depuis les champs structurés du report (la plus fiable)
+  // V5.3.3 — Adresse priorisée :
+  //   1) reconstituée depuis les champs structurés du report (filtre
+  //      placeholders + évite doublon postal/ville)
   //   2) le top-level project.address SI ce n'est PAS un placeholder
   //   3) fallback "(adresse à renseigner)" pour signaler à l'agent
-  const rebuiltFromReport = [
-    [report.address, report.addressComplement].filter(Boolean).join(", "),
-    [report.postalCode, report.city].filter(Boolean).join(" "),
-  ].filter((s) => s && s.trim().length).join(", ");
+  const rebuiltFromReport = rebuildAddressFromReport(report);
 
   let address;
   if (rebuiltFromReport && rebuiltFromReport.length >= 5) {
@@ -2408,12 +2433,23 @@ app.get("/admin/cleanup-placeholders", (req, res) => {
   let unrecoverable = 0;
 
   for (const proj of (store.projects || [])) {
-    if (!proj.address || !isPlaceholderAddress(proj.address)) continue;
+    // V5.3.3 — Nettoie aussi les adresses déjà "polluées" par concaténation
+    // (ex: "Adresse synchronisée depuis iOS, 69007 Lyon, 69007 Lyon")
+    // pas seulement les placeholders purs.
+    const isPurePlaceholder = proj.address && isPlaceholderAddress(proj.address);
+    const containsPlaceholder = typeof proj.address === "string" &&
+      [...PLACEHOLDER_ADDRESSES].some((p) => proj.address.includes(p));
+    const hasDuplicatedCity = typeof proj.address === "string" &&
+      /(\b\d{5}\s+[A-Za-zÀ-Ÿ-]+),?\s+\1/.test(proj.address);  // "69007 Lyon, 69007 Lyon"
+    if (!isPurePlaceholder && !containsPlaceholder && !hasDuplicatedCity) continue;
+
     const report = proj.payload?.report || {};
-    const rebuilt = [
-      [report.address, report.addressComplement].filter(Boolean).join(", "),
-      [report.postalCode, report.city].filter(Boolean).join(" "),
-    ].filter((s) => s && s.trim().length).join(", ");
+    // Aussi : nettoyer report.address si placeholder pour ne pas le
+    // re-pousser au prochain sync iPhone.
+    if (report.address && isPlaceholderAddress(report.address)) {
+      report.address = "";
+    }
+    const rebuilt = rebuildAddressFromReport(report);
 
     if (rebuilt && rebuilt.length >= 5) {
       proj.address = rebuilt;
@@ -2421,9 +2457,9 @@ app.get("/admin/cleanup-placeholders", (req, res) => {
       proj.updatedAtDb = nowIso();
       updated++;
     } else {
-      // Pas de report exploitable : on garde le placeholder neutre,
-      // l'agent renommera depuis le dashboard ou l'app iPhone.
       proj.address = "(adresse à renseigner)";
+      proj.updatedAt = nowIso();
+      proj.updatedAtDb = nowIso();
       unrecoverable++;
     }
   }
