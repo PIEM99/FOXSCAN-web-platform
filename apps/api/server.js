@@ -1722,15 +1722,43 @@ function draftPublicShape(d) {
 /// l'unifier avec les brouillons web côté liste UI.
 /// On extrait l'adresse + locataire + dates depuis le `payload.report`
 /// pour avoir un rendu cohérent dans la même liste.
+// V5.3.2 — Détecte les valeurs "placeholder" héritées des anciens
+// syncs (avant V5 où l'adresse était hard-codée à "Adresse synchronisée
+// depuis iOS"). On veut JAMAIS exposer ces strings au dashboard ni au
+// pull iOS — préférer la reconstitution depuis report.address + city.
+const PLACEHOLDER_ADDRESSES = new Set([
+  "Adresse synchronisée depuis iOS",
+  "Adresse synchronisée depuis iCloud",
+  "(adresse à renseigner)",
+  "Adresse à renseigner",
+  "Nouveau projet",
+  "Projet exporté",
+]);
+
+function isPlaceholderAddress(s) {
+  if (typeof s !== "string") return false;
+  return PLACEHOLDER_ADDRESSES.has(s.trim());
+}
+
 function iosProjectToDraftShape(proj) {
   const report = proj.payload?.report || {};
-  // Adresse priorisée : projet (extrait V5) > champs structurés du report
-  const address = proj.address && proj.address !== "(adresse à renseigner)"
-    ? proj.address
-    : [
-        [report.address, report.addressComplement].filter(Boolean).join(", "),
-        [report.postalCode, report.city].filter(Boolean).join(" "),
-      ].filter(Boolean).join(", ") || "(adresse à renseigner)";
+  // V5.3.2 — Adresse priorisée :
+  //   1) reconstituée depuis les champs structurés du report (la plus fiable)
+  //   2) le top-level project.address SI ce n'est PAS un placeholder
+  //   3) fallback "(adresse à renseigner)" pour signaler à l'agent
+  const rebuiltFromReport = [
+    [report.address, report.addressComplement].filter(Boolean).join(", "),
+    [report.postalCode, report.city].filter(Boolean).join(" "),
+  ].filter((s) => s && s.trim().length).join(", ");
+
+  let address;
+  if (rebuiltFromReport && rebuiltFromReport.length >= 5) {
+    address = rebuiltFromReport;
+  } else if (proj.address && !isPlaceholderAddress(proj.address)) {
+    address = proj.address;
+  } else {
+    address = "(adresse à renseigner)";
+  }
   // Mapping inspectionType (entry/exit/inventory) vers edlType web.
   const edlTypeMap = {
     "Entrée": "entry", "entry": "entry", "Sortie": "exit", "exit": "exit",
@@ -2361,6 +2389,56 @@ app.get("/admin/diagnose/:userId", (req, res) => {
       report_additional_tenants: p.payload?.report?.additionalTenants,
       report_rooms_count: p.payload?.report?.roomConditions?.length,
     })),
+  });
+});
+
+// V5.3.2 — Migration one-shot : nettoie les anciens placeholders d'adresse
+// dans store.projects[]. Pour chaque projet dont `proj.address` est une
+// valeur placeholder ("Adresse synchronisée depuis iOS", etc.), on tente
+// de reconstituer la vraie adresse depuis `payload.report.address` +
+// addressComplement + postalCode + city. Si impossible (report vide),
+// on met "(adresse à renseigner)" pour signaler à l'agent.
+//
+// À lancer 1 fois après déploiement V5.3.2 :
+//   curl -H "x-admin-key: $KEY" https://foxscan.fr/admin/cleanup-placeholders
+app.get("/admin/cleanup-placeholders", (req, res) => {
+  if (!requireAdminKey(req, res)) return;
+  const store = readStore();
+  let updated = 0;
+  let unrecoverable = 0;
+
+  for (const proj of (store.projects || [])) {
+    if (!proj.address || !isPlaceholderAddress(proj.address)) continue;
+    const report = proj.payload?.report || {};
+    const rebuilt = [
+      [report.address, report.addressComplement].filter(Boolean).join(", "),
+      [report.postalCode, report.city].filter(Boolean).join(" "),
+    ].filter((s) => s && s.trim().length).join(", ");
+
+    if (rebuilt && rebuilt.length >= 5) {
+      proj.address = rebuilt;
+      proj.updatedAt = nowIso();
+      proj.updatedAtDb = nowIso();
+      updated++;
+    } else {
+      // Pas de report exploitable : on garde le placeholder neutre,
+      // l'agent renommera depuis le dashboard ou l'app iPhone.
+      proj.address = "(adresse à renseigner)";
+      unrecoverable++;
+    }
+  }
+
+  if (updated + unrecoverable > 0) {
+    writeStore(store);
+  }
+
+  res.json({
+    ok: true,
+    summary: {
+      totalProjects: (store.projects || []).length,
+      placeholdersRecovered: updated,
+      placeholdersResetToBlank: unrecoverable,
+    },
   });
 });
 
