@@ -12,12 +12,37 @@
 
 "use strict";
 
-// V5.2.1 — On require directement le module interne pour éviter le code
-// de "debug mode" de l'index.js de pdf-parse qui essaie de lire un PDF
-// de test si `module.parent === null`. Sur Passenger/Hostinger ce bug
-// fait crasher tout le serveur au démarrage (ENOENT sur test/data/...).
+// V5.2.1 — Require de pdf-parse rendu LAZY + OPTIONNEL.
+//
+// 2 problèmes connus sur Hostinger / Passenger :
+//   1) `pdf-parse/index.js` exécute du code de debug au require si
+//      `module.parent === null` → ENOENT sur un fichier de test absent
+//      → crash de tout le process → API en 503.
+//      Mitigation : on require le module interne `lib/pdf-parse.js`
+//      qui n'a pas ce code.
+//   2) `npm install` n'a parfois pas tourné côté Hostinger SSH
+//      (npm pas dans le PATH) → `pdf-parse` peut ne pas être installé
+//      du tout → require throw MODULE_NOT_FOUND → 503.
+//      Mitigation : on tente le require au moment de l'utilisation
+//      seulement, et on tolère son absence (fallback Vision-only).
+//
 // Voir https://gitlab.com/autokent/pdf-parse/-/issues/19
-const pdfParse = require("pdf-parse/lib/pdf-parse.js");
+let _pdfParse = null;
+let _pdfParseLoadAttempted = false;
+function getPdfParse() {
+  if (_pdfParseLoadAttempted) return _pdfParse;
+  _pdfParseLoadAttempted = true;
+  try {
+    _pdfParse = require("pdf-parse/lib/pdf-parse.js");
+  } catch (e) {
+    // pdf-parse pas installé → on n'aura pas de détection de format.
+    // L'import basculera systématiquement en IA Vision (plus coûteux
+    // mais fonctionnel). On log pour diagnostic mais on ne crashe pas.
+    console.warn("[edlImport] pdf-parse non disponible — fallback Vision pour tous les imports : " + e.message);
+    _pdfParse = null;
+  }
+  return _pdfParse;
+}
 
 // ─── Schéma JSON commun retourné par tous les parsers ─────────────────
 //
@@ -543,12 +568,18 @@ function meterSchema() {
  */
 async function importEDL(pdfBuffer, { callOpenAI }) {
   let text = "";
-  try {
-    const pdf = await pdfParse(pdfBuffer);
-    text = pdf.text || "";
-  } catch (e) {
-    text = "";  // PDF illisible côté texte → on bascule en vision
+  const pdfParse = getPdfParse();
+  if (pdfParse) {
+    try {
+      const pdf = await pdfParse(pdfBuffer);
+      text = pdf.text || "";
+    } catch (e) {
+      text = "";  // PDF illisible côté texte → on bascule en vision
+    }
   }
+  // Si pdf-parse n'est pas chargé, `text` reste vide → classifyFormat
+  // retourne "scanned" → on bascule directement en Vision (fonctionnel
+  // mais coûte ~0,20 € par EDL contre 0 € pour le parser dédié).
 
   const format = classifyFormat(text);
   if (format === "snexi") {
