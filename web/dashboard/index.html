@@ -217,6 +217,102 @@ body{
 .modal-submit:hover{background:var(--orange)}
 .modal-submit:disabled{opacity:.6;cursor:not-allowed}
 
+/* ─────── CALENDRIER (V5) ─────── */
+.cal-toolbar{display:flex;align-items:center;gap:14px;margin-bottom:20px;flex-wrap:wrap}
+.cal-title{font-size:22px;font-weight:700;letter-spacing:-.01em;margin-right:auto;min-width:200px;text-transform:capitalize}
+.cal-nav-btn{
+  background:var(--card);border:1px solid var(--border);border-radius:10px;
+  width:38px;height:38px;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-family:inherit;color:var(--text);transition:.15s;
+}
+.cal-nav-btn:hover{border-color:var(--orange);color:var(--orange-d)}
+.cal-nav-btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2.2}
+.cal-today-btn{
+  background:var(--card);border:1px solid var(--border);border-radius:10px;
+  padding:8px 16px;font-size:13px;font-weight:600;letter-spacing:.02em;
+  cursor:pointer;font-family:inherit;color:var(--text);transition:.15s;
+}
+.cal-today-btn:hover{border-color:var(--orange);color:var(--orange-d)}
+.cal-toggle-btn{
+  background:transparent;border:1px solid var(--border);border-radius:10px;
+  padding:8px 14px;font-size:12px;font-weight:500;
+  cursor:pointer;font-family:inherit;color:var(--text-soft);transition:.15s;
+}
+.cal-toggle-btn:hover{color:var(--text)}
+.cal-toggle-btn.active{background:var(--text);color:#fff;border-color:var(--text)}
+
+.cal-legend{display:flex;gap:14px;font-size:11px;color:var(--text-soft);align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.cal-legend-dot{display:inline-flex;align-items:center;gap:6px}
+.cal-legend-dot::before{content:"";width:9px;height:9px;border-radius:3px}
+.cal-legend-dot.entry::before{background:#1A9940}
+.cal-legend-dot.exit::before{background:#FF8A3D}
+.cal-legend-dot.inventory::before{background:#7B61FF}
+
+.cal-grid{
+  background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;
+  display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background-color:var(--border);
+}
+.cal-weekday{
+  background:var(--bg-soft);text-align:center;padding:11px 6px;
+  font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-soft);
+}
+.cal-cell{
+  background:var(--card);min-height:118px;padding:8px 8px 6px;cursor:pointer;
+  position:relative;display:flex;flex-direction:column;gap:4px;
+  transition:background .12s;
+}
+.cal-cell:hover{background:#FFFAF4}
+.cal-cell.other-month{background:#FBFBF8;color:var(--text-mute)}
+.cal-cell.other-month:hover{background:#F5F5F0}
+.cal-cell.today .cal-cell-num{
+  background:var(--orange);color:#fff;border-radius:8px;
+  width:26px;height:24px;display:inline-flex;align-items:center;justify-content:center;
+  font-weight:700;
+}
+.cal-cell.past{opacity:.65}
+.cal-cell-num{font-size:13px;font-weight:600;color:var(--text);padding:0 2px}
+.cal-cell.other-month .cal-cell-num{color:var(--text-mute);font-weight:500}
+
+.cal-event{
+  display:flex;align-items:center;gap:5px;padding:3px 7px;border-radius:6px;
+  font-size:11px;font-weight:600;line-height:1.25;cursor:pointer;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  border-left:3px solid currentColor;
+}
+.cal-event:hover{filter:brightness(.94)}
+.cal-event.entry{background:#EDFAF1;color:#1A9940}
+.cal-event.exit{background:#FFEEDD;color:#C95A1F}
+.cal-event.inventory{background:#F1ECFF;color:#5840C9}
+.cal-event-time{font-weight:700;font-size:10px;opacity:.85}
+.cal-event-label{flex:1;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+.cal-event-more{font-size:10px;color:var(--text-soft);padding:1px 4px;font-weight:500}
+.cal-event .src-dot{
+  display:inline-block;width:6px;height:6px;border-radius:50%;flex-shrink:0;
+}
+.cal-event .src-dot.ios{background:#0062c4}
+.cal-event .src-dot.web{background:#6A1B9A}
+
+/* Section "non programmés" sous le calendrier */
+.cal-unscheduled{margin-top:24px}
+.cal-unscheduled-title{font-size:14px;font-weight:600;color:var(--text-soft);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.cal-unscheduled-list{display:flex;flex-direction:column;gap:6px}
+.cal-unscheduled-item{
+  display:flex;align-items:center;gap:10px;padding:10px 14px;
+  background:var(--card);border:1px solid var(--border);border-radius:10px;
+  font-size:13px;cursor:pointer;transition:.15s;
+}
+.cal-unscheduled-item:hover{border-color:var(--orange)}
+.cal-unscheduled-item .badge{font-size:10px}
+
+/* Mobile : calendrier compact */
+@media(max-width:900px){
+  .cal-cell{min-height:74px;padding:5px 4px 4px}
+  .cal-event{padding:2px 5px;font-size:10px}
+  .cal-event-time{display:none}
+  .cal-event-label{font-size:10px}
+  .cal-title{font-size:18px}
+}
+
 /* TOAST */
 .toast{position:fixed;bottom:24px;right:24px;background:var(--text);color:#fff;padding:14px 20px;border-radius:10px;font-size:13px;font-weight:500;box-shadow:0 12px 40px rgba(0,0,0,.25);transform:translateY(80px);opacity:0;transition:.3s;z-index:999;max-width:380px}
 .toast.show{transform:translateY(0);opacity:1}
@@ -256,6 +352,11 @@ body{
     <button class="sidebar-link active" data-page="projets" onclick="showPage('projets')">
       <svg viewBox="0 0 24 24"><path d="M3 7h18M3 12h18M3 17h18"/></svg>
       Mes projets
+    </button>
+    <button class="sidebar-link" data-page="calendrier" onclick="showPage('calendrier')">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+      Calendrier
+      <span id="calCount" style="margin-left:auto;background:var(--text);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:980px;display:none">0</span>
     </button>
     <button class="sidebar-link" data-page="brouillons" onclick="showPage('brouillons')">
       <svg viewBox="0 0 24 24"><path d="M14 3v6h6M14 3l6 6M6 3h8v6h6v12H6z"/></svg>
@@ -334,6 +435,46 @@ body{
     </div>
     <div id="projects-list" class="cards-grid">
       <div class="empty"><div class="empty-icon">📁</div><h3>Chargement…</h3></div>
+    </div>
+  </section>
+
+  <!-- PAGE : CALENDRIER (V5) -->
+  <section class="page" id="page-calendrier">
+    <div class="welcome">
+      <h1>Calendrier des EDL</h1>
+      <p>Vos états des lieux planifiés. Cliquez sur une case pour créer un brouillon, sur un événement pour le modifier.</p>
+    </div>
+
+    <div class="cal-toolbar">
+      <div class="cal-title" id="calMonthLabel">—</div>
+      <button class="cal-nav-btn" onclick="calPrevMonth()" aria-label="Mois précédent">
+        <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <button class="cal-today-btn" onclick="calGotoToday()">Aujourd'hui</button>
+      <button class="cal-nav-btn" onclick="calNextMonth()" aria-label="Mois suivant">
+        <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+      </button>
+    </div>
+
+    <div class="cal-legend">
+      <span class="cal-legend-dot entry">Entrée</span>
+      <span class="cal-legend-dot exit">Sortie</span>
+      <span class="cal-legend-dot inventory">Inventaire</span>
+      <span style="margin-left:auto;display:inline-flex;align-items:center;gap:6px">
+        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#0062c4"></span> iPhone
+        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#6A1B9A;margin-left:6px"></span> Web
+      </span>
+    </div>
+
+    <div id="calendar-grid" class="cal-grid"></div>
+
+    <div class="cal-unscheduled" id="cal-unscheduled" style="display:none">
+      <div class="cal-unscheduled-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 2"/></svg>
+        Sans date planifiée
+        <span id="cal-unscheduled-count" style="background:var(--bg-soft);color:var(--text-soft);padding:1px 8px;border-radius:980px;font-size:11px;font-weight:600">0</span>
+      </div>
+      <div id="cal-unscheduled-list" class="cal-unscheduled-list"></div>
     </div>
   </section>
 
@@ -501,6 +642,27 @@ body{
       <div class="modal-error" id="draftError"></div>
 
       <button type="submit" class="modal-submit" id="draftSubmit">Créer le brouillon</button>
+    </form>
+  </div>
+</div>
+
+<!-- ───────── MODAL : ÉDITER DATE D'UN EDL ───────── -->
+<div class="modal-overlay" id="editDateModal" onclick="if(event.target===this)closeEditDateModal()">
+  <div class="modal" role="dialog" aria-labelledby="editDateTitle" style="max-width:480px">
+    <button class="modal-close" onclick="closeEditDateModal()" aria-label="Fermer">×</button>
+    <h2 id="editDateTitle">Modifier la date</h2>
+    <p class="modal-sub" id="editDateSub">—</p>
+
+    <form id="editDateForm" onsubmit="submitEditDate(event)">
+      <div class="field">
+        <label for="edScheduled">Nouvelle date prévue</label>
+        <input type="datetime-local" id="edScheduled" required/>
+      </div>
+      <div class="modal-error" id="editDateError"></div>
+      <div style="display:flex;gap:10px;margin-top:8px">
+        <button type="button" class="btn-action ghost" style="flex:1;justify-content:center" onclick="closeEditDateModal()">Annuler</button>
+        <button type="submit" class="modal-submit" id="editDateSubmit" style="flex:2;margin-top:0">Enregistrer</button>
+      </div>
     </form>
   </div>
 </div>
@@ -727,6 +889,260 @@ window.confirmDeleteDraft=async function(id){
   }
 };
 
+// ── CALENDRIER (V5) ───────────────────────────────────────────────────
+// État : mois affiché. Persisté en localStorage pour revenir au même endroit.
+let calCurrent = (function(){
+  try {
+    const saved = localStorage.getItem("foxscan_cal_month");
+    if (saved) {
+      const [y, m] = saved.split("-").map(Number);
+      if (Number.isFinite(y) && Number.isFinite(m)) return { year: y, month: m };
+    }
+  } catch {}
+  const today = new Date();
+  return { year: today.getFullYear(), month: today.getMonth() }; // month = 0-11
+})();
+
+function calPersist(){
+  try { localStorage.setItem("foxscan_cal_month", `${calCurrent.year}-${calCurrent.month}`); } catch {}
+}
+
+const MONTH_NAMES_FR = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+const WEEKDAY_LABELS_FR = ["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"];
+
+// Convertit une string ISO ou datetime-local en {date, ymd, hours, minutes}
+function parseScheduled(iso){
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return {
+    date: d,
+    ymd: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`,
+    hh: String(d.getHours()).padStart(2,"0"),
+    mm: String(d.getMinutes()).padStart(2,"0"),
+  };
+}
+
+// Indexe les drafts par YYYY-MM-DD pour le mois affiché.
+function calBuildEventIndex(){
+  const idx = {};            // ymd → [drafts]
+  const unscheduled = [];    // drafts sans scheduledAt
+  (allDrafts || []).forEach(d => {
+    if (!d.scheduledAt) {
+      unscheduled.push(d);
+      return;
+    }
+    const p = parseScheduled(d.scheduledAt);
+    if (!p) { unscheduled.push(d); return; }
+    if (!idx[p.ymd]) idx[p.ymd] = [];
+    idx[p.ymd].push({ ...d, _hh: p.hh, _mm: p.mm, _date: p.date });
+  });
+  // Tri par heure dans chaque jour
+  Object.keys(idx).forEach(k => idx[k].sort((a,b) => (a._hh+a._mm).localeCompare(b._hh+b._mm)));
+  // Tri des non-programmés par updatedAt desc
+  unscheduled.sort((a,b) => new Date(b.updatedAt||b.createdAt||0) - new Date(a.updatedAt||a.createdAt||0));
+  return { idx, unscheduled };
+}
+
+function calCellHtml(dateObj, isOtherMonth, events, todayYmd){
+  const ymd = `${dateObj.getFullYear()}-${String(dateObj.getMonth()+1).padStart(2,"0")}-${String(dateObj.getDate()).padStart(2,"0")}`;
+  const isToday = (ymd === todayYmd);
+  const isPast = (ymd < todayYmd) && !isToday;
+  const cls = [
+    "cal-cell",
+    isOtherMonth ? "other-month" : "",
+    isToday ? "today" : "",
+    isPast ? "past" : "",
+  ].filter(Boolean).join(" ");
+  const visible = events.slice(0, 3);
+  const overflow = events.length - visible.length;
+  const eventsHtml = visible.map(ev => {
+    const cssType = ["entry","exit","inventory"].includes(ev.edlType) ? ev.edlType : "entry";
+    const srcCls = ev.source === "ios" ? "ios" : "web";
+    const label = ev.tenantName ? ev.tenantName : (ev.address || "EDL").split(",")[0];
+    return `<div class="cal-event ${cssType}" onclick="event.stopPropagation();openEditDate('${ev.id}','${ev.source||'web'}')" title="${escapeHtml(ev.address||'')}">`
+         + `<span class="src-dot ${srcCls}"></span>`
+         + `<span class="cal-event-time">${ev._hh}:${ev._mm}</span>`
+         + `<span class="cal-event-label">${escapeHtml(label)}</span>`
+         + `</div>`;
+  }).join("");
+  const moreHtml = overflow > 0 ? `<div class="cal-event-more">+${overflow} autre${overflow>1?'s':''}</div>` : "";
+  return `<div class="${cls}" onclick="calCellClick('${ymd}')">`
+       + `<div class="cal-cell-num">${dateObj.getDate()}</div>`
+       + eventsHtml
+       + moreHtml
+       + `</div>`;
+}
+
+function renderCalendar(){
+  const root = document.getElementById("calendar-grid");
+  const label = document.getElementById("calMonthLabel");
+  if (!root || !label) return;
+
+  const { year, month } = calCurrent;
+  label.textContent = `${MONTH_NAMES_FR[month]} ${year}`;
+
+  const today = new Date();
+  const todayYmd = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
+
+  // Premier jour à afficher (lundi de la semaine du 1er du mois)
+  const firstOfMonth = new Date(year, month, 1);
+  // En FR la semaine commence lundi (Date.getDay() : dim=0 → 6, lun=1 → 0, …)
+  const offset = (firstOfMonth.getDay() + 6) % 7;
+  const start = new Date(year, month, 1 - offset);
+
+  const { idx, unscheduled } = calBuildEventIndex();
+
+  // Header weekdays
+  let html = WEEKDAY_LABELS_FR.map(w => `<div class="cal-weekday">${w}</div>`).join("");
+
+  // 6 lignes × 7 = 42 cellules (couvre toujours un mois complet)
+  for (let i = 0; i < 42; i++){
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    const ymd = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+    const events = idx[ymd] || [];
+    html += calCellHtml(d, d.getMonth() !== month, events, todayYmd);
+  }
+  root.innerHTML = html;
+
+  // Compteur d'événements ce mois → badge sidebar
+  const monthCount = Object.entries(idx).reduce((n, [k, arr]) => {
+    const [y, m] = k.split("-").map(Number);
+    return (y === year && m === month + 1) ? n + arr.length : n;
+  }, 0);
+  const badge = document.getElementById("calCount");
+  if (badge){
+    badge.textContent = String(monthCount);
+    badge.style.display = monthCount ? "inline-flex" : "none";
+  }
+
+  // Section "non programmés" sous le calendrier
+  renderUnscheduledList(unscheduled);
+}
+
+function renderUnscheduledList(list){
+  const wrap = document.getElementById("cal-unscheduled");
+  const ul = document.getElementById("cal-unscheduled-list");
+  const count = document.getElementById("cal-unscheduled-count");
+  if (!wrap || !ul || !count) return;
+  if (!list.length){ wrap.style.display = "none"; return; }
+  wrap.style.display = "block";
+  count.textContent = String(list.length);
+  ul.innerHTML = list.map(d => {
+    const srcBadge = d.source === "ios"
+      ? `<span style="background:#EBF4FF;color:#0062c4;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700">📱 iPhone</span>`
+      : `<span style="background:#F3E5FF;color:#6A1B9A;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700">🌐 Web</span>`;
+    const typeLabel = edlTypeLabel(d.edlType);
+    return `<div class="cal-unscheduled-item" onclick="openEditDate('${d.id}','${d.source||'web'}')">
+      ${srcBadge}
+      <strong style="font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(d.address||"(adresse à renseigner)")}</strong>
+      <span class="badge" style="background:var(--bg-soft);color:var(--text-soft)">${escapeHtml(typeLabel)}</span>
+      <span style="font-size:11px;color:var(--orange-d);font-weight:600">📅 Planifier →</span>
+    </div>`;
+  }).join("");
+}
+
+window.calPrevMonth = function(){
+  if (calCurrent.month === 0) { calCurrent.month = 11; calCurrent.year--; }
+  else calCurrent.month--;
+  calPersist();
+  renderCalendar();
+};
+window.calNextMonth = function(){
+  if (calCurrent.month === 11) { calCurrent.month = 0; calCurrent.year++; }
+  else calCurrent.month++;
+  calPersist();
+  renderCalendar();
+};
+window.calGotoToday = function(){
+  const t = new Date();
+  calCurrent = { year: t.getFullYear(), month: t.getMonth() };
+  calPersist();
+  renderCalendar();
+};
+
+// Clic sur une case vide du calendrier → ouvre la modal de création
+// avec la date pré-remplie à 09h00.
+window.calCellClick = function(ymd){
+  openNewDraftModal();
+  const scheduled = document.getElementById("dfScheduled");
+  if (scheduled) scheduled.value = `${ymd}T09:00`;
+};
+
+// ── ÉDITION DE LA DATE D'UN EDL ───────────────────────────────────────
+let currentEditTarget = null;  // { id, source }
+
+window.openEditDate = function(id, source){
+  const draft = (allDrafts || []).find(d => d.id === id);
+  if (!draft){ showToast("EDL introuvable", true); return; }
+  currentEditTarget = { id, source: source || draft.source || "web", draft };
+  const overlay = document.getElementById("editDateModal");
+  const input = document.getElementById("edScheduled");
+  const sub = document.getElementById("editDateSub");
+  const err = document.getElementById("editDateError");
+  err.classList.remove("show");
+  if (sub) sub.textContent = `${draft.address || "(adresse à renseigner)"} — ${edlTypeLabel(draft.edlType)}`;
+  if (input){
+    // Pré-remplit avec la date actuelle ou aujourd'hui à 09:00.
+    if (draft.scheduledAt){
+      const p = parseScheduled(draft.scheduledAt);
+      input.value = p ? `${p.ymd}T${p.hh}:${p.mm}` : "";
+    } else {
+      const t = new Date(); t.setHours(9,0,0,0);
+      const ymd = `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}-${String(t.getDate()).padStart(2,"0")}`;
+      input.value = `${ymd}T09:00`;
+    }
+  }
+  overlay.classList.add("show");
+};
+
+window.closeEditDateModal = function(){
+  document.getElementById("editDateModal").classList.remove("show");
+  currentEditTarget = null;
+};
+
+window.submitEditDate = async function(e){
+  e.preventDefault();
+  if (!currentEditTarget){ closeEditDateModal(); return; }
+  const btn = document.getElementById("editDateSubmit");
+  const err = document.getElementById("editDateError");
+  err.classList.remove("show");
+  const newValue = document.getElementById("edScheduled").value;
+  if (!newValue){ err.textContent = "Date obligatoire"; err.classList.add("show"); return; }
+  btn.disabled = true; btn.textContent = "Enregistrement…";
+  try {
+    const { id, source } = currentEditTarget;
+    const token = localStorage.getItem("foxscan_session_token") || localStorage.getItem("foxscan_token");
+    const base = window.FOXSCAN_API_BASE_URL || "";
+    // iOS → PATCH /projects/:id ; Web → PATCH /drafts/:id
+    const url = source === "ios"
+      ? `${base}/projects/${encodeURIComponent(id)}`
+      : `${base}/drafts/${encodeURIComponent(id)}`;
+    const resp = await fetch(url, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ scheduledAt: newValue }),
+    });
+    if (!resp.ok) throw new Error("HTTP " + resp.status);
+    // Maj locale immédiate
+    const draft = allDrafts.find(d => d.id === id);
+    if (draft) draft.scheduledAt = newValue;
+    closeEditDateModal();
+    renderCalendar();
+    renderDrafts();
+    showToast("✓ Date mise à jour");
+  } catch (e2) {
+    err.textContent = e2.message || "Erreur lors de la mise à jour";
+    err.classList.add("show");
+  } finally {
+    btn.disabled = false; btn.textContent = "Enregistrer";
+  }
+};
+
 // ── SEARCH ────────────────────────────────────────────────────────────
 window.onSearch=function(){currentSearchQuery=document.getElementById("searchInput").value;renderAll();};
 
@@ -757,7 +1173,7 @@ function renderAccount(user){
 window.doLogout=function(){try{logoutApi().catch(()=>{});}catch{}try{clearSession();}catch{}window.location.href="../login.html";};
 
 // ── RENDER ALL ────────────────────────────────────────────────────────
-function renderAll(){renderProjects();renderDrafts();}
+function renderAll(){renderProjects();renderDrafts();renderCalendar();}
 
 // ── BOOTSTRAP BULLETPROOF : UI immediate, timeouts, render progressif ──
 // Principes :
@@ -845,6 +1261,8 @@ async function bootstrap(){
       allDrafts = r?.items || [];
       console.log("[FOXSCAN] Brouillons :", allDrafts.length);
       renderDrafts();
+      // V5 — Le calendrier dépend des drafts ; refresh quand ils arrivent.
+      renderCalendar();
     })
     .catch(e => console.warn("[FOXSCAN] fetchDrafts erreur :", e.message));
 }
