@@ -1740,31 +1740,51 @@ function isPlaceholderAddress(s) {
   return PLACEHOLDER_ADDRESSES.has(s.trim());
 }
 
-// V5.3.3 — Reconstitue une adresse propre depuis un report en filtrant
-// les placeholders ET en évitant la duplication code postal/ville si
-// déjà présent dans le champ address principal.
+// V5.3.4 — Détecte si une chaîne d'adresse est polluée (placeholder pur,
+// ou contient un placeholder ailleurs, ou contient une duplication
+// "69007 Lyon 69007 Lyon").
+function isPollutedAddress(s) {
+  if (typeof s !== "string") return true;
+  const trimmed = s.trim();
+  if (!trimmed.length) return true;
+  if (PLACEHOLDER_ADDRESSES.has(trimmed)) return true;
+  // Placeholder concaténé : "Adresse synchronisée depuis iOS, 69008 Lyon"
+  for (const p of PLACEHOLDER_ADDRESSES) {
+    if (trimmed.includes(p)) return true;
+  }
+  // Duplication "12345 Ville, 12345 Ville" répété ≥ 2 fois
+  const cityPattern = /(\b\d{5}\b[^,]*)(?:,?\s*\1){1,}/i;
+  if (cityPattern.test(trimmed)) return true;
+  return false;
+}
+
+// V5.3.4 — Reconstitue une adresse propre EN PARTANT DE ZÉRO depuis les
+// champs structurés du report. Idempotent : appeler 10 fois donne le
+// même résultat, jamais d'accumulation. On ignore complètement
+// `report.address` si elle est polluée — dans ce cas on se rabat sur
+// postalCode + city seuls (mieux que rien pour l'agent).
 function rebuildAddressFromReport(report) {
   if (!report || typeof report !== "object") return "";
-  // Filtre l'adresse principale si c'est un placeholder.
-  const rawAddress = (report.address && !isPlaceholderAddress(report.address))
-    ? String(report.address).trim()
-    : "";
+
+  const rawAddress = (typeof report.address === "string"
+    && !isPollutedAddress(report.address))
+    ? report.address.trim() : "";
   const complement = (report.addressComplement || "").trim();
   const postalCode = (report.postalCode || "").trim();
   const city = (report.city || "").trim();
 
-  // 1ère ligne = adresse + éventuel complément.
-  const line1 = [rawAddress, complement].filter(Boolean).join(", ");
+  // 1ère partie = rue + éventuel complément (uniquement si on a une vraie rue).
+  const streetLine = [rawAddress, complement].filter(Boolean).join(", ");
 
-  // 2e ligne = postal + ville, MAIS uniquement si l'adresse principale
-  // ne les contient pas déjà (évite les doublons type "15 rue X, 69007
-  // Lyon, 69007 Lyon"). Le check est conservatif : présence du
-  // code postal dans line1 suffit.
+  // 2e partie = code postal + ville, AJOUTÉS uniquement si :
+  //   • streetLine ne les contient pas déjà
+  //   • on a au moins l'un des deux
   const cityLine = [postalCode, city].filter(Boolean).join(" ").trim();
-  const alreadyHasCity = postalCode && line1.includes(postalCode);
-  const line2 = alreadyHasCity ? "" : cityLine;
+  const alreadyHasCity = (postalCode && streetLine.includes(postalCode))
+                       || (city && streetLine.toLowerCase().includes(city.toLowerCase()));
+  const finalCityLine = alreadyHasCity ? "" : cityLine;
 
-  return [line1, line2].filter((s) => s && s.length > 0).join(", ");
+  return [streetLine, finalCityLine].filter((s) => s && s.length > 0).join(", ");
 }
 
 function iosProjectToDraftShape(proj) {
@@ -2433,20 +2453,14 @@ app.get("/admin/cleanup-placeholders", (req, res) => {
   let unrecoverable = 0;
 
   for (const proj of (store.projects || [])) {
-    // V5.3.3 — Nettoie aussi les adresses déjà "polluées" par concaténation
-    // (ex: "Adresse synchronisée depuis iOS, 69007 Lyon, 69007 Lyon")
-    // pas seulement les placeholders purs.
-    const isPurePlaceholder = proj.address && isPlaceholderAddress(proj.address);
-    const containsPlaceholder = typeof proj.address === "string" &&
-      [...PLACEHOLDER_ADDRESSES].some((p) => proj.address.includes(p));
-    const hasDuplicatedCity = typeof proj.address === "string" &&
-      /(\b\d{5}\s+[A-Za-zÀ-Ÿ-]+),?\s+\1/.test(proj.address);  // "69007 Lyon, 69007 Lyon"
-    if (!isPurePlaceholder && !containsPlaceholder && !hasDuplicatedCity) continue;
+    // V5.3.4 — Le check pollué couvre TOUS les cas (placeholder pur,
+    // placeholder concaténé, duplication ville). Idempotent.
+    if (!isPollutedAddress(proj.address)) continue;
 
     const report = proj.payload?.report || {};
-    // Aussi : nettoyer report.address si placeholder pour ne pas le
-    // re-pousser au prochain sync iPhone.
-    if (report.address && isPlaceholderAddress(report.address)) {
+    // Nettoie aussi report.address si polluée pour ne pas la re-pousser
+    // au prochain sync iPhone (qui réécrirait proj.address en boucle).
+    if (typeof report.address === "string" && isPollutedAddress(report.address)) {
       report.address = "";
     }
     const rebuilt = rebuildAddressFromReport(report);
