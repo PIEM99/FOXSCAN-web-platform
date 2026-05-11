@@ -2270,6 +2270,37 @@ app.get("/admin/users", (req, res) => {
   res.json({ ok: true, users, total: users.length });
 });
 
+// V5.2.2 — Diagnostic admin : retourne les compteurs de drafts/projects/reports
+// d'un user pour debugger les disparitions de données.
+app.get("/admin/diagnose/:userId", (req, res) => {
+  if (!requireAdminKey(req, res)) return;
+  const store = readStore();
+  const userId = req.params.userId;
+  const user = (store.users || []).find((u) => u.id === userId);
+  const drafts = (store.drafts || []).filter((d) => d.userID === userId);
+  const projects = (store.projects || []).filter((p) => p.userID === userId);
+  const reports = (store.reports || []).filter((r) => r.userID === userId);
+  res.json({
+    ok: true,
+    user: user ? { id: user.id, email: user.email, name: user.name, createdAt: user.createdAt } : null,
+    counts: {
+      drafts: drafts.length,
+      projects: projects.length,
+      projectsInProgress: projects.filter((p) => p.status !== "completed").length,
+      projectsArchived: projects.filter((p) => p.isArchived === true).length,
+      reports: reports.length,
+    },
+    drafts: drafts.slice(0, 20).map((d) => ({
+      id: d.id, address: d.address, edlType: d.edlType, status: d.status,
+      scheduledAt: d.scheduledAt, createdAt: d.createdAt,
+    })),
+    projects: projects.slice(0, 20).map((p) => ({
+      id: p.id, projectName: p.projectName, address: p.address, status: p.status,
+      isArchived: p.isArchived, origin: p.origin, createdAt: p.createdAt,
+    })),
+  });
+});
+
 app.patch("/admin/users/:userId/subscription", (req, res) => {
   const body = req.body || {};
   if (!requireAdminKey(req, res)) return;
