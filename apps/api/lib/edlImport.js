@@ -12,7 +12,12 @@
 
 "use strict";
 
-const pdfParse = require("pdf-parse");
+// V5.2.1 — On require directement le module interne pour éviter le code
+// de "debug mode" de l'index.js de pdf-parse qui essaie de lire un PDF
+// de test si `module.parent === null`. Sur Passenger/Hostinger ce bug
+// fait crasher tout le serveur au démarrage (ENOENT sur test/data/...).
+// Voir https://gitlab.com/autokent/pdf-parse/-/issues/19
+const pdfParse = require("pdf-parse/lib/pdf-parse.js");
 
 // ─── Schéma JSON commun retourné par tous les parsers ─────────────────
 //
