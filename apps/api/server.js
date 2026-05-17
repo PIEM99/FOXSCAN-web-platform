@@ -6,6 +6,8 @@ const path = require("path");
 const { jwtVerify, createRemoteJWKSet } = require("jose");
 const Stripe = require("stripe");
 const nodemailer = require("nodemailer");
+// V5.3 — Proxy /ai/scans* vers le PC ML (avec fallback mock pour dev)
+const { mountScansRoutes } = require("./lib/scansProxy");
 
 function readEnvFromDotenv(key) {
   const dotenvPath = path.join(__dirname, ".env");
@@ -1230,6 +1232,15 @@ Retourne strictement un JSON avec:
     return next(err);
   }
 });
+
+// V5.3 — Routes /ai/scans* (proxy vers PC ML + mock fallback).
+// Voir lib/scansProxy.js pour le détail. Configuration via env :
+//   FOXSCAN_ML_BACKEND_URL    URL Cloudflare Tunnel du PC ML (optionnel)
+//   FOXSCAN_ML_INTERNAL_TOKEN Token partagé Hostinger ↔ PC (optionnel)
+//   FOXSCAN_ML_TIMEOUT_MS     Timeout upload (default 600000 = 10 min)
+// Si non configuré → mode MOCK : stocke en local, simule done en 25 s,
+// utile pour tester le pipeline iPhone sans avoir le PC ML branché.
+mountScansRoutes(app, { requireCurrentUser });
 
 app.post("/auth/email/register", (req, res) => {
   const body = req.body || {};
