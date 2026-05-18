@@ -755,6 +755,28 @@ body{
   </div>
 </div>
 
+<!-- ───────── MODAL : DÉTAIL D'UN PROJET (V5.3.28 — fichiers + métadonnées) ───────── -->
+<div class="modal-overlay" id="projectDetailModal" onclick="if(event.target===this)closeProjectDetail()" style="display:none">
+  <div class="modal" role="dialog" aria-labelledby="projectDetailTitle" style="max-width:680px">
+    <button class="modal-close" onclick="closeProjectDetail()" aria-label="Fermer">×</button>
+    <h2 id="projectDetailTitle">Détail du projet</h2>
+    <div id="projectDetailBody" style="margin-top:14px"></div>
+  </div>
+</div>
+
+<style>
+  .proj-card{transition:transform .15s ease, box-shadow .15s ease}
+  .proj-card:hover{transform:translateY(-1px); box-shadow:0 6px 18px rgba(0,0,0,.08)}
+  .proj-detail-meta{display:flex;flex-direction:column;gap:6px;padding:10px 12px;background:#f7f9fb;border-radius:8px;margin-bottom:14px;font-size:13px;color:var(--text)}
+  .proj-detail-meta strong{color:var(--text-strong,#1a1a1a);font-weight:600}
+  .proj-detail-section{margin-top:14px}
+  .proj-detail-section h4{margin:0 0 8px 0;font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-soft,#666)}
+  .proj-detail-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid #eaeaea;border-radius:8px;margin-bottom:6px;background:#fff}
+  .proj-detail-row-title{font-weight:600;font-size:13px;color:var(--text)}
+  .proj-detail-row-sub{font-size:11px;color:var(--text-soft,#666);margin-top:2px}
+  .proj-detail-empty{padding:14px;background:#fff8e1;border-radius:8px;font-size:13px;color:#7a5d00}
+</style>
+
 <!-- ───────── MODAL : ÉDITION COMPLÈTE D'UN BROUILLON (web + iPhone) ───────── -->
 <div class="modal-overlay" id="editDraftModal" onclick="if(event.target===this)closeEditDraftModal()">
   <div class="modal" role="dialog" aria-labelledby="editDraftTitle">
@@ -864,6 +886,7 @@ import {
   fetchModels,
   fetchProjectFiles,
   fetchProperties,
+  fetchProjects,
   getApiBaseUrl,
   getSessionUser,
   logoutApi,
@@ -871,8 +894,10 @@ import {
 
 // State
 let allDrafts = [];
-let allProjects = [];
-let allBiens = [];
+let allProjects = [];        // /api/projects — bundles extraits sur disque
+let allBiens = [];           // /properties   — biens groupés par propertyID
+let allIosProjects = [];     // /projects     — projets iOS synchronisés
+let allExports = [];         // /exports      — fichiers uploadés (PDFs etc.)
 let currentSearchQuery = "";
 
 // ── Helpers ───────────────────────────────────────────────────────────
@@ -899,23 +924,203 @@ window.showPage = function showPage(page){
 function renderProjects(){
   const root=document.getElementById("projects-list");
   const q=currentSearchQuery.toLowerCase();
-  // Mix : biens + projets extraits
-  const items=[
-    ...allBiens.map(b=>({type:"bien",id:b.propertyID,title:b.address||"Bien sans adresse",addr:b.tenantName?"👤 "+b.tenantName:"",badges:[b.counts?.entry>0&&{cls:"complet",text:"Entrée"},b.counts?.exit>0&&{cls:"complet",text:"Sortie"},].filter(Boolean)})),
-    ...allProjects.map(p=>({type:"projet",id:p.projectID,title:p.name||p.projectID,addr:p.filesCount+" fichiers",badges:[(p.files||[]).some(f=>/\.pdf$/i.test(f.path))&&{cls:"pdf",text:"PDF"},(p.files||[]).some(f=>/\.usdz$/i.test(f.path))&&{cls:"scan",text:"3D"},(p.files||[]).some(f=>/\.(jpg|png|webp)$/i.test(f.path))&&{cls:"photos",text:"Photos"}].filter(Boolean)}))
-  ];
-  const filtered=q?items.filter(i=>(i.title+" "+i.addr).toLowerCase().includes(q)):items;
-  if(!filtered.length){
-    root.innerHTML=`<div class="empty"><div class="empty-icon">📁</div><h3>${q?'Aucun résultat':'Aucun projet pour le moment'}</h3><p>${q?'Essayez un autre mot-clé.':"Les projets et biens scannés depuis l'app apparaîtront ici."}</p></div>`;
+  // Mix 3 sources avec déduplication conservative pour ne JAMAIS perdre
+  // un projet : on n'élimine que si on est certain qu'il s'agit du même
+  // (id strictement identique). En cas de doute, on garde les deux.
+  // L'ordre est : biens (regroupent entrée+sortie) → projets iOS (les
+  // plus complets en métadonnées) → projets extraits (legacy).
+  const seenIosByID = new Set();
+  const seenExtractedByID = new Set();
+  const items = [];
+
+  // 1) Biens regroupés (propertyID = clé stable entrée/sortie)
+  for (const b of allBiens || []) {
+    items.push({
+      type: "bien",
+      id: b.propertyID,
+      title: b.address || "Bien sans adresse",
+      addr: b.tenantName ? "👤 " + b.tenantName : "",
+      badges: [
+        b.counts?.entry > 0 && { cls: "complet", text: "Entrée" },
+        b.counts?.exit  > 0 && { cls: "complet", text: "Sortie" },
+        b.counts?.total > 0 && { cls: "pdf",     text: `${b.counts.total} export${b.counts.total>1?"s":""}` },
+      ].filter(Boolean),
+      raw: b,
+    });
+  }
+
+  // 2) Projets iOS synchronisés (depuis HomeView). On EXCLUT les projets
+  //    encore en cours (status !== "completed") qui apparaissent déjà dans
+  //    l'onglet "Brouillons" pour éviter la double-comptabilisation.
+  //    Les projets finalisés (status === "completed") doivent eux apparaître
+  //    ici pour que l'agent retrouve son travail terminé.
+  for (const p of allIosProjects || []) {
+    if (!p?.id) continue;
+    if (seenIosByID.has(p.id)) continue;
+    // Filtre : on ne montre PAS les projets en brouillon ici (ils sont dans Brouillons).
+    if (p.status && p.status !== "completed") continue;
+    seenIosByID.add(p.id);
+    const address = p.address && p.address !== "-" ? p.address : (p.name || "Projet sans adresse");
+    const tenantLine = p.tenantName ? "👤 " + p.tenantName : "";
+    const inspectionBadge = p.inspectionType === "exit"
+      ? { cls: "complet", text: "Sortie" }
+      : p.inspectionType === "entry"
+        ? { cls: "complet", text: "Entrée" }
+        : null;
+    items.push({
+      type: "ios",
+      id: p.id,
+      title: address,
+      addr: tenantLine,
+      badges: [
+        inspectionBadge,
+        p.isArchived ? { cls: "scan", text: "Archivé" } : null,
+      ].filter(Boolean),
+      raw: p,
+    });
+  }
+
+  // 3) Projets extraits de bundles (avec fichiers PDF/USDZ/photos sur disque)
+  for (const p of allProjects || []) {
+    if (!p?.projectID) continue;
+    if (seenExtractedByID.has(p.projectID)) continue;
+    seenExtractedByID.add(p.projectID);
+    items.push({
+      type: "projet",
+      id: p.projectID,
+      title: p.name || p.projectID,
+      addr: (p.filesCount || (p.files||[]).length) + " fichiers",
+      badges: [
+        (p.files || []).some(f => /\.pdf$/i.test(f.path))  && { cls: "pdf",    text: "PDF" },
+        (p.files || []).some(f => /\.usdz$/i.test(f.path)) && { cls: "scan",   text: "3D" },
+        (p.files || []).some(f => /\.(jpg|png|webp)$/i.test(f.path)) && { cls: "photos", text: "Photos" },
+      ].filter(Boolean),
+      raw: p,
+    });
+  }
+
+  const filtered = q
+    ? items.filter(i => (i.title + " " + i.addr).toLowerCase().includes(q))
+    : items;
+  if (!filtered.length) {
+    root.innerHTML = `<div class="empty"><div class="empty-icon">📁</div><h3>${q?'Aucun résultat':'Aucun projet pour le moment'}</h3><p>${q?'Essayez un autre mot-clé.':"Les projets et biens scannés depuis l'app apparaîtront ici."}</p></div>`;
     return;
   }
-  root.innerHTML=filtered.map(item=>`
-    <div class="proj-card">
+
+  // V5.3.28 — Stocke les cartes pour qu'openProjectDetail() puisse les
+  // retrouver via l'attribut data-key sans avoir à les sérialiser dans le DOM.
+  window._projCardsByKey = new Map();
+  root.innerHTML = filtered.map((item, idx) => {
+    const key = `${item.type}-${item.id || idx}`;
+    window._projCardsByKey.set(key, item);
+    return `
+    <div class="proj-card" style="cursor:pointer" onclick="openProjectDetail('${key}')" role="button" tabindex="0" onkeypress="if(event.key==='Enter')openProjectDetail('${key}')">
       <div class="proj-card-title">${escapeHtml(item.title)}</div>
       <div class="proj-card-addr">${escapeHtml(item.addr)||"—"}</div>
       <div class="proj-card-badges">${item.badges.map(b=>`<span class="badge ${b.cls}">${escapeHtml(b.text)}</span>`).join("")}</div>
-    </div>
-  `).join("");
+    </div>`;
+  }).join("");
+}
+
+// V5.3.28 — Ouvre une modale détail au clic sur une carte projet.
+// Cette modale liste les fichiers téléchargeables (PDF d'EDL, photos, etc.)
+// ET expose les métadonnées (adresse, locataire, type d'EDL, dates).
+window.openProjectDetail = function openProjectDetail(key) {
+  const item = window._projCardsByKey?.get(key);
+  if (!item) return;
+  const overlay = document.getElementById("projectDetailModal");
+  const body = document.getElementById("projectDetailBody");
+  const title = document.getElementById("projectDetailTitle");
+  if (!overlay || !body || !title) return;
+
+  title.textContent = item.title || "Détail du projet";
+  body.innerHTML = renderProjectDetailBody(item);
+  overlay.classList.add("show");
+  overlay.style.display = "flex";
+};
+
+window.closeProjectDetail = function closeProjectDetail() {
+  const overlay = document.getElementById("projectDetailModal");
+  if (overlay) { overlay.classList.remove("show"); overlay.style.display = "none"; }
+};
+
+function renderProjectDetailBody(item) {
+  const raw = item.raw || {};
+  const sections = [];
+
+  // Métadonnées principales
+  const metaRows = [];
+  if (raw.address) metaRows.push(`<div><strong>Adresse :</strong> ${escapeHtml(raw.address)}</div>`);
+  if (raw.tenantName) metaRows.push(`<div><strong>Locataire :</strong> ${escapeHtml(raw.tenantName)}</div>`);
+  if (raw.landlordName) metaRows.push(`<div><strong>Bailleur :</strong> ${escapeHtml(raw.landlordName)}</div>`);
+  if (raw.inspectionType) metaRows.push(`<div><strong>Type :</strong> ${escapeHtml(edlTypeLabel(raw.inspectionType))}</div>`);
+  if (raw.updatedAt) metaRows.push(`<div><strong>Mis à jour :</strong> ${escapeHtml(formatDateTime(raw.updatedAt))}</div>`);
+  if (raw.createdAt) metaRows.push(`<div><strong>Créé :</strong> ${escapeHtml(formatDate(raw.createdAt))}</div>`);
+  if (metaRows.length) sections.push(`<div class="proj-detail-meta">${metaRows.join("")}</div>`);
+
+  // Exports liés (PDFs téléchargeables)
+  // 1) Bien : raw.exports[] contient tout
+  // 2) iOS  : on cherche dans allExports par projectID
+  // 3) Extracted : on liste raw.files[]
+  if (item.type === "bien" && Array.isArray(raw.exports) && raw.exports.length) {
+    sections.push(renderExportsList(raw.exports));
+  } else if (item.type === "ios") {
+    const linkedExports = (allExports || []).filter(e => e.projectID === raw.id);
+    if (linkedExports.length) {
+      sections.push(renderExportsList(linkedExports));
+    } else {
+      sections.push(`<div class="proj-detail-empty">Pas encore de PDF finalisé pour ce projet. Finalisez l'EDL dans l'app FOXSCAN pour qu'il apparaisse ici.</div>`);
+    }
+  } else if (item.type === "projet" && Array.isArray(raw.files) && raw.files.length) {
+    sections.push(renderFilesList(raw.files, raw.projectID));
+  }
+
+  return sections.join("") || `<div class="proj-detail-empty">Aucune information supplémentaire disponible.</div>`;
+}
+
+function renderExportsList(exports) {
+  const apiBase = getApiBaseUrl();
+  const items = exports.map(e => {
+    const dt = e.createdAt ? formatDateTime(e.createdAt) : "—";
+    const kind = e.kind === "inspectionPDF" ? "📄 PDF EDL"
+               : e.kind === "mediaArchive" ? "🖼 Photo"
+               : e.kind === "inspectionBundle" ? "📦 Bundle"
+               : e.kind || "Fichier";
+    const sizeKB = e.sizeBytes ? Math.round(e.sizeBytes / 1024) : 0;
+    const typeLabel = e.inspectionType === "entry" ? "Entrée"
+                    : e.inspectionType === "exit"  ? "Sortie"
+                    : "";
+    const dlPath = e.downloadPath ? `${apiBase}${e.downloadPath}` : null;
+    const dlBtn = dlPath
+      ? `<a class="btn-action primary" href="${escapeHtml(dlPath)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">⬇ Télécharger</a>`
+      : `<span class="btn-action ghost" style="opacity:.5">Indisponible</span>`;
+    return `
+      <div class="proj-detail-row">
+        <div class="proj-detail-row-info">
+          <div class="proj-detail-row-title">${escapeHtml(kind)} ${typeLabel?`<span class="badge complet">${typeLabel}</span>`:""}</div>
+          <div class="proj-detail-row-sub">${escapeHtml(e.fileName||"sans nom")} · ${sizeKB} Ko · ${escapeHtml(dt)}</div>
+        </div>
+        <div>${dlBtn}</div>
+      </div>`;
+  }).join("");
+  return `<div class="proj-detail-section"><h4>Fichiers</h4>${items}</div>`;
+}
+
+function renderFilesList(files, projectID) {
+  const apiBase = getApiBaseUrl();
+  const items = files.map(f => {
+    const url = `${apiBase}/api/projects/${encodeURIComponent(projectID)}/files/${encodeURIComponent(f.path)}`;
+    const isPdf = /\.pdf$/i.test(f.path);
+    const icon = isPdf ? "📄" : /\.usdz$/i.test(f.path) ? "🧱" : /\.(jpg|png|webp)$/i.test(f.path) ? "🖼" : "📎";
+    return `
+      <div class="proj-detail-row">
+        <div class="proj-detail-row-info">
+          <div class="proj-detail-row-title">${icon} ${escapeHtml(f.path)}</div>
+        </div>
+        <div><a class="btn-action primary" href="${escapeHtml(url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">⬇ Ouvrir</a></div>
+      </div>`;
+  }).join("");
+  return `<div class="proj-detail-section"><h4>Fichiers extraits</h4>${items}</div>`;
 }
 
 // ── BROUILLONS ────────────────────────────────────────────────────────
@@ -1729,6 +1934,27 @@ async function bootstrap(){
       renderProjects();
     })
     .catch(e => console.warn("[FOXSCAN] fetchProperties erreur :", e.message));
+
+  // V5.3.28 — Ajout du fetch /projects (iOS-synced) pour ne plus louper les
+  // EDLs finalisés qui n'ont pas encore d'upload binaire (donc absents de
+  // /properties). Best-effort : si l'endpoint échoue, on ne casse pas
+  // l'affichage des autres sources.
+  withTimeout(fetchProjects(), 6000, "iosProjects")
+    .then(r => {
+      allIosProjects = r?.items || [];
+      console.log("[FOXSCAN] Projets iOS :", allIosProjects.length);
+      renderProjects();
+    })
+    .catch(e => console.warn("[FOXSCAN] fetchProjects erreur :", e.message));
+
+  // V5.3.28 — Charge la liste des exports (PDF EDL, photos, bundles) pour
+  // pouvoir lier les PDFs aux projets iOS dans la modale détail.
+  withTimeout(fetchExports(), 6000, "exports")
+    .then(r => {
+      allExports = r?.items || [];
+      console.log("[FOXSCAN] Exports :", allExports.length);
+    })
+    .catch(e => console.warn("[FOXSCAN] fetchExports erreur :", e.message));
 
   withTimeout(fetchExtractedProjects(), 6000, "projects")
     .then(async r => {
