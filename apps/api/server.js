@@ -1412,6 +1412,91 @@ app.post("/auth/forgot-password", async (req, res) => {
   res.json({ ok: true, message: "Si ce compte existe, un email vient d'être envoyé. Vérifiez votre boîte." });
 });
 
+// ─── /auth/reset-password ───────────────────────────────────────────────────
+// POST { token, newPassword } → si le token est valide ET non expiré ET non
+// utilisé, change le mot de passe de l'utilisateur, marque le token comme
+// utilisé, révoque tous ses refresh tokens (forcer reconnexion partout).
+//
+// Renvoie 401 si token invalide/expiré/utilisé.
+// Renvoie 400 si mot de passe trop court.
+app.post("/auth/reset-password", (req, res) => {
+  const body = req.body || {};
+  const token = String(body.token || "").trim();
+  const newPassword = String(body.newPassword || "");
+
+  if (!token || token.length < 32) {
+    return res.status(401).json({ ok: false, detail: "Token invalide ou manquant." });
+  }
+  if (!newPassword || newPassword.length < 6) {
+    return res.status(400).json({ ok: false, detail: "Le mot de passe doit faire 6 caractères minimum." });
+  }
+
+  const store = readStore();
+  const tokenHash = hashToken(token);
+  const now = Date.now();
+
+  const tokenRow = store.passwordResetTokens.find((t) => t.tokenHash === tokenHash);
+  if (!tokenRow) {
+    return res.status(401).json({ ok: false, detail: "Lien de réinitialisation invalide." });
+  }
+  if (tokenRow.usedAt) {
+    return res.status(401).json({ ok: false, detail: "Ce lien a déjà été utilisé. Demandez-en un nouveau." });
+  }
+  if (Number(new Date(tokenRow.expiresAt).getTime()) < now) {
+    return res.status(401).json({ ok: false, detail: "Lien expiré. Demandez-en un nouveau." });
+  }
+
+  const user = store.users.find((u) => u.id === tokenRow.userID);
+  if (!user || user.authProvider !== "email") {
+    return res.status(401).json({ ok: false, detail: "Compte introuvable." });
+  }
+
+  // Met à jour le mot de passe (nouveau salt à chaque reset).
+  const salt = crypto.randomBytes(16).toString("hex");
+  user.passwordSalt = salt;
+  user.passwordHash = hashPassword(newPassword, salt);
+  user.updatedAt = nowIso();
+
+  // Marque le token comme utilisé.
+  tokenRow.usedAt = nowIso();
+
+  // SÉCURITÉ : révoque TOUS les refresh tokens actifs de cet user
+  // (force la reconnexion sur tous ses appareils, en cas de compromission).
+  let revokedCount = 0;
+  for (const t of store.refreshTokens) {
+    if (t.userID === user.id && !t.revokedAt) {
+      t.revokedAt = nowTs();
+      revokedCount++;
+    }
+  }
+
+  // Audit
+  store.auditEvents.push({
+    id: `aud_${crypto.randomBytes(4).toString("hex")}`,
+    userID: user.id,
+    createdAt: nowIso(),
+    type: "auth.password.reset.completed",
+    payload: {
+      email: user.email,
+      revokedSessions: revokedCount,
+      ipAddress: (req.ip || "").toString().slice(0, 45),
+    },
+  });
+
+  writeStore(store);
+
+  // Émet directement de nouveaux tokens pour que l'utilisateur soit connecté
+  // sur l'appareil où il vient de reset (pas besoin de re-saisir le mdp).
+  const response = issueTokensForUser(store, user);
+  writeStore(store);
+
+  res.json({
+    ok: true,
+    message: "Mot de passe modifié avec succès. Vous êtes maintenant connecté.",
+    ...response,
+  });
+});
+
 app.post("/auth/apple", async (req, res) => {
   try {
     const body = req.body || {};
