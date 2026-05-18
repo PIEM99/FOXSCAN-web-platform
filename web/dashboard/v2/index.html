@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FOXSCAN — Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#FAFAF7;
+  --bg-soft:#F2F0EA;
+  --card:#FFFFFF;
+  --text:#0A0A0A;
+  --text-soft:#5A5A5A;
+  --text-mute:#A0A0A0;
+  --border:rgba(10,10,10,.08);
+  --border-strong:rgba(10,10,10,.14);
+  --orange:#FF8A3D;
+  --orange-d:#E5701F;
+  --orange-l:#FFEEDD;
+  --green:#1A9940;
+  --green-l:#EDFAF1;
+  --red:#E53935;
+  --red-l:#FFEFEE;
+  --shadow:0 4px 18px rgba(10,10,10,.04);
+  --shadow-md:0 12px 40px rgba(10,10,10,.10);
+  --shadow-orange:0 12px 32px rgba(255,138,61,.22);
+}
+
+body{
+  font-family:'Outfit','Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+  line-height:1.6;
+  display:flex;
+  overflow-x:hidden;
+}
+
+/* ─────── SIDEBAR ─────── */
+.sidebar{
+  width:240px;
+  min-width:240px;
+  height:100vh;
+  position:sticky;
+  top:0;
+  background:var(--card);
+  border-right:1px solid var(--border);
+  padding:24px 16px;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.sidebar-brand{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:8px 12px;
+  margin-bottom:16px;
+}
+.sidebar-brand-icon{
+  width:32px;height:32px;background:var(--text);border-radius:8px;
+  display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:16px;
+}
+.sidebar-brand-name{font-size:17px;font-weight:700;letter-spacing:.01em}
+
+.btn-new-draft{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  background:var(--text);color:#fff;border:none;border-radius:10px;
+  padding:13px 16px;font-size:13px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+  cursor:pointer;font-family:inherit;transition:.18s;
+  margin-bottom:16px;
+}
+.btn-new-draft:hover{background:var(--orange);transform:translateY(-1px);box-shadow:var(--shadow-orange)}
+.btn-new-draft svg{width:14px;height:14px}
+
+.sidebar-nav{display:flex;flex-direction:column;gap:2px;flex:1}
+.sidebar-link{
+  display:flex;align-items:center;gap:12px;
+  padding:10px 14px;border-radius:10px;
+  color:var(--text-soft);text-decoration:none;
+  font-size:14px;font-weight:500;letter-spacing:-.01em;
+  cursor:pointer;transition:.15s;border:none;background:transparent;font-family:inherit;text-align:left;
+}
+.sidebar-link:hover{background:var(--bg-soft);color:var(--text)}
+.sidebar-link.active{background:var(--orange-l);color:var(--orange-d);font-weight:600}
+.sidebar-link svg{width:18px;height:18px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:1.6}
+
+.sidebar-footer{margin-top:auto;padding-top:16px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:2px}
+.sidebar-api{font-size:11px;color:var(--text-mute);padding:6px 14px}
+.btn-logout{
+  display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;
+  color:var(--text-soft);font-size:13px;font-weight:500;
+  cursor:pointer;border:none;background:transparent;font-family:inherit;text-align:left;width:100%;
+}
+.btn-logout:hover{background:var(--red-l);color:var(--red)}
+
+/* ─────── MAIN ─────── */
+.main{flex:1;min-width:0;padding:32px 40px 80px;max-width:1400px}
+
+/* TOP BAR avec search */
+.topbar{display:flex;align-items:center;gap:14px;margin-bottom:32px;flex-wrap:wrap}
+.search-wrap{flex:1;min-width:260px;position:relative}
+.search-input{
+  width:100%;padding:14px 16px 14px 44px;
+  background:var(--card);border:1px solid var(--border);border-radius:12px;
+  font-size:14px;font-family:inherit;color:var(--text);outline:none;transition:.15s;
+}
+.search-input:focus{border-color:var(--orange);box-shadow:0 0 0 3px rgba(255,138,61,.12)}
+.search-input::placeholder{color:var(--text-mute)}
+.search-icon{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:var(--text-mute);pointer-events:none}
+
+.user-pill{display:flex;align-items:center;gap:10px;padding:6px 14px 6px 6px;background:var(--card);border:1px solid var(--border);border-radius:980px}
+.user-avatar{width:30px;height:30px;background:linear-gradient(135deg,var(--orange),var(--orange-d));border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700}
+.user-name{font-size:13px;font-weight:600}
+
+/* WELCOME + STATS */
+.welcome{margin-bottom:32px}
+.welcome h1{font-size:32px;font-weight:700;letter-spacing:-.025em;line-height:1.1;margin-bottom:6px}
+.welcome p{font-size:15px;color:var(--text-soft)}
+
+/* PAGES */
+.page{display:none}
+.page.active{display:block;animation:fadeIn .25s ease-out}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* CARDS GRID */
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px}
+
+/* PROJECT CARD */
+.proj-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;transition:.2s;cursor:pointer}
+.proj-card:hover{border-color:var(--orange);box-shadow:var(--shadow-md);transform:translateY(-2px)}
+.proj-card-title{font-size:16px;font-weight:700;color:var(--text);letter-spacing:-.01em;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.proj-card-addr{font-size:13px;color:var(--text-soft);margin-bottom:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.proj-card-badges{display:flex;gap:6px;flex-wrap:wrap}
+.badge{display:inline-flex;align-items:center;padding:4px 10px;border-radius:980px;font-size:11px;font-weight:600;letter-spacing:.02em}
+.badge.complet{background:var(--green-l);color:var(--green)}
+.badge.attente{background:#FFF5E0;color:#A85F00}
+.badge.pdf{background:var(--red-l);color:var(--red)}
+.badge.scan{background:var(--orange-l);color:var(--orange-d)}
+.badge.photos{background:#E8F0FF;color:#1B5BCC}
+
+/* V5.3.28 — EDL row dans la modale projet détaillée */
+.edl-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;background:var(--bg-soft,#FAFAFA);border:1px solid var(--border);border-radius:10px;transition:.15s}
+.edl-row:hover{border-color:var(--orange);background:#FFFBF5}
+.edl-row-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.edl-row-title{font-size:14px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.edl-row-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--text-soft)}
+.edl-row-actions{display:flex;gap:6px;flex-shrink:0}
+.btn-edl-view,.btn-edl-dl{padding:8px 12px;border-radius:8px;font-size:12px;font-weight:600;border:1px solid var(--border);background:#fff;color:var(--text);cursor:pointer;transition:.15s}
+.btn-edl-view:hover{background:#0071E3;color:#fff;border-color:#0071E3}
+.btn-edl-dl:hover{background:var(--orange);color:#fff;border-color:var(--orange)}
+
+/* DRAFT CARD */
+.draft-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:14px;transition:.2s}
+.draft-card:hover{border-color:var(--orange);box-shadow:var(--shadow);transform:translateY(-2px)}
+.draft-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.draft-card-info{flex:1;min-width:0}
+.draft-card-title{font-size:16px;font-weight:700;letter-spacing:-.01em;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.draft-card-meta{font-size:12px;color:var(--text-soft);display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.draft-card-type{display:inline-flex;align-items:center;background:var(--bg-soft);color:var(--text);padding:3px 9px;border-radius:980px;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+.draft-card-details{font-size:13px;color:var(--text-soft);line-height:1.5}
+.draft-card-details strong{color:var(--text);font-weight:600}
+.draft-card-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:auto}
+.btn-action{display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:9px;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;font-family:inherit;border:none;transition:.15s;text-decoration:none}
+.btn-action.primary{background:var(--text);color:#fff;flex:1;justify-content:center}
+.btn-action.primary:hover{background:var(--orange);transform:translateY(-1px)}
+.btn-action.ghost{background:var(--bg-soft);color:var(--text)}
+.btn-action.ghost:hover{background:var(--border-strong)}
+.btn-action.danger{background:transparent;color:var(--red);border:1px solid var(--border)}
+.btn-action.danger:hover{background:var(--red-l);border-color:var(--red)}
+
+/* EMPTY STATE */
+.empty{text-align:center;padding:80px 24px;background:var(--card);border:1px dashed var(--border-strong);border-radius:16px}
+.empty-icon{font-size:42px;margin-bottom:16px;opacity:.5}
+.empty h3{font-size:18px;font-weight:600;margin-bottom:8px}
+.empty p{font-size:14px;color:var(--text-soft);max-width:380px;margin:0 auto 20px}
+.empty .btn-new-draft{margin:0 auto;display:inline-flex;width:auto;padding:11px 22px}
+
+/* TRIAL BANNER */
+.trial-banner{margin-bottom:24px;padding:16px 20px;border-radius:12px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.trial-banner.is-trial{background:linear-gradient(135deg,#FFF8EC,#FFF);border:1px solid rgba(255,159,10,.3)}
+.trial-banner.is-warning{background:linear-gradient(135deg,#FFEFEE,#FFF);border:1px solid rgba(255,59,48,.4)}
+.trial-banner.is-expired{background:#FFEFEE;border:2px solid var(--red)}
+.trial-banner.is-lifetime{background:linear-gradient(135deg,#EDFAF1,#FFF);border:1px solid rgba(48,209,88,.3)}
+.trial-banner-icon{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px}
+.trial-banner.is-trial .trial-banner-icon{background:linear-gradient(135deg,#FF9F0A,#FF6B00);color:#fff}
+.trial-banner.is-warning .trial-banner-icon{background:linear-gradient(135deg,#FF6B00,#FF3B30);color:#fff}
+.trial-banner.is-expired .trial-banner-icon{background:var(--red);color:#fff}
+.trial-banner.is-lifetime .trial-banner-icon{background:linear-gradient(135deg,#34C759,#1A9940);color:#fff}
+.trial-banner-content{flex:1;min-width:200px;font-size:13px;line-height:1.5}
+.trial-banner-content strong{font-weight:700;display:block;margin-bottom:2px}
+.trial-banner-cta{flex-shrink:0;padding:9px 16px;background:var(--text);color:#fff;border-radius:9px;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;text-decoration:none;border:none;cursor:pointer;font-family:inherit}
+.trial-banner-cta:hover{background:var(--orange)}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(10,10,10,.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:1000;display:none;align-items:center;justify-content:center;padding:24px}
+.modal-overlay.show{display:flex;animation:fadeIn .2s}
+.modal{background:var(--card);border-radius:18px;max-width:560px;width:100%;max-height:90vh;overflow-y:auto;padding:32px;position:relative;box-shadow:0 40px 80px rgba(0,0,0,.25)}
+.modal-close{position:absolute;top:18px;right:18px;width:34px;height:34px;border-radius:50%;border:none;background:var(--bg-soft);font-size:18px;cursor:pointer;color:var(--text);line-height:1;font-family:inherit}
+.modal-close:hover{background:var(--border-strong)}
+.modal h2{font-size:22px;font-weight:700;letter-spacing:-.01em;margin-bottom:6px}
+.modal-sub{font-size:13px;color:var(--text-soft);margin-bottom:24px;line-height:1.5}
+
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.field-row .field{margin-bottom:0}
+.field label{font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text-soft)}
+.field input,.field select,.field textarea{
+  width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:10px;
+  font-size:14px;font-family:inherit;background:var(--card);color:var(--text);outline:none;transition:.15s;
+}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--orange);box-shadow:0 0 0 3px rgba(255,138,61,.12)}
+.field textarea{resize:vertical;min-height:80px}
+.field-help{font-size:11px;color:var(--text-mute);margin-top:-2px}
+
+.modal-error{display:none;background:var(--red-l);color:var(--red);padding:10px 14px;border-radius:9px;font-size:13px;font-weight:500;margin-top:12px;border-left:3px solid var(--red)}
+.modal-error.show{display:block}
+
+.modal-submit{
+  width:100%;padding:14px;background:var(--text);color:#fff;border:none;border-radius:10px;
+  font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  cursor:pointer;font-family:inherit;transition:.18s;margin-top:8px;
+}
+.modal-submit:hover{background:var(--orange)}
+.modal-submit:disabled{opacity:.6;cursor:not-allowed}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--text);color:#fff;padding:14px 20px;border-radius:10px;font-size:13px;font-weight:500;box-shadow:0 12px 40px rgba(0,0,0,.25);transform:translateY(80px);opacity:0;transition:.3s;z-index:999;max-width:380px}
+.toast.show{transform:translateY(0);opacity:1}
+
+/* RESPONSIVE */
+@media(max-width:900px){
+  body{flex-direction:column}
+  .sidebar{width:100%;height:auto;position:relative;flex-direction:row;flex-wrap:wrap;padding:14px 16px;gap:6px}
+  .sidebar-brand{margin:0 8px 0 0}
+  .btn-new-draft{margin:0;padding:9px 14px;font-size:12px}
+  .sidebar-nav{flex-direction:row;flex-wrap:wrap;flex:1;gap:4px}
+  .sidebar-link{padding:8px 12px;font-size:12px}
+  .sidebar-footer{margin-top:0;padding-top:0;border-top:none;flex-direction:row;gap:4px;width:100%}
+  .sidebar-api{display:none}
+  .main{padding:20px 16px 80px;max-width:none}
+  .welcome h1{font-size:24px}
+  .cards-grid{grid-template-columns:1fr;gap:12px}
+  .field-row{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="sidebar-brand-icon">F</div>
+    <div class="sidebar-brand-name">FOXSCAN</div>
+  </div>
+
+  <button class="btn-new-draft" onclick="openNewDraftModal()">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    Nouveau brouillon
+  </button>
+
+  <nav class="sidebar-nav">
+    <button class="sidebar-link active" data-page="projets" onclick="showPage('projets')">
+      <svg viewBox="0 0 24 24"><path d="M3 7h18M3 12h18M3 17h18"/></svg>
+      Mes projets
+    </button>
+    <button class="sidebar-link" data-page="brouillons" onclick="showPage('brouillons')">
+      <svg viewBox="0 0 24 24"><path d="M14 3v6h6M14 3l6 6M6 3h8v6h6v12H6z"/></svg>
+      Brouillons
+      <span id="draftCount" style="margin-left:auto;background:var(--orange);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:980px;display:none">0</span>
+    </button>
+    <button class="sidebar-link" data-page="rapports" onclick="showPage('rapports')">
+      <svg viewBox="0 0 24 24"><path d="M14 3v6h6M14 3l6 6M6 3h8v6h6v12H6zM9 14h6M9 17h6"/></svg>
+      Rapports
+    </button>
+    <button class="sidebar-link" data-page="modeles" onclick="showPage('modeles')">
+      <svg viewBox="0 0 24 24"><path d="M12 2l9 5v10l-9 5-9-5V7zM12 12v10M3 7l9 5 9-5"/></svg>
+      Modèles 3D
+    </button>
+  </nav>
+
+  <div class="sidebar-footer">
+    <button class="sidebar-link" data-page="compte" onclick="showPage('compte')">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg>
+      Mon compte
+    </button>
+    <div class="sidebar-api" id="apiStatus">Chargement…</div>
+    <button class="btn-logout" onclick="doLogout()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M15 17l5-5-5-5M20 12H9M9 3H5v18h4"/></svg>
+      Se déconnecter
+    </button>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="search-wrap">
+      <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      <input id="searchInput" class="search-input" type="text" placeholder="Rechercher un projet, un brouillon…" oninput="onSearch()"/>
+    </div>
+    <div class="user-pill">
+      <div class="user-avatar" id="userAvatar">U</div>
+      <div class="user-name" id="userName">—</div>
+    </div>
+  </div>
+
+  <!-- TRIAL BANNER (dynamic) -->
+  <div id="trialBanner" style="display:none"></div>
+
+  <!-- PAGE : PROJETS -->
+  <section class="page active" id="page-projets">
+    <div class="welcome">
+      <h1 id="welcomeTitle">Bonjour 👋</h1>
+      <p>Vos projets scannés et états des lieux signés.</p>
+    </div>
+    <div id="projects-list" class="cards-grid">
+      <div class="empty"><div class="empty-icon">📁</div><h3>Chargement…</h3></div>
+    </div>
+  </section>
+
+  <!-- PAGE : BROUILLONS -->
+  <section class="page" id="page-brouillons">
+    <div class="welcome">
+      <h1>Brouillons</h1>
+      <p>Préparez vos états des lieux ici, puis ouvrez-les dans l'app FOXSCAN une fois sur place.</p>
+    </div>
+    <div id="drafts-list" class="cards-grid">
+      <div class="empty"><div class="empty-icon">📝</div><h3>Chargement…</h3></div>
+    </div>
+  </section>
+
+  <!-- PAGE : RAPPORTS -->
+  <section class="page" id="page-rapports">
+    <div class="welcome">
+      <h1>Rapports</h1>
+      <p>Tous vos PDFs d'EDL signés, prêts à être consultés ou téléchargés.</p>
+    </div>
+    <div id="rapports-list" class="cards-grid">
+      <div class="empty"><div class="empty-icon">📄</div><h3>Aucun rapport pour le moment</h3><p>Les rapports signés depuis l'app FOXSCAN apparaîtront ici automatiquement.</p></div>
+    </div>
+  </section>
+
+  <!-- PAGE : MODELES 3D -->
+  <section class="page" id="page-modeles">
+    <div class="welcome">
+      <h1>Modèles 3D</h1>
+      <p>Tous vos scans LiDAR USDZ, partageables avec vos prospects en un clic.</p>
+    </div>
+    <div id="modeles-list" class="cards-grid">
+      <div class="empty"><div class="empty-icon">🧊</div><h3>Aucun scan 3D pour le moment</h3><p>Les scans LiDAR réalisés sur iPhone apparaîtront ici.</p></div>
+    </div>
+  </section>
+
+  <!-- PAGE : COMPTE -->
+  <section class="page" id="page-compte">
+    <div class="welcome">
+      <h1>Mon compte</h1>
+      <p>Profil, abonnement, et données personnelles.</p>
+    </div>
+    <div class="cards-grid">
+      <div class="proj-card" style="cursor:default">
+        <div class="proj-card-title">Profil</div>
+        <div style="font-size:13px;color:var(--text-soft);line-height:1.8;margin-top:8px">
+          <div>Nom : <strong id="acctName" style="color:var(--text)">—</strong></div>
+          <div>Email : <strong id="acctEmail" style="color:var(--text)">—</strong></div>
+          <div>Provider : <strong id="acctProvider" style="color:var(--text)">—</strong></div>
+          <div>Statut : <strong id="acctStatus" style="color:var(--text)">—</strong></div>
+        </div>
+      </div>
+      <div class="proj-card" style="cursor:default">
+        <div class="proj-card-title">RGPD</div>
+        <div style="font-size:13px;color:var(--text-soft);line-height:1.6;margin-top:8px">Exporter ou supprimer vos données.</div>
+        <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+          <a href="mailto:privacy@foxscan.fr?subject=Demande%20RGPD%20-%20Export" class="btn-action ghost">Exporter mes données</a>
+          <a href="mailto:privacy@foxscan.fr?subject=Demande%20RGPD%20-%20Suppression" class="btn-action danger">Supprimer mon compte</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- V5.3.28 ── MODAL : DÉTAIL D'UN PROJET / BIEN ───────── -->
+<!-- Affiche tous les EDL d'un projet avec actions Voir / Télécharger.
+     Ouverte au clic sur une proj-card. Fix UX du bug "EDL disparu" :
+     l'agent peut maintenant naviguer dans tous ses EDL d'un seul endroit. -->
+<div class="modal-overlay" id="projectDetailModal" onclick="if(event.target===this)closeProjectDetail()">
+  <div class="modal" role="dialog" aria-labelledby="projectDetailTitle" style="max-width:760px">
+    <button class="modal-close" onclick="closeProjectDetail()" aria-label="Fermer">×</button>
+    <h2 id="projectDetailTitle">Chargement…</h2>
+    <p class="modal-sub" id="projectDetailSubtitle"></p>
+
+    <div id="projectDetailLoading" style="display:flex;align-items:center;justify-content:center;padding:48px 0;color:var(--text-soft)">
+      <div>⏳ Chargement des EDL…</div>
+    </div>
+
+    <div id="projectDetailList" style="display:flex;flex-direction:column;gap:8px"></div>
+
+    <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border);font-size:12px;color:var(--text-soft)">
+      💡 Si un EDL semble manquant, vérifiez sur l'app iPhone — il a peut-être été créé en local mais pas encore synchronisé.
+    </div>
+  </div>
+</div>
+
+<!-- ───────── MODAL : NOUVEAU BROUILLON ───────── -->
+<div class="modal-overlay" id="draftModal" onclick="if(event.target===this)closeNewDraftModal()">
+  <div class="modal" role="dialog" aria-labelledby="draftModalTitle">
+    <button class="modal-close" onclick="closeNewDraftModal()" aria-label="Fermer">×</button>
+    <h2 id="draftModalTitle">Nouveau brouillon</h2>
+    <p class="modal-sub">Préparez l'EDL ici, puis ouvrez-le dans l'app FOXSCAN une fois sur place — tout sera pré-rempli.</p>
+
+    <form id="draftForm" onsubmit="submitNewDraft(event)">
+      <div class="field">
+        <label for="dfAddress">Adresse du bien *</label>
+        <input type="text" id="dfAddress" required maxlength="200" placeholder="12 rue de la République, 75011 Paris"/>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="dfPropType">Type de bien *</label>
+          <select id="dfPropType" required>
+            <option value="">— Choisir —</option>
+            <option value="studio">Studio</option>
+            <option value="T1">T1</option>
+            <option value="T2">T2</option>
+            <option value="T3">T3</option>
+            <option value="T4">T4</option>
+            <option value="T5+">T5+</option>
+            <option value="maison">Maison</option>
+            <option value="local-commercial">Local commercial</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="dfEdlType">Type d'EDL *</label>
+          <select id="dfEdlType" required>
+            <option value="">— Choisir —</option>
+            <option value="entry">Entrée</option>
+            <option value="exit">Sortie</option>
+            <option value="inventory">Inventaire</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="dfScheduled">Date prévue *</label>
+        <input type="datetime-local" id="dfScheduled" required/>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="dfTenantName">Locataire</label>
+          <input type="text" id="dfTenantName" maxlength="120" placeholder="Jean Dupont"/>
+        </div>
+        <div class="field">
+          <label for="dfTenantEmail">Email locataire</label>
+          <input type="email" id="dfTenantEmail" maxlength="120" placeholder="jean@example.com"/>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="dfLandlordName">Bailleur</label>
+        <input type="text" id="dfLandlordName" maxlength="120" placeholder="Mme Martin"/>
+      </div>
+
+      <div class="field">
+        <label for="dfNotes">Notes pour l'agent</label>
+        <textarea id="dfNotes" maxlength="1000" placeholder="Digicode 1234, compteur EDF dans la cave, etc."></textarea>
+        <div class="field-help">Visible dans l'app lors du scan.</div>
+      </div>
+
+      <div class="modal-error" id="draftError"></div>
+
+      <button type="submit" class="modal-submit" id="draftSubmit">Créer le brouillon</button>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import {
+  clearSession,
+  createDraft,
+  dashboardSession,
+  deleteDraft,
+  downloadExportFile,
+  fetchDrafts,
+  fetchExports,
+  fetchExtractedProjects,
+  fetchModels,
+  fetchProjectFiles,
+  fetchProjectInspection,
+  fetchProjectInspections,
+  fetchReportFull,
+  fetchProperties,
+  getApiBaseUrl,
+  getExportFileBlobURL,
+  getProjectPDFBlobURL,
+  getSessionUser,
+  logoutApi,
+} from "../../js/foxscan-client.js";
+
+// State
+let allDrafts = [];
+let allProjects = [];
+let allBiens = [];
+let currentSearchQuery = "";
+
+// ── Helpers ───────────────────────────────────────────────────────────
+function escapeHtml(text=""){return String(text??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");}
+function showToast(msg,error=false){const t=document.getElementById("toast");t.textContent=msg;t.style.background=error?"#E53935":"var(--text)";t.classList.add("show");setTimeout(()=>t.classList.remove("show"),3500);}
+function formatDate(iso){if(!iso)return"—";try{return new Date(iso).toLocaleDateString("fr-FR",{day:"2-digit",month:"short",year:"numeric"});}catch{return"—";}}
+function formatDateTime(iso){if(!iso)return"—";try{const d=new Date(iso);return d.toLocaleDateString("fr-FR",{day:"2-digit",month:"short"})+" à "+d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});}catch{return"—";}}
+function edlTypeLabel(t){return{entry:"Entrée",exit:"Sortie",inventory:"Inventaire"}[t]||t;}
+function propTypeLabel(t){return{studio:"Studio",T1:"T1",T2:"T2",T3:"T3",T4:"T4","T5+":"T5+",maison:"Maison","local-commercial":"Local"}[t]||t;}
+
+// ── PAGES ─────────────────────────────────────────────────────────────
+window.showPage = function showPage(page){
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+  document.querySelectorAll(".sidebar-link").forEach(l=>l.classList.remove("active"));
+  const p=document.getElementById("page-"+page);if(p)p.classList.add("active");
+  const lnk=document.querySelector(`.sidebar-link[data-page="${page}"]`);if(lnk)lnk.classList.add("active");
+  document.getElementById("searchInput").value="";currentSearchQuery="";
+  renderAll();
+};
+
+// ── PROJETS ───────────────────────────────────────────────────────────
+function renderProjects(){
+  const root=document.getElementById("projects-list");
+  const q=currentSearchQuery.toLowerCase();
+  // Mix : biens + projets extraits
+  const items=[
+    ...allBiens.map(b=>({type:"bien",id:b.propertyID,title:b.address||"Bien sans adresse",addr:b.tenantName?"👤 "+b.tenantName:"",badges:[b.counts?.entry>0&&{cls:"complet",text:"Entrée"},b.counts?.exit>0&&{cls:"complet",text:"Sortie"},].filter(Boolean)})),
+    ...allProjects.map(p=>({type:"projet",id:p.projectID,title:p.name||p.projectID,addr:p.filesCount+" fichiers",badges:[(p.files||[]).some(f=>/\.pdf$/i.test(f.path))&&{cls:"pdf",text:"PDF"},(p.files||[]).some(f=>/\.usdz$/i.test(f.path))&&{cls:"scan",text:"3D"},(p.files||[]).some(f=>/\.(jpg|png|webp)$/i.test(f.path))&&{cls:"photos",text:"Photos"}].filter(Boolean)}))
+  ];
+  const filtered=q?items.filter(i=>(i.title+" "+i.addr).toLowerCase().includes(q)):items;
+  if(!filtered.length){
+    root.innerHTML=`<div class="empty"><div class="empty-icon">📁</div><h3>${q?'Aucun résultat':'Aucun projet pour le moment'}</h3><p>${q?'Essayez un autre mot-clé.':'Les projets et biens scannés depuis l\\'app apparaîtront ici.'}</p></div>`;
+    return;
+  }
+  root.innerHTML=filtered.map(item=>`
+    <div class="proj-card" onclick="openProjectDetail('${escapeHtml(item.type)}','${escapeHtml(item.id)}')" tabindex="0" role="button" onkeydown="if(event.key==='Enter')openProjectDetail('${escapeHtml(item.type)}','${escapeHtml(item.id)}')">
+      <div class="proj-card-title">${escapeHtml(item.title)}</div>
+      <div class="proj-card-addr">${escapeHtml(item.addr)||"—"}</div>
+      <div class="proj-card-badges">${item.badges.map(b=>`<span class="badge ${b.cls}">${escapeHtml(b.text)}</span>`).join("")}</div>
+    </div>
+  `).join("");
+}
+
+// ── DÉTAIL D'UN PROJET / BIEN ─────────────────────────────────────────
+// V5.3.28 — Au clic sur une card, ouvre une modale qui affiche TOUS les
+// EDL associés (sortie + entrée + inventaire), avec actions Voir / Télécharger.
+//
+// Source des données :
+//   - type="bien" → on a déjà `b.exports[]` depuis fetchProperties()
+//     qui liste tous les PDF/JSON exportés depuis l'app pour ce bien.
+//   - type="projet" → on appelle fetchProjectInspections(projectID) pour
+//     récupérer le tableau complet des reports stockés côté backend.
+window.openProjectDetail = async function openProjectDetail(type, id){
+  const modal = document.getElementById("projectDetailModal");
+  const titleEl = document.getElementById("projectDetailTitle");
+  const subtitleEl = document.getElementById("projectDetailSubtitle");
+  const listEl = document.getElementById("projectDetailList");
+  const loadingEl = document.getElementById("projectDetailLoading");
+
+  // Reset
+  listEl.innerHTML = "";
+  loadingEl.style.display = "flex";
+  titleEl.textContent = "Chargement…";
+  subtitleEl.textContent = "";
+  modal.classList.add("show");
+
+  try {
+    if (type === "bien") {
+      const b = allBiens.find(x => x.propertyID === id);
+      if (!b) throw new Error("Bien introuvable");
+      titleEl.textContent = b.address || "Bien sans adresse";
+      subtitleEl.textContent = b.tenantName ? `👤 ${b.tenantName}` : "Pas de locataire renseigné";
+      renderProjectDetailExports(b.exports || []);
+    } else if (type === "projet") {
+      const p = allProjects.find(x => x.projectID === id);
+      if (!p) throw new Error("Projet introuvable");
+      titleEl.textContent = p.name || p.projectID;
+      subtitleEl.textContent = `${(p.files || []).length} fichier(s)`;
+      // V5.3.28 — Fetch TOUS les EDL côté backend pour ce projet
+      const resp = await fetchProjectInspections(p.projectID).catch(() => ({ reports: [] }));
+      renderProjectDetailReports(resp.reports || [], p);
+    } else {
+      throw new Error("Type inconnu");
+    }
+  } catch (err) {
+    listEl.innerHTML = `<div class="empty" style="padding:24px"><div class="empty-icon">⚠️</div><h3>Erreur</h3><p>${escapeHtml(err.message || "Détail indisponible")}</p></div>`;
+  } finally {
+    loadingEl.style.display = "none";
+  }
+};
+
+window.closeProjectDetail = function closeProjectDetail(){
+  document.getElementById("projectDetailModal").classList.remove("show");
+};
+
+// Rendu des exports d'un bien (depuis allBiens)
+function renderProjectDetailExports(exports){
+  const listEl = document.getElementById("projectDetailList");
+  if (!exports.length) {
+    listEl.innerHTML = `<div class="empty" style="padding:24px"><div class="empty-icon">📭</div><h3>Aucun fichier</h3><p>Ce bien n'a encore aucun EDL exporté.</p></div>`;
+    return;
+  }
+  // Stocke les exports actifs pour les actions (par ID)
+  window.__currentExportsMap = new Map(exports.map(e => [e.id, e]));
+  listEl.innerHTML = exports.map(e => {
+    const badge = e.inspectionType === "entry"
+      ? '<span class="badge complet">Entrée</span>'
+      : e.inspectionType === "exit"
+      ? '<span class="badge complet" style="background:#FFEED8;color:#8B4500">Sortie</span>'
+      : '<span class="badge" style="background:#F1F3F5;color:#666">Autre</span>';
+    const date = e.inspectionDate || e.createdAt;
+    const sizeKB = e.sizeBytes ? Math.round(e.sizeBytes / 1024) + " Ko" : "";
+    return `
+      <div class="edl-row">
+        <div class="edl-row-info">
+          <div class="edl-row-title">${escapeHtml(e.fileName || "Document.pdf")}</div>
+          <div class="edl-row-meta">${badge} <span>${escapeHtml(formatDate(date))}</span> ${sizeKB ? `<span>· ${escapeHtml(sizeKB)}</span>` : ""}</div>
+        </div>
+        <div class="edl-row-actions">
+          <button class="btn-edl-view" onclick="openExportFromMap('${escapeHtml(e.id)}')">👁 Voir</button>
+          <button class="btn-edl-dl" onclick="downloadExportFromMap('${escapeHtml(e.id)}')">⬇ Télécharger</button>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+// Rendu des reports d'un projet (depuis fetchProjectInspections)
+function renderProjectDetailReports(reports, project){
+  const listEl = document.getElementById("projectDetailList");
+  if (!reports.length) {
+    listEl.innerHTML = `<div class="empty" style="padding:24px"><div class="empty-icon">📭</div><h3>Aucun EDL</h3><p>Aucun état des lieux enregistré pour ce projet.</p></div>`;
+    return;
+  }
+  listEl.innerHTML = reports.map(r => {
+    const type = r.inspectionType === "Sortie" || r.inspectionType === "exit"
+      ? '<span class="badge complet" style="background:#FFEED8;color:#8B4500">Sortie</span>'
+      : '<span class="badge complet">Entrée</span>';
+    const finalized = r.isFinalized
+      ? `<span class="badge" style="background:#E5F5EA;color:#1A7A35">✓ Signé</span>`
+      : `<span class="badge" style="background:#FFF6E5;color:#8B4500">En cours</span>`;
+    return `
+      <div class="edl-row">
+        <div class="edl-row-info">
+          <div class="edl-row-title">${escapeHtml(r.tenantName || "(locataire à renseigner)")}</div>
+          <div class="edl-row-meta">${type} ${finalized} <span>${escapeHtml(formatDate(r.createdAt))}</span></div>
+        </div>
+        <div class="edl-row-actions">
+          <button class="btn-edl-view" onclick="openReportPDF('${escapeHtml(project.projectID)}','${escapeHtml(r.id)}')">👁 Voir PDF</button>
+          <button class="btn-edl-dl" onclick="downloadReportPDF('${escapeHtml(project.projectID)}','${escapeHtml(r.id)}')">⬇ Télécharger</button>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+// V5.3.28 — Voir un export (PDF/photo) du bien : fetch le blob via le
+// JWT puis ouvre dans un nouvel onglet. fileIndex=0 = premier fichier
+// du bundle (le PDF dans 95% des cas).
+window.openExportFromMap = async function openExportFromMap(exportID){
+  const e = window.__currentExportsMap?.get(exportID);
+  if (!e) { showToast("Fichier introuvable", true); return; }
+  try {
+    const res = await getExportFileBlobURL(exportID, 0);
+    window.open(res.blobUrl, "_blank");
+  } catch (err) {
+    showToast("Impossible d'ouvrir : " + err.message, true);
+  }
+};
+
+window.downloadExportFromMap = async function downloadExportFromMap(exportID){
+  const e = window.__currentExportsMap?.get(exportID);
+  if (!e) { showToast("Fichier introuvable", true); return; }
+  try {
+    if (e.downloadPath) {
+      // Pattern legacy : route /exports/download/:path
+      await downloadExportFile(e.downloadPath, e.fileName);
+    } else {
+      // Fallback : récupère le blob puis simule le download
+      const res = await getExportFileBlobURL(exportID, 0);
+      const a = document.createElement("a");
+      a.href = res.blobUrl;
+      a.download = e.fileName || "document.pdf";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+  } catch (err) {
+    showToast("Téléchargement impossible : " + err.message, true);
+  }
+};
+
+// V5.3.28 — Pour un report d'un projet extrait, on récupère le PDF
+// (natif si embarqué, sinon généré côté serveur).
+window.openReportPDF = async function openReportPDF(projectID, reportID){
+  try {
+    const res = await getProjectPDFBlobURL(projectID);
+    window.open(res.blobUrl, "_blank");
+  } catch (err) {
+    showToast("Impossible d'ouvrir le PDF : " + err.message, true);
+  }
+};
+
+window.downloadReportPDF = async function downloadReportPDF(projectID, reportID){
+  try {
+    const res = await getProjectPDFBlobURL(projectID);
+    const a = document.createElement("a");
+    a.href = res.blobUrl;
+    a.download = `EDL_${reportID}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  } catch (err) {
+    showToast("Téléchargement impossible : " + err.message, true);
+  }
+};
+
+// ── BROUILLONS ────────────────────────────────────────────────────────
+function renderDrafts(){
+  const root=document.getElementById("drafts-list");
+  const q=currentSearchQuery.toLowerCase();
+  const filtered=q?allDrafts.filter(d=>(d.address+" "+d.tenantName+" "+d.landlordName).toLowerCase().includes(q)):allDrafts;
+  document.getElementById("draftCount").textContent=String(allDrafts.length);
+  document.getElementById("draftCount").style.display=allDrafts.length?"inline-flex":"none";
+  if(!filtered.length){
+    root.innerHTML=`<div class="empty"><div class="empty-icon">📝</div><h3>${q?'Aucun résultat':'Aucun brouillon pour le moment'}</h3><p>${q?'Essayez un autre mot-clé.':'Préparez vos états des lieux ici, puis ouvrez-les dans l\\'app FOXSCAN sur place — toutes les infos sont pré-remplies.'}</p>${!q?'<button class="btn-new-draft" onclick="openNewDraftModal()"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Créer un brouillon</button>':''}</div>`;
+    return;
+  }
+  root.innerHTML=filtered.map(d=>{
+    const deepLink=`foxscan://draft/${d.id}`;
+    const isExported=d.status==="exported";
+    return `
+    <div class="draft-card" id="draft-${d.id}">
+      <div class="draft-card-head">
+        <div class="draft-card-info">
+          <div class="draft-card-title">${escapeHtml(d.address)}</div>
+          <div class="draft-card-meta">
+            <span class="draft-card-type">${escapeHtml(propTypeLabel(d.propertyType))} · ${escapeHtml(edlTypeLabel(d.edlType))}</span>
+            <span>📅 ${escapeHtml(formatDateTime(d.scheduledAt))}</span>
+            ${isExported?'<span style="color:var(--green);font-weight:600">✓ Ouvert dans l\\'app</span>':''}
+          </div>
+        </div>
+      </div>
+      <div class="draft-card-details">
+        ${d.tenantName?`<div>👤 Locataire : <strong>${escapeHtml(d.tenantName)}</strong></div>`:''}
+        ${d.landlordName?`<div>🏠 Bailleur : <strong>${escapeHtml(d.landlordName)}</strong></div>`:''}
+        ${d.notes?`<div style="margin-top:6px;font-style:italic">💬 ${escapeHtml(d.notes)}</div>`:''}
+      </div>
+      <div class="draft-card-actions">
+        <a href="${deepLink}" class="btn-action primary" onclick="markExported('${d.id}')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18M3 12h18M3 17h13M15 21l4-4 4 4M19 17v8"/></svg>
+          Ouvrir dans l'app
+        </a>
+        <button class="btn-action danger" onclick="confirmDeleteDraft('${d.id}')">Supprimer</button>
+      </div>
+    </div>
+  `;
+  }).join("");
+}
+
+// ── MODAL NEW DRAFT ───────────────────────────────────────────────────
+window.openNewDraftModal=function(){
+  document.getElementById("draftForm").reset();
+  document.getElementById("draftError").classList.remove("show");
+  // Set default date à dans 1 heure
+  const d=new Date();d.setHours(d.getHours()+1);d.setMinutes(0);
+  document.getElementById("dfScheduled").value=d.toISOString().slice(0,16);
+  document.getElementById("draftModal").classList.add("show");
+  setTimeout(()=>document.getElementById("dfAddress")?.focus(),50);
+};
+window.closeNewDraftModal=function(){document.getElementById("draftModal").classList.remove("show");};
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeNewDraftModal();});
+
+window.submitNewDraft=async function(e){
+  e.preventDefault();
+  const btn=document.getElementById("draftSubmit");const err=document.getElementById("draftError");
+  err.classList.remove("show");btn.disabled=true;btn.textContent="Création…";
+  const payload={
+    address:document.getElementById("dfAddress").value.trim(),
+    propertyType:document.getElementById("dfPropType").value,
+    edlType:document.getElementById("dfEdlType").value,
+    scheduledAt:document.getElementById("dfScheduled").value,
+    tenantName:document.getElementById("dfTenantName").value.trim(),
+    tenantEmail:document.getElementById("dfTenantEmail").value.trim(),
+    landlordName:document.getElementById("dfLandlordName").value.trim(),
+    notes:document.getElementById("dfNotes").value.trim(),
+  };
+  try{
+    const r=await createDraft(payload);
+    if(r?.draft){allDrafts.unshift(r.draft);}
+    closeNewDraftModal();
+    showPage("brouillons");
+    showToast("✓ Brouillon créé. Ouvrez-le sur place dans l'app FOXSCAN.");
+  }catch(err2){
+    err.textContent=err2.message||"Erreur lors de la création";err.classList.add("show");
+  }finally{
+    btn.disabled=false;btn.textContent="Créer le brouillon";
+  }
+};
+
+window.markExported=async function(id){
+  const draft=allDrafts.find(d=>d.id===id);if(!draft||draft.status==="exported")return;
+  // On marque comme "exporté" côté backend (asynchrone, ne bloque pas le clic)
+  try{
+    const {updateDraft}=await import("../../js/foxscan-client.js");
+    await updateDraft(id,{status:"exported"});
+    draft.status="exported";draft.exportedAt=new Date().toISOString();
+    renderDrafts();
+  }catch{}
+};
+
+window.confirmDeleteDraft=async function(id){
+  const draft=allDrafts.find(d=>d.id===id);if(!draft)return;
+  if(!confirm(`Supprimer le brouillon pour "${draft.address}" ?\\n\\nL'action est définitive.`))return;
+  try{
+    await deleteDraft(id);
+    allDrafts=allDrafts.filter(d=>d.id!==id);
+    renderDrafts();
+    showToast("✓ Brouillon supprimé");
+  }catch(err){
+    showToast("Erreur : "+(err.message||"suppression impossible"),true);
+  }
+};
+
+// ── SEARCH ────────────────────────────────────────────────────────────
+window.onSearch=function(){currentSearchQuery=document.getElementById("searchInput").value;renderAll();};
+
+// ── TRIAL BANNER ──────────────────────────────────────────────────────
+function renderTrialBanner(user){
+  const root=document.getElementById("trialBanner");if(!user)return;
+  const status=user.accessStatus||"trial";const days=user.trialDaysRemaining||0;
+  const trialEnd=user.trialEndsAt?new Date(user.trialEndsAt).toLocaleDateString("fr-FR",{day:"2-digit",month:"long"}):"";
+  if(status==="lifetime"){root.style.display="";root.className="trial-banner is-lifetime";root.innerHTML=`<div class="trial-banner-icon">✓</div><div class="trial-banner-content"><strong>Accès à vie activé</strong>Vous êtes un Early Adopter FOXSCAN. Toutes les fonctionnalités présentes et futures, sans limite.</div>`;return;}
+  if(status==="subscription"){root.style.display="none";return;}
+  if(status==="expired"){root.style.display="";root.className="trial-banner is-expired";root.innerHTML=`<div class="trial-banner-icon">⚠</div><div class="trial-banner-content"><strong>Essai gratuit expiré</strong>Débloquez votre accès à vie pour 200 € (paiement unique).</div><a href="../../index.html#pricing" class="trial-banner-cta">Débloquer 200€</a>`;return;}
+  const isWarn=days<=3;
+  root.style.display="";root.className="trial-banner "+(isWarn?"is-warning":"is-trial");
+  root.innerHTML=`<div class="trial-banner-icon">${isWarn?"⏱":"🎁"}</div><div class="trial-banner-content"><strong>${isWarn?`Plus que ${days} jour${days>1?"s":""} d'essai`:`${days} jours d'essai gratuit restants`}</strong>${isWarn?`Expire le ${trialEnd}. Bloquez votre accès à vie pour 200 €.`:`Profitez-en pour explorer. Pour bloquer à vie : 200 € paiement unique.`}</div><a href="../../index.html#pricing" class="trial-banner-cta">Voir l'offre 200€</a>`;
+}
+
+// ── ACCOUNT ───────────────────────────────────────────────────────────
+function renderAccount(user){
+  if(!user)return;
+  document.getElementById("acctName").textContent=user.name||"—";
+  document.getElementById("acctEmail").textContent=user.email||"—";
+  let provider="Email";if(user.email?.includes("@privaterelay.appleid.com"))provider="Apple";else if(user.googleSub)provider="Google";
+  document.getElementById("acctProvider").textContent=provider;
+  document.getElementById("acctStatus").textContent={lifetime:"À vie ✓",subscription:"Abonnement actif",trial:`Essai · ${user.trialDaysRemaining||0}j`,expired:"Expiré"}[user.accessStatus]||"—";
+}
+
+// ── LOGOUT ────────────────────────────────────────────────────────────
+window.doLogout=function(){try{logoutApi().catch(()=>{});}catch{}try{clearSession();}catch{}window.location.href="../../login.html";};
+
+// ── RENDER ALL ────────────────────────────────────────────────────────
+function renderAll(){renderProjects();renderDrafts();}
+
+// ── BOOTSTRAP BULLETPROOF : UI immediate, timeouts, render progressif ──
+// Principes :
+// 1. On RENDER l'UI immédiatement avec données vides → l'utilisateur peut cliquer dès la 1ère ms
+// 2. Chaque appel API a un timeout de 6s max → jamais de hang infini
+// 3. Au fur et à mesure que les Promises résolvent, on update l'affichage
+// 4. Si une API plante, les autres continuent → degraded mode pas blocking mode
+
+function withTimeout(promise, ms, label){
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(`Timeout ${label} (${ms}ms)`)), ms)),
+  ]);
+}
+
+async function bootstrap(){
+  console.log("[FOXSCAN] Bootstrap v2.2");
+
+  // ─── 1. Auth check (synchrone) ───
+  const localUser = getSessionUser();
+  if (!localUser.isAuthed) {
+    console.log("[FOXSCAN] Pas de session → redirect login");
+    window.location.href = "../../login.html";
+    return;
+  }
+
+  // ─── 2. UI immédiate ─── (l'utilisateur peut déjà cliquer)
+  document.getElementById("userAvatar").textContent = (localUser.name||"U").charAt(0).toUpperCase();
+  document.getElementById("userName").textContent = localUser.name || "—";
+  const first = (localUser.name||"").split(" ")[0];
+  if (first) document.getElementById("welcomeTitle").textContent = `Bonjour, ${first} 👋`;
+  document.getElementById("apiStatus").textContent = "Chargement…";
+
+  // Render UI vide tout de suite → fini le "Chargement…" qui bloque
+  renderAll();
+  renderAccount(localUser); // au moins le nom/email s'affichent
+
+  // ─── 3. Appels API en parallèle, avec timeouts individuels ───
+  // Chaque appel se fire-and-forget : il met à jour le state + redraw quand il résout
+
+  withTimeout(dashboardSession(), 6000, "session")
+    .then(r => {
+      const user = r?.user || localUser;
+      console.log("[FOXSCAN] Session OK", user);
+      renderTrialBanner(user);
+      renderAccount(user);
+      document.getElementById("apiStatus").textContent = getApiBaseUrl().replace(/^https?:\/\//,"");
+    })
+    .catch(e => {
+      console.warn("[FOXSCAN] Session erreur :", e.message);
+      // Si 401 explicite → logout. Sinon mode degraded.
+      if (e?.status === 401) { clearSession(); window.location.href = "../../login.html"; return; }
+      document.getElementById("apiStatus").textContent = "⚠ API hors-ligne";
+    });
+
+  withTimeout(fetchProperties(), 6000, "properties")
+    .then(r => {
+      allBiens = r?.items || [];
+      console.log("[FOXSCAN] Biens :", allBiens.length);
+      renderProjects();
+    })
+    .catch(e => console.warn("[FOXSCAN] fetchProperties erreur :", e.message));
+
+  withTimeout(fetchExtractedProjects(), 6000, "projects")
+    .then(async r => {
+      const raw = r?.items || [];
+      console.log("[FOXSCAN] Projets extraits :", raw.length);
+      // Charge les fichiers de chaque projet (mais on n'attend pas, on update au fur)
+      allProjects = raw.map(p => ({ ...p, files: [] })); // affiche tout de suite
+      renderProjects();
+      // Puis on enrichit avec les fichiers en arrière-plan
+      raw.forEach(p => {
+        withTimeout(fetchProjectFiles(p.projectID), 5000, "projectFiles")
+          .then(f => {
+            const idx = allProjects.findIndex(x => x.projectID === p.projectID);
+            if (idx >= 0) { allProjects[idx].files = f?.files || []; renderProjects(); }
+          })
+          .catch(() => {});
+      });
+    })
+    .catch(e => console.warn("[FOXSCAN] fetchExtractedProjects erreur :", e.message));
+
+  withTimeout(fetchDrafts(), 6000, "drafts")
+    .then(r => {
+      allDrafts = r?.items || [];
+      console.log("[FOXSCAN] Brouillons :", allDrafts.length);
+      renderDrafts();
+    })
+    .catch(e => console.warn("[FOXSCAN] fetchDrafts erreur :", e.message));
+}
+
+bootstrap();
+</script>
+
+</body>
+</html>
