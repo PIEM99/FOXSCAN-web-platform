@@ -5591,6 +5591,68 @@ app.post("/audit-events", (req, res) => {
   res.json({ ok: true, id: eventID, message: "Audit event recorded" });
 });
 
+// ─── F3 — /track/funnel : tracking public des étapes du funnel ──────────────
+// Endpoint PUBLIC (sans auth) qui accepte les events trackés depuis la
+// landing, les pages checkout, et tout autre point d'entrée non-authentifié.
+// Permet de voir où les visiteurs décrochent (% landing → CTA → checkout).
+//
+// Body attendu : { step: string, sessionId?: string, meta?: object }
+// Steps standardisés :
+//   - "landing.viewed"
+//   - "pricing.viewed"
+//   - "founders.cta_clicked"
+//   - "subscription.cta_clicked"
+//   - "checkout.started"
+//   - "checkout.success"
+//   - "checkout.cancelled"
+//   - (libre : tu peux ajouter d'autres step côté frontend sans changer ici)
+//
+// Anti-spam basique : déduplique par (IP, step, sessionId) sur 60s. N'arrête
+// pas si le user envoie 1000 events différents, mais empêche le replay du
+// MÊME event en boucle.
+const _funnelDedupCache = new Map(); // key → expiresAtMs
+app.post("/track/funnel", (req, res) => {
+  const body = req.body || {};
+  const step = String(body.step || "").trim();
+  if (!step || step.length > 80) {
+    return res.status(400).json({ ok: false, detail: "step required (max 80 chars)" });
+  }
+  const sessionId = String(body.sessionId || "").slice(0, 64);
+  const ip = (req.ip || req.headers["x-forwarded-for"] || "").toString().slice(0, 45);
+
+  // Dédup
+  const dedupKey = `${ip}|${step}|${sessionId}`;
+  const now = Date.now();
+  // Garbage collect : purge entries expirées
+  if (_funnelDedupCache.size > 5000) {
+    for (const [k, exp] of _funnelDedupCache.entries()) {
+      if (exp < now) _funnelDedupCache.delete(k);
+    }
+  }
+  if (_funnelDedupCache.has(dedupKey) && _funnelDedupCache.get(dedupKey) > now) {
+    return res.json({ ok: true, deduplicated: true });
+  }
+  _funnelDedupCache.set(dedupKey, now + 60 * 1000);
+
+  const store = readStore();
+  store.auditEvents.push({
+    id: `aud_${crypto.randomBytes(4).toString("hex")}`,
+    userID: null, // visiteur anonyme
+    createdAt: nowIso(),
+    type: `funnel.${step}`,
+    payload: {
+      step,
+      sessionId,
+      ipAddress: ip,
+      userAgent: (req.headers["user-agent"] || "").slice(0, 200),
+      referrer: (req.headers["referer"] || req.headers["referrer"] || "").slice(0, 200),
+      meta: body.meta || {},
+    },
+  });
+  writeStore(store);
+  res.json({ ok: true });
+});
+
 app.use((err, req, res, next) => {
   console.error(err);
   res.status(err.status || 500).json({ ok: false, detail: err.message || "Internal server error" });
