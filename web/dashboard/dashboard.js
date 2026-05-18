@@ -9,6 +9,8 @@ import {
   fetchModels,
   fetchProjectFiles,
   fetchProjectInspection,
+  fetchProjectInspections,  // V5.3.26 — retourne TOUS les EDL d'un projet
+  fetchReportFull,           // V5.3.26 — payload complet d'un EDL par ID
   fetchProperties,
   getApiBaseUrl,
   getExportFileBlobURL,
@@ -1556,14 +1558,24 @@ async function reloadAll() {
     showArchivedProjects ? true : p.isArchived !== true
   );
   allProjects = await Promise.all(projectsRaw.map(async (p) => {
-    const [filesData, inspectionData] = await Promise.all([
+    // V5.3.26 — On utilise maintenant `fetchProjectInspections` (pluriel)
+    // pour récupérer TOUS les EDL d'un projet (sortie + entrée + ...).
+    // Avant : `fetchProjectInspection` (singulier) ne retournait que le
+    // plus récent → bug "EDL de sortie disparu après duplication".
+    const [filesData, inspectionsData] = await Promise.all([
       fetchProjectFiles(p.projectID).catch(() => ({ files: [] })),
-      fetchProjectInspection(p.projectID).catch(() => ({ inspectionReport: null })),
+      fetchProjectInspections(p.projectID).catch(() => ({ reports: [] })),
     ]);
+    const reports = inspectionsData?.reports || [];
+    // Compatibilité : on garde `inspectionReport` = le plus récent
+    // pour les vues qui dépendent encore de ce champ singulier.
+    // Mais on expose AUSSI `inspectionReports` (pluriel) pour les
+    // nouvelles vues qui veulent afficher TOUS les EDL.
     return {
       ...p,
       files: filesData?.files || [],
-      inspectionReport: inspectionData?.inspectionReport || null,
+      inspectionReport: reports[0]?.payload || null,
+      inspectionReports: reports,  // NEW : tableau complet
     };
   }));
 

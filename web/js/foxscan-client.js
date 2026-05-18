@@ -245,8 +245,34 @@ export async function fetchProjectMeta(projectID) {
 // V5 — Récupère le rapport d'EDL complet (inspectionReport.json) du projet.
 // Contient les `comparisonItems`, `roomConditions`, `meters`, etc. — utilisé
 // par les onglets « Comparatifs » et « Travaux » du dashboard.
+//
+// ⚠️ DEPRECATED V5.3.26 : ne retourne que le report LE PLUS RÉCENT du projet.
+// Si l'agent a fait une duplication (sortie → entrée nouveau locataire),
+// l'ancien EDL devient invisible. Préférer `fetchProjectInspections` (pluriel)
+// pour avoir TOUS les EDL du projet.
 export async function fetchProjectInspection(projectID) {
   return request(`/api/projects/${encodeURIComponent(projectID)}/inspection`, { method: "GET" });
+}
+
+// V5.3.26 — Récupère TOUS les EDL d'un projet (sortie + entrée + ...).
+// Retourne :
+//   {
+//     ok: true,
+//     count: N,
+//     reports: [
+//       { id, projectID, fileName, createdAt, tenantName, isFinalized,
+//         finalizedAt, inspectionType, address, payload: {...} }
+//     ]
+//   }
+// Triés par createdAt décroissant (plus récent en tête).
+export async function fetchProjectInspections(projectID) {
+  return request(`/api/projects/${encodeURIComponent(projectID)}/inspections`, { method: "GET" });
+}
+
+// V5.3.26 — Récupère un report unique par son ID (avec payload complet).
+// Utile pour afficher le détail d'un EDL spécifique dans le dashboard.
+export async function fetchReportFull(reportID) {
+  return request(`/api/reports/${encodeURIComponent(reportID)}`, { method: "GET" });
 }
 
 // Récupère le PDF intelligent (natif si dispo, sinon généré côté serveur)
