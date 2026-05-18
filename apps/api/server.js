@@ -2540,6 +2540,196 @@ function requireAdminKey(req, res) {
   return true;
 }
 
+// ─── A2 — /admin/metrics ────────────────────────────────────────────────────
+// Renvoie un snapshot consolidé des métriques business pour l'onglet Overview.
+// Combine :
+//   - Local : users, founders, EDL finalisés (depuis store.json)
+//   - Stripe live : MRR/ARR/churn depuis l'API Stripe (si STRIPE_SECRET_KEY)
+//   - Fallback local : si Stripe indispo, calcule MRR depuis les
+//     subscriptions stockées localement (subscriptionPriceCents).
+//
+// Toujours sûr : ne plante jamais — si Stripe timeout/erreur, on retourne
+// quand même les métriques locales avec stripe.ok = false + message.
+app.get("/admin/metrics", async (req, res) => {
+  if (!requireAdminKey(req, res)) return;
+
+  const store = readStore();
+  const now = Date.now();
+  const dayMs = 24 * 60 * 60 * 1000;
+
+  // Helper : count items créés dans un intervalle
+  const countSince = (items, dateField, sinceMs) => {
+    return items.filter((it) => {
+      const t = new Date(it?.[dateField] || 0).getTime();
+      return t >= sinceMs && t <= now;
+    }).length;
+  };
+
+  // ── USERS ────────────────────────────────────────────────────────
+  const users = store.users || [];
+  const usersBlock = {
+    total: users.length,
+    active: users.filter((u) => u.subscriptionActive === true || u.subscriptionStatus === "active").length,
+    inactive: users.filter((u) => !(u.subscriptionActive === true || u.subscriptionStatus === "active")).length,
+    newToday: countSince(users, "createdAt", now - dayMs),
+    newThisWeek: countSince(users, "createdAt", now - 7 * dayMs),
+    newThisMonth: countSince(users, "createdAt", now - 30 * dayMs),
+  };
+
+  // ── FOUNDERS ────────────────────────────────────────────────────
+  const founders = store.founders || [];
+  const SLOTS_TOTAL = 20;
+  const convertedCount = founders.filter((f) => f.status === "converted").length;
+  const pendingCount = founders.filter((f) => f.status === "pending").length;
+  const foundersBlock = {
+    total: founders.length,
+    pending: pendingCount,
+    contacted: founders.filter((f) => f.status === "contacted").length,
+    converted: convertedCount,
+    cancelled: founders.filter((f) => f.status === "cancelled").length,
+    slotsTotal: SLOTS_TOTAL,
+    slotsTaken: convertedCount + pendingCount, // les pending réservent une place
+    slotsRemaining: Math.max(0, SLOTS_TOTAL - (convertedCount + pendingCount)),
+  };
+
+  // ── EDL FINALISÉS ────────────────────────────────────────────────
+  // Source : store.reports[].payload.isFinalized OR store.reports[].isFinalized
+  const reports = store.reports || [];
+  const isReportFinalized = (r) =>
+    r?.isFinalized === true || r?.payload?.isFinalized === true;
+  const finalizedReports = reports.filter(isReportFinalized);
+  const finalizedDate = (r) =>
+    r?.finalizedAt || r?.payload?.finalizedAt || r?.updatedAt || r?.createdAt;
+  const finalizedBlock = {
+    total: finalizedReports.length,
+    today: finalizedReports.filter(
+      (r) => new Date(finalizedDate(r) || 0).getTime() >= now - dayMs
+    ).length,
+    thisWeek: finalizedReports.filter(
+      (r) => new Date(finalizedDate(r) || 0).getTime() >= now - 7 * dayMs
+    ).length,
+    thisMonth: finalizedReports.filter(
+      (r) => new Date(finalizedDate(r) || 0).getTime() >= now - 30 * dayMs
+    ).length,
+  };
+
+  // ── REVENUE — Stripe d'abord, fallback local ────────────────────
+  let revenue = {
+    source: "local-fallback",
+    mrrCents: 0,
+    mrrCurrency: "EUR",
+    arrCents: 0,
+    activeSubscriptions: 0,
+    lifetimePaymentsCount: 0,
+    lifetimePaymentsTotalCents: 0,
+    churnedLast30Days: 0,
+  };
+  let stripeStatus = { ok: false, error: null };
+
+  if (stripe) {
+    try {
+      // Liste TOUTES les subscriptions actives (pagination simple)
+      const allActive = [];
+      let starting_after = null;
+      for (let pass = 0; pass < 10; pass++) { // safety : max 1000 subs
+        const params = { status: "active", limit: 100 };
+        if (starting_after) params.starting_after = starting_after;
+        const list = await stripe.subscriptions.list(params);
+        allActive.push(...list.data);
+        if (!list.has_more) break;
+        starting_after = list.data[list.data.length - 1]?.id;
+        if (!starting_after) break;
+      }
+
+      // Calcul MRR : pour chaque sub, on somme les unit_amount × quantity sur tous les items
+      let mrr = 0;
+      for (const sub of allActive) {
+        for (const item of sub.items.data) {
+          const price = item.price;
+          if (!price) continue;
+          const qty = item.quantity || 1;
+          const amount = price.unit_amount || 0;
+          // Normaliser tous les intervals en mensuel
+          let monthlyMultiplier = 1;
+          if (price.recurring?.interval === "year") monthlyMultiplier = 1 / 12;
+          else if (price.recurring?.interval === "week") monthlyMultiplier = 4.33;
+          else if (price.recurring?.interval === "day") monthlyMultiplier = 30;
+          mrr += amount * qty * monthlyMultiplier;
+        }
+      }
+
+      // Churn 30j : subscriptions canceled dans les 30 derniers jours
+      const canceledList = await stripe.subscriptions.list({
+        status: "canceled",
+        limit: 100,
+      });
+      const churnedLast30 = canceledList.data.filter((s) => {
+        const ts = (s.canceled_at || s.ended_at || 0) * 1000;
+        return ts >= now - 30 * dayMs;
+      }).length;
+
+      // Paiements lifetime (Founders) — checkout sessions completées en one-time
+      const paymentsList = await stripe.checkout.sessions.list({ limit: 100 });
+      const lifetimePayments = paymentsList.data.filter(
+        (s) => s.payment_status === "paid" && s.mode === "payment"
+      );
+      const lifetimeTotal = lifetimePayments.reduce(
+        (acc, s) => acc + (s.amount_total || 0),
+        0
+      );
+
+      revenue = {
+        source: "stripe",
+        mrrCents: Math.round(mrr),
+        mrrCurrency: "EUR",
+        arrCents: Math.round(mrr * 12),
+        activeSubscriptions: allActive.length,
+        lifetimePaymentsCount: lifetimePayments.length,
+        lifetimePaymentsTotalCents: lifetimeTotal,
+        churnedLast30Days: churnedLast30,
+      };
+      stripeStatus = { ok: true, error: null };
+    } catch (err) {
+      console.error("[admin/metrics] Stripe API failed:", err.message);
+      stripeStatus = { ok: false, error: err.message };
+      // → on tombe dans le fallback local ci-dessous
+    }
+  } else {
+    stripeStatus = { ok: false, error: "STRIPE_SECRET_KEY absente" };
+  }
+
+  // Fallback local si Stripe a échoué : utilise les champs stockés sur user
+  if (revenue.source !== "stripe") {
+    const activeUsers = users.filter(
+      (u) => u.subscriptionActive === true || u.subscriptionStatus === "active"
+    );
+    const localMrrCents = activeUsers.reduce((acc, u) => {
+      return acc + (Number(u.subscriptionPriceCents) || 0);
+    }, 0);
+    const lifetimeFounders = founders.filter((f) => f.status === "converted");
+    revenue = {
+      source: "local-fallback",
+      mrrCents: localMrrCents,
+      mrrCurrency: "EUR",
+      arrCents: localMrrCents * 12,
+      activeSubscriptions: activeUsers.length,
+      lifetimePaymentsCount: lifetimeFounders.length,
+      lifetimePaymentsTotalCents: lifetimeFounders.length * 20000, // 200€ x N
+      churnedLast30Days: 0, // pas calculable depuis le store local
+    };
+  }
+
+  res.json({
+    ok: true,
+    timestamp: nowIso(),
+    users: usersBlock,
+    founders: foundersBlock,
+    edl: finalizedBlock,
+    revenue,
+    stripe: stripeStatus,
+  });
+});
+
 app.get("/admin/users", (req, res) => {
   const adminKey = process.env.ADMIN_SECRET_KEY || "";
   const provided = req.header("x-admin-key") || "";

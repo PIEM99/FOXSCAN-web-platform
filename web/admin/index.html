@@ -88,6 +88,30 @@ nav{background:rgba(255,255,255,.9);backdrop-filter:blur(20px);border-bottom:1px
 .coming-soon h3{font-size:18px;font-weight:700;margin-bottom:8px}
 .coming-soon p{font-size:14px;color:#6E6E73;max-width:480px;margin:0 auto;line-height:1.6}
 
+/* A2 — Overview metrics grid (north star metric en grand, autres en grid 4 cols) */
+.overview-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px}
+.metric-card{background:#fff;border-radius:14px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,.06);transition:.15s}
+.metric-card:hover{box-shadow:0 4px 18px rgba(0,0,0,.09)}
+.metric-card.metric-hero{grid-column:span 1;background:linear-gradient(135deg,#0071E3 0%,#005BBE 100%);color:#fff;box-shadow:0 6px 24px rgba(0,113,227,.3)}
+.metric-card.metric-hero:hover{box-shadow:0 10px 30px rgba(0,113,227,.4)}
+.metric-label{font-size:12px;color:#6E6E73;font-weight:600;margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px}
+.metric-card.metric-hero .metric-label{color:rgba(255,255,255,.85)}
+.metric-value{font-size:30px;font-weight:800;letter-spacing:-.6px;line-height:1.1}
+.metric-card.metric-hero .metric-value{font-size:38px}
+.metric-sub{font-size:12px;color:#86868B;margin-top:6px;line-height:1.4}
+.metric-card.metric-hero .metric-sub{color:rgba(255,255,255,.8)}
+
+.overview-section{margin-bottom:28px}
+.overview-section h3{font-size:14px;font-weight:700;color:#6E6E73;text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px}
+
+@media(max-width:1100px){
+  .overview-grid{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:560px){
+  .overview-grid{grid-template-columns:1fr}
+  .metric-card.metric-hero{grid-column:span 1}
+}
+
 .tab-pane{display:none}
 .tab-pane.active{display:block;animation:fadeIn .25s ease-out}
 @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
@@ -366,21 +390,98 @@ nav{background:rgba(255,255,255,.9);backdrop-filter:blur(20px);border-bottom:1px
       </button>
     </div>
 
-    <!-- A1 — Nouvel onglet OVERVIEW (placeholder en attente du commit A2) -->
+    <!-- A2 — Onglet OVERVIEW avec métriques live -->
     <div class="tab-pane" id="pane-overview">
       <div class="page-header">
         <h1>Overview</h1>
-        <p>Vue d'ensemble de l'activité FOXSCAN — métriques business, signups, revenus.</p>
-      </div>
-      <div class="coming-soon">
-        <div class="coming-soon-icon">📈</div>
-        <h3>Tableau de bord arrive bientôt</h3>
-        <p>
-          MRR Stripe, signups quotidiens, taux de conversion Founders, EDL finalisés —
-          tout sera affiché ici dans le prochain commit (A2). Pour l'instant, utilisez
-          les onglets de gauche pour gérer utilisateurs, équipes et Early Adopters.
+        <p>Activité FOXSCAN en temps réel — métriques business consolidées.
+          <span id="overview-source-badge" style="margin-left:8px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:6px;background:#F5F5F7;color:#86868B;display:none"></span>
         </p>
       </div>
+
+      <!-- North star metric (Stripe principle #1) : MRR géant en haut-gauche -->
+      <div class="overview-grid">
+        <div class="metric-card metric-hero">
+          <div class="metric-label">MRR · Revenu mensuel récurrent</div>
+          <div class="metric-value" id="metricMrr">—</div>
+          <div class="metric-sub">
+            <span id="metricMrrSub">Chargement…</span>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-label">Abonnés actifs</div>
+          <div class="metric-value" id="metricActiveSubs">—</div>
+          <div class="metric-sub" id="metricActiveSubsSub">—</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-label">ARR · Revenu annuel projeté</div>
+          <div class="metric-value" id="metricArr">—</div>
+          <div class="metric-sub">MRR × 12</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-label">Founders lifetime</div>
+          <div class="metric-value" id="metricLifetime">—</div>
+          <div class="metric-sub" id="metricLifetimeSub">—</div>
+        </div>
+      </div>
+
+      <!-- Secondary metrics — signups + EDL -->
+      <div class="overview-section">
+        <h3>Acquisition (7 derniers jours)</h3>
+        <div class="overview-grid">
+          <div class="metric-card">
+            <div class="metric-label">Nouveaux comptes</div>
+            <div class="metric-value" id="metricSignups7d">—</div>
+            <div class="metric-sub" id="metricSignups7dSub">—</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Total utilisateurs</div>
+            <div class="metric-value" id="metricTotalUsers">—</div>
+            <div class="metric-sub" id="metricTotalUsersSub">—</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Founders en attente</div>
+            <div class="metric-value" id="metricFoundersPending">—</div>
+            <div class="metric-sub" id="metricFoundersPendingSub">—</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Places restantes</div>
+            <div class="metric-value" id="metricSlotsLeft">—</div>
+            <div class="metric-sub" id="metricSlotsLeftSub">sur 20</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="overview-section">
+        <h3>Activité produit (30 derniers jours)</h3>
+        <div class="overview-grid">
+          <div class="metric-card">
+            <div class="metric-label">EDL finalisés (total)</div>
+            <div class="metric-value" id="metricEdlTotal">—</div>
+            <div class="metric-sub">Tous les EDL signés depuis le début</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">EDL finalisés (7j)</div>
+            <div class="metric-value" id="metricEdl7d">—</div>
+            <div class="metric-sub" id="metricEdl7dSub">—</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">EDL finalisés (30j)</div>
+            <div class="metric-value" id="metricEdl30d">—</div>
+            <div class="metric-sub">—</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Churn 30j</div>
+            <div class="metric-value" id="metricChurn">—</div>
+            <div class="metric-sub" id="metricChurnSub">Désabonnements récents</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="overviewError" style="display:none;background:#FFF0EF;border:1px solid #FFCDC9;border-radius:10px;padding:14px;margin-top:20px;font-size:13px;color:#D92B20"></div>
     </div>
 
     <!-- ════════ TAB : UTILISATEURS ════════ -->
@@ -637,6 +738,7 @@ async function login() {
     renderTable();
     loadFounders();  // charge en parallèle
     loadTeams();     // charge les équipes en parallèle
+    loadOverviewMetrics(); // A2 — charge les métriques Stripe + locales
   } catch (e) {
     errEl.textContent = "Clé incorrecte ou API inaccessible.";
   }
@@ -656,6 +758,100 @@ function updateStats() {
   document.getElementById("stat-active").textContent = active;
   document.getElementById("stat-inactive").textContent = allUsers.length - active;
   document.getElementById("tabCountUsers").textContent = allUsers.length;
+}
+
+// A2 — Charge les métriques business consolidées (Stripe + local).
+async function loadOverviewMetrics() {
+  const errEl = document.getElementById("overviewError");
+  const badge = document.getElementById("overview-source-badge");
+  errEl.style.display = "none";
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/metrics`, {
+      headers: { "x-admin-key": adminKey },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+
+    // Badge de source : indique d'où viennent les chiffres revenue
+    if (data.revenue?.source === "stripe") {
+      badge.textContent = "● Live Stripe";
+      badge.style.background = "#EDFAF1";
+      badge.style.color = "#1A9940";
+      badge.style.display = "inline-block";
+    } else {
+      badge.textContent = "● Fallback local";
+      badge.style.background = "#FFF4E5";
+      badge.style.color = "#B07800";
+      badge.style.display = "inline-block";
+    }
+
+    // Helpers de formatage
+    const fmtEur = (cents) => {
+      const eur = (cents || 0) / 100;
+      return new Intl.NumberFormat("fr-FR", {
+        style: "currency",
+        currency: "EUR",
+        minimumFractionDigits: eur >= 10000 ? 0 : 2,
+        maximumFractionDigits: eur >= 10000 ? 0 : 2,
+      }).format(eur);
+    };
+    const fmtNum = (n) => new Intl.NumberFormat("fr-FR").format(n || 0);
+
+    // North star : MRR
+    document.getElementById("metricMrr").textContent = fmtEur(data.revenue.mrrCents);
+    document.getElementById("metricMrrSub").textContent =
+      `${data.revenue.activeSubscriptions} abonné${data.revenue.activeSubscriptions > 1 ? "s" : ""} actif${data.revenue.activeSubscriptions > 1 ? "s" : ""}`;
+
+    document.getElementById("metricActiveSubs").textContent = fmtNum(data.revenue.activeSubscriptions);
+    document.getElementById("metricActiveSubsSub").textContent =
+      `${data.users.active} / ${data.users.total} utilisateurs payants`;
+
+    document.getElementById("metricArr").textContent = fmtEur(data.revenue.arrCents);
+
+    document.getElementById("metricLifetime").textContent = fmtEur(data.revenue.lifetimePaymentsTotalCents);
+    document.getElementById("metricLifetimeSub").textContent =
+      `${data.revenue.lifetimePaymentsCount} paiement${data.revenue.lifetimePaymentsCount > 1 ? "s" : ""} à vie`;
+
+    // Acquisition
+    document.getElementById("metricSignups7d").textContent = fmtNum(data.users.newThisWeek);
+    document.getElementById("metricSignups7dSub").textContent =
+      `+${data.users.newToday} aujourd'hui · +${data.users.newThisMonth} ce mois`;
+
+    document.getElementById("metricTotalUsers").textContent = fmtNum(data.users.total);
+    document.getElementById("metricTotalUsersSub").textContent =
+      `${data.users.active} actifs · ${data.users.inactive} inactifs`;
+
+    document.getElementById("metricFoundersPending").textContent = fmtNum(data.founders.pending);
+    document.getElementById("metricFoundersPendingSub").textContent =
+      `${data.founders.converted} convertis · ${data.founders.contacted} contactés`;
+
+    document.getElementById("metricSlotsLeft").textContent = fmtNum(data.founders.slotsRemaining);
+    document.getElementById("metricSlotsLeftSub").textContent =
+      `${data.founders.slotsTaken} / ${data.founders.slotsTotal} occupées`;
+
+    // Activité produit
+    document.getElementById("metricEdlTotal").textContent = fmtNum(data.edl.total);
+    document.getElementById("metricEdl7d").textContent = fmtNum(data.edl.thisWeek);
+    document.getElementById("metricEdl7dSub").textContent = `+${data.edl.today} aujourd'hui`;
+    document.getElementById("metricEdl30d").textContent = fmtNum(data.edl.thisMonth);
+
+    const churn = data.revenue.churnedLast30Days || 0;
+    document.getElementById("metricChurn").textContent = fmtNum(churn);
+    document.getElementById("metricChurnSub").textContent = churn === 0
+      ? "Aucun désabonnement 🎉"
+      : `${churn} désabonnement${churn > 1 ? "s" : ""} 30j`;
+
+    // Warning si Stripe indispo
+    if (!data.stripe?.ok && data.stripe?.error) {
+      errEl.style.display = "block";
+      errEl.textContent = `⚠ Stripe API : ${data.stripe.error}. Les chiffres revenue viennent du fallback local (moins précis).`;
+    }
+  } catch (e) {
+    console.error("[admin/metrics] failed:", e);
+    errEl.style.display = "block";
+    errEl.textContent = `Impossible de charger les métriques : ${e.message}`;
+  }
 }
 
 function formatDate(iso) {
