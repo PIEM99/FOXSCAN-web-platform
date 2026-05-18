@@ -577,6 +577,7 @@ function readStore() {
       founders: [],
       teams: [],
       drafts: [],
+      passwordResetTokens: [],
     };
     fs.writeFileSync(settings.dbPath, JSON.stringify(empty, null, 2));
     return empty;
@@ -594,6 +595,7 @@ function readStore() {
     founders: parsed.founders || [],
     teams: parsed.teams || [],
     drafts: parsed.drafts || [],
+    passwordResetTokens: parsed.passwordResetTokens || [],
   };
 }
 
@@ -1309,6 +1311,105 @@ app.post("/auth/email/login", (req, res) => {
   const response = issueTokensForUser(store, user);
   writeStore(store);
   res.json(response);
+});
+
+// ─── /auth/forgot-password ──────────────────────────────────────────────────
+// POST { email } → si email existe avec authProvider=email, génère un token
+// stocké dans store.passwordResetTokens[] (expire 1h) et envoie un email avec
+// un lien vers https://foxscan.fr/reset-password.html?token=XXX.
+//
+// SÉCURITÉ : on retourne TOUJOURS 200 (même si email inconnu) pour ne pas
+// permettre l'énumération de comptes. Les utilisateurs Apple/Google ne reçoivent
+// rien (ils doivent se reconnecter via leur provider).
+//
+// Rate limit basique : 1 request / 60s / email (pour ne pas spammer la mailbox).
+app.post("/auth/forgot-password", async (req, res) => {
+  const body = req.body || {};
+  const email = String(body.email || "").trim().toLowerCase();
+
+  if (!email || !email.includes("@")) {
+    return res.status(400).json({ ok: false, detail: "valid email is required" });
+  }
+
+  const store = readStore();
+  const now = Date.now();
+
+  // Rate limit : ignore si un token a été émis pour ce même email il y a moins de 60s.
+  const recent = store.passwordResetTokens.find(
+    (t) => t.email === email && (now - new Date(t.createdAt).getTime()) < 60 * 1000
+  );
+  if (recent) {
+    return res.json({ ok: true, message: "Si ce compte existe, un email vient d'être envoyé. Vérifiez votre boîte." });
+  }
+
+  const user = store.users.find((u) => u.email === email && u.authProvider === "email");
+  // Si le user existe ET a un mot de passe → on génère un token.
+  // Sinon on fait semblant d'envoyer pour ne pas leaker l'info.
+  if (user && user.passwordHash) {
+    const token = crypto.randomBytes(32).toString("hex"); // 256 bits
+    const tokenHash = hashToken(token);
+    const expiresAt = new Date(now + 60 * 60 * 1000).toISOString(); // 1h
+
+    store.passwordResetTokens.push({
+      id: `prt_${crypto.randomBytes(4).toString("hex")}`,
+      userID: user.id,
+      email,
+      tokenHash,
+      createdAt: nowIso(),
+      expiresAt,
+      usedAt: null,
+      ipAddress: (req.ip || req.headers["x-forwarded-for"] || "").toString().slice(0, 45),
+    });
+    writeStore(store);
+
+    const resetLink = `https://foxscan.fr/reset-password.html?token=${encodeURIComponent(token)}`;
+    const html = `
+      <div style="font-family:-apple-system,Helvetica,sans-serif;max-width:520px;margin:0 auto;padding:30px;color:#1D1D1F">
+        <div style="text-align:center;margin-bottom:30px">
+          <div style="font-size:24px;font-weight:800;color:#0071E3">FOXSCAN</div>
+        </div>
+        <h1 style="font-size:22px;font-weight:700;margin-bottom:14px">Réinitialiser votre mot de passe</h1>
+        <p style="font-size:15px;color:#3D3D3F;line-height:1.6;margin-bottom:24px">
+          Bonjour,<br/><br/>
+          Vous avez demandé à réinitialiser votre mot de passe FOXSCAN. Cliquez sur le bouton ci-dessous
+          pour choisir un nouveau mot de passe. Ce lien expire dans <strong>1 heure</strong>.
+        </p>
+        <div style="text-align:center;margin:30px 0">
+          <a href="${resetLink}" style="display:inline-block;background:#0071E3;color:#fff;text-decoration:none;padding:14px 28px;border-radius:10px;font-size:15px;font-weight:600">Réinitialiser mon mot de passe</a>
+        </div>
+        <p style="font-size:13px;color:#86868B;line-height:1.6;margin-top:24px">
+          Si vous n'avez pas fait cette demande, ignorez simplement cet email — votre mot de passe reste inchangé.<br/><br/>
+          Lien direct si le bouton ne fonctionne pas :<br/>
+          <span style="word-break:break-all;font-size:11px">${resetLink}</span>
+        </p>
+        <hr style="margin:30px 0;border:0;border-top:1px solid #E5E5EA"/>
+        <p style="font-size:11px;color:#86868B;text-align:center">
+          FOXSCAN — État des lieux numérique pour agences immobilières<br/>
+          Cet email a été envoyé à ${email}. Si vous n'êtes pas à l'origine de cette demande,
+          contactez-nous à contact@foxscan.fr.
+        </p>
+      </div>
+    `;
+    await sendMail({
+      to: email,
+      subject: "Réinitialiser votre mot de passe FOXSCAN",
+      html,
+    });
+
+    // Audit
+    store.auditEvents.push({
+      id: `aud_${crypto.randomBytes(4).toString("hex")}`,
+      userID: user.id,
+      createdAt: nowIso(),
+      type: "auth.password.reset.requested",
+      payload: { email, ipAddress: (req.ip || "").toString().slice(0, 45) },
+    });
+    writeStore(store);
+  } else {
+    console.log(`[auth/forgot-password] no email-provider user found for ${email} (silent 200)`);
+  }
+
+  res.json({ ok: true, message: "Si ce compte existe, un email vient d'être envoyé. Vérifiez votre boîte." });
 });
 
 app.post("/auth/apple", async (req, res) => {

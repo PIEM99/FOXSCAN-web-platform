@@ -79,6 +79,20 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-
 .spinner{width:40px;height:40px;border:3px solid #E5E5EA;border-top-color:#0071E3;border-radius:50%;animation:spin 0.8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .loading-text{font-size:15px;font-weight:600;color:#1D1D1F}
+
+/* ── RESPONSIVE ─────────────────────────────────────────────────────── */
+@media(max-width:560px){
+  body{padding:14px}
+  .login-card{padding:32px 22px;border-radius:18px}
+  .login-title{font-size:20px}
+  .login-sub{font-size:14px;margin-bottom:24px}
+  .logo{margin-bottom:24px}
+  .logo-icon{width:38px;height:38px}
+  .logo-name{font-size:19px}
+  .apple-btn,.email-btn{padding:13px 16px;font-size:15px}
+  .info-box{padding:12px 14px}
+  .legal{font-size:10px;padding:0 4px}
+}
 </style>
 </head>
 <body>
@@ -131,6 +145,31 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-
         <span id="email-btn-label">Se connecter</span>
       </button>
       <div id="email-error" class="email-error"></div>
+
+      <!-- F1 — Lien mot de passe oublié (visible uniquement en mode Connexion) -->
+      <div id="forgot-password-row" style="text-align:center;margin-top:14px">
+        <a href="#" id="forgot-password-link" onclick="event.preventDefault();openForgotPassword()"
+           style="color:#0071E3;font-size:13px;text-decoration:none;font-weight:500">
+          Mot de passe oublié ?
+        </a>
+      </div>
+    </div>
+
+    <!-- F1 — Modal "Mot de passe oublié" -->
+    <div id="forgot-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);backdrop-filter:blur(8px);z-index:1000;align-items:center;justify-content:center;padding:24px">
+      <div style="background:#fff;border-radius:18px;padding:32px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);position:relative">
+        <button onclick="closeForgotPassword()" aria-label="Fermer"
+                style="position:absolute;top:12px;right:12px;width:30px;height:30px;border-radius:50%;border:none;background:#F5F5F7;font-size:18px;cursor:pointer">×</button>
+        <h2 style="font-size:20px;font-weight:700;margin-bottom:6px">Mot de passe oublié</h2>
+        <p style="font-size:14px;color:#6E6E73;margin-bottom:20px;line-height:1.5">
+          Entrez votre adresse email. Si un compte existe, vous recevrez un lien pour réinitialiser votre mot de passe.
+        </p>
+        <input class="email-input" id="forgot-email" type="email" placeholder="votre@email.com" autocomplete="email" style="margin-bottom:14px"/>
+        <button class="email-btn" id="forgot-submit-btn" onclick="submitForgotPassword()">
+          Envoyer le lien
+        </button>
+        <div id="forgot-feedback" style="text-align:center;margin-top:12px;font-size:13px;min-height:18px"></div>
+      </div>
     </div>
 
     <a href="index.html" class="back-link">

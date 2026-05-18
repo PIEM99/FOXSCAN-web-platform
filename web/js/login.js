@@ -169,7 +169,69 @@ window.setMode = function (mode) {
   document.getElementById("email-error").textContent = "";
   document.getElementById("field-password").autocomplete =
     mode === "register" ? "new-password" : "current-password";
+  // F1 — "Mot de passe oublié" visible uniquement en mode connexion.
+  const forgotRow = document.getElementById("forgot-password-row");
+  if (forgotRow) forgotRow.style.display = mode === "login" ? "block" : "none";
 };
+
+// ── F1 — Mot de passe oublié ───────────────────────────────────────────────
+window.openForgotPassword = function () {
+  const overlay = document.getElementById("forgot-overlay");
+  if (!overlay) return;
+  overlay.style.display = "flex";
+  document.getElementById("forgot-feedback").textContent = "";
+  // Pré-remplit l'email s'il a été saisi dans le formulaire principal
+  const mainEmail = document.getElementById("field-email").value.trim();
+  if (mainEmail) document.getElementById("forgot-email").value = mainEmail;
+  setTimeout(() => document.getElementById("forgot-email").focus(), 50);
+};
+
+window.closeForgotPassword = function () {
+  const overlay = document.getElementById("forgot-overlay");
+  if (overlay) overlay.style.display = "none";
+};
+
+window.submitForgotPassword = async function () {
+  const emailInput = document.getElementById("forgot-email");
+  const feedback = document.getElementById("forgot-feedback");
+  const btn = document.getElementById("forgot-submit-btn");
+  const email = (emailInput?.value || "").trim();
+
+  feedback.style.color = "#FF3B30";
+  if (!email || !email.includes("@")) {
+    feedback.textContent = "Adresse email invalide.";
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = "Envoi…";
+  try {
+    const resp = await fetch(`${getApiBaseUrl()}/auth/forgot-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (resp.ok) {
+      feedback.style.color = "#30D158";
+      feedback.textContent = data.message || "Si ce compte existe, un email vient d'être envoyé.";
+      setTimeout(() => closeForgotPassword(), 4000);
+    } else {
+      feedback.textContent = data.detail || "Erreur. Réessayez dans un instant.";
+    }
+  } catch (err) {
+    feedback.textContent = "Erreur réseau. Vérifiez votre connexion.";
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Envoyer le lien";
+  }
+};
+
+// Fermer la modale au clic sur l'overlay (hors carte).
+document.addEventListener("click", (e) => {
+  const overlay = document.getElementById("forgot-overlay");
+  if (overlay && e.target === overlay) closeForgotPassword();
+});
 
 window.handleEmailSubmit = async function () {
   const email = document.getElementById("field-email").value.trim();
