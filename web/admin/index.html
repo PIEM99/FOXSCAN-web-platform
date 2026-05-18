@@ -30,7 +30,67 @@ nav{background:rgba(255,255,255,.9);backdrop-filter:blur(20px);border-bottom:1px
 .btn-sm{padding:6px 14px;border-radius:8px;border:1px solid #E8E8ED;background:transparent;font-size:13px;font-weight:500;color:#6E6E73;cursor:pointer;font-family:inherit;transition:.15s}
 .btn-sm:hover{background:#F5F5F7}
 
-.container{max-width:1000px;margin:0 auto;padding:32px 24px}
+.container{max-width:1180px;margin:0 auto;padding:32px 24px}
+
+/* A1 — NOUVEAU LAYOUT SIDEBAR (style Stripe : clair, aéré) ────────────── */
+.layout{display:flex;min-height:calc(100vh - 52px)}
+.sidebar{
+  width:240px;flex-shrink:0;background:#fff;border-right:1px solid #E8E8ED;
+  padding:24px 12px;display:flex;flex-direction:column;gap:2px;
+  position:sticky;top:52px;height:calc(100vh - 52px);overflow-y:auto;
+}
+.sidebar-section{font-size:11px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.6px;color:#86868B;padding:10px 14px 6px;margin-top:8px}
+.sidebar-section:first-child{margin-top:0}
+.sidebar-item{
+  display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:8px;
+  font-size:14px;font-weight:500;color:#3D3D3F;cursor:pointer;transition:.12s;
+  border:none;background:transparent;font-family:inherit;text-align:left;
+}
+.sidebar-item:hover{background:#F5F5F7;color:#1D1D1F}
+.sidebar-item.active{background:#0071E3;color:#fff;font-weight:600}
+.sidebar-item.active:hover{background:#005BBE;color:#fff}
+.sidebar-item .si-icon{font-size:16px;width:20px;text-align:center;flex-shrink:0}
+.sidebar-item .si-count{
+  margin-left:auto;background:#F5F5F7;color:#86868B;font-size:11px;font-weight:700;
+  padding:2px 8px;border-radius:980px;min-width:22px;text-align:center
+}
+.sidebar-item.active .si-count{background:rgba(255,255,255,.2);color:#fff}
+.sidebar-main{flex:1;background:#F5F5F7;min-width:0}
+.sidebar-main .container{max-width:1180px;margin:0;padding:32px 32px}
+
+@media(max-width:900px){
+  .layout{flex-direction:column}
+  .sidebar{width:100%;height:auto;position:relative;top:0;flex-direction:row;
+    overflow-x:auto;padding:12px;gap:6px;border-right:0;border-bottom:1px solid #E8E8ED}
+  .sidebar-section{display:none}
+  .sidebar-item{white-space:nowrap;flex-shrink:0}
+  .sidebar-main .container{padding:20px 16px}
+}
+
+/* TAB SWITCHER (ancien — masqué, remplacé par sidebar) */
+.tabs{display:none}
+.tab-btn{padding:9px 18px;border:none;background:transparent;border-radius:8px;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;color:#6E6E73;transition:.15s;display:flex;align-items:center;gap:7px}
+.tab-btn:hover{color:#1D1D1F}
+.tab-btn.active{background:#1D1D1F;color:#fff}
+.tab-btn .tab-count{background:rgba(255,255,255,.15);color:inherit;font-size:11px;font-weight:700;padding:1px 8px;border-radius:980px;min-width:22px;text-align:center}
+.tab-btn:not(.active) .tab-count{background:#F5F5F7;color:#6E6E73}
+
+/* A1 — Page header (titre + sub) au-dessus du contenu */
+.page-header{margin-bottom:24px}
+.page-header h1{font-size:24px;font-weight:700;letter-spacing:-.3px;margin-bottom:4px}
+.page-header p{font-size:14px;color:#6E6E73}
+
+/* A1 — Coming soon state pour Overview (placeholder avant A2) */
+.coming-soon{background:#fff;border-radius:14px;padding:48px 32px;text-align:center;
+  box-shadow:0 2px 12px rgba(0,0,0,.06);border:2px dashed #E5E5EA}
+.coming-soon-icon{font-size:42px;margin-bottom:12px;opacity:.6}
+.coming-soon h3{font-size:18px;font-weight:700;margin-bottom:8px}
+.coming-soon p{font-size:14px;color:#6E6E73;max-width:480px;margin:0 auto;line-height:1.6}
+
+.tab-pane{display:none}
+.tab-pane.active{display:block;animation:fadeIn .25s ease-out}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 
 /* STATS */
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:28px}
@@ -39,11 +99,13 @@ nav{background:rgba(255,255,255,.9);backdrop-filter:blur(20px);border-bottom:1px
 .stat-value{font-size:28px;font-weight:700;letter-spacing:-.5px}
 .stat-value.green{color:#30D158}
 .stat-value.orange{color:#FF9F0A}
+.stat-value.red{color:#FF3B30}
+.stat-value.blue{color:#0071E3}
 
 /* TABLE */
-.table-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.table-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px}
 .table-title{font-size:17px;font-weight:700}
-.search-input{padding:8px 14px;border:1.5px solid #E5E5EA;border-radius:8px;font-size:14px;font-family:inherit;outline:none;width:220px;transition:.15s}
+.search-input{padding:8px 14px;border:1.5px solid #E5E5EA;border-radius:8px;font-size:14px;font-family:inherit;outline:none;width:240px;transition:.15s}
 .search-input:focus{border-color:#0071E3}
 
 .users-table{background:#fff;border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.06);overflow:hidden}
@@ -61,6 +123,90 @@ nav{background:rgba(255,255,255,.9);backdrop-filter:blur(20px);border-bottom:1px
 .badge::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.8}
 .date-cell{font-size:12px;color:#86868B}
 
+/* FOUNDERS TABLE */
+.founders-table{background:#fff;border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.06);overflow:hidden}
+.fnd-row{display:grid;grid-template-columns:90px 1.1fr 1.4fr 1fr 1.1fr 110px 90px;align-items:center;padding:14px 20px;border-bottom:1px solid #F5F5F7;gap:10px;transition:.1s}
+.fnd-row:last-child{border-bottom:none}
+.fnd-row:hover{background:#FAFAFA}
+.fnd-row.head{background:#F5F5F7;font-size:11px;font-weight:700;color:#6E6E73;text-transform:uppercase;letter-spacing:.5px}
+.fnd-row.head:hover{background:#F5F5F7}
+.fnd-name{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fnd-email-mobile{display:none;font-size:12px;color:#6E6E73;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fnd-sub{font-size:12px;color:#86868B;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fnd-email{font-size:13px;color:#1D1D1F;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fnd-email a{color:#0071E3;text-decoration:none}
+.fnd-email a:hover{text-decoration:underline}
+.fnd-phone{font-size:13px;color:#1D1D1F;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fnd-comment{font-size:12px;color:#6E6E73;font-style:italic;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.status-select{padding:5px 8px;border:1.5px solid #E5E5EA;border-radius:7px;font-size:12px;font-family:inherit;background:#fff;cursor:pointer;font-weight:600;width:100%}
+.status-select.s-pending{border-color:#FF9F0A;color:#B07800}
+.status-select.s-contacted{border-color:#0071E3;color:#0071E3}
+.status-select.s-converted{border-color:#30D158;color:#1A9940}
+.status-select.s-cancelled{border-color:#86868B;color:#86868B}
+.action-btn{padding:5px 9px;border:1px solid #E5E5EA;background:#fff;border-radius:7px;font-size:11px;font-family:inherit;cursor:pointer;color:#6E6E73;transition:.15s;font-weight:600;margin-left:4px}
+.action-btn:hover{border-color:#FF3B30;color:#FF3B30}
+.action-btn.resend:hover{border-color:#0071E3;color:#0071E3}
+
+/* INVITE BUTTON + MODAL */
+.btn-invite{padding:9px 18px;background:linear-gradient(135deg,#FF9F0A,#FF6B00);color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:0 4px 14px rgba(255,159,10,.35);transition:.2s;white-space:nowrap}
+.btn-invite:hover{transform:translateY(-1px);box-shadow:0 8px 22px rgba(255,159,10,.45)}
+
+.inv-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(8px);z-index:1000;align-items:center;justify-content:center;padding:24px}
+.inv-overlay.show{display:flex}
+.inv-modal{background:#fff;border-radius:20px;max-width:520px;width:100%;padding:32px 32px 28px;position:relative;box-shadow:0 30px 80px rgba(0,0,0,.3);max-height:90vh;overflow-y:auto}
+.inv-close{position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:50%;border:none;background:#F5F5F7;font-size:20px;cursor:pointer;line-height:1}
+.inv-close:hover{background:#E5E5EA}
+.inv-title{font-size:20px;font-weight:800;margin-bottom:6px;letter-spacing:-.3px}
+.inv-sub{font-size:13px;color:#6E6E73;margin-bottom:20px;line-height:1.5}
+.inv-form{display:flex;flex-direction:column;gap:13px}
+.inv-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.inv-field{display:flex;flex-direction:column;gap:5px}
+.inv-field label{font-size:11px;font-weight:700;color:#1D1D1F;letter-spacing:.2px;text-transform:uppercase}
+.inv-field input{padding:10px 12px;border:1.5px solid #E5E5EA;border-radius:8px;font-size:14px;font-family:inherit;background:#fff;outline:none;transition:.15s}
+.inv-field input:focus{border-color:#FF9F0A;box-shadow:0 0 0 3px rgba(255,159,10,.12)}
+.inv-pwd-row{display:flex;gap:6px;align-items:end}
+.inv-pwd-row input{flex:1}
+.inv-pwd-btn{padding:10px 12px;background:#F5F5F7;border:1.5px solid #E5E5EA;border-radius:8px;font-size:12px;font-family:inherit;cursor:pointer;color:#6E6E73;font-weight:600;white-space:nowrap}
+.inv-pwd-btn:hover{background:#E5E5EA}
+.inv-checkbox{display:flex;align-items:center;gap:8px;font-size:13px;color:#1D1D1F;padding:6px 0;cursor:pointer}
+.inv-checkbox input{width:16px;height:16px;cursor:pointer}
+.inv-help{font-size:11px;color:#86868B;line-height:1.5;background:#F5F5F7;padding:10px 12px;border-radius:8px}
+.inv-error{display:none;background:#FFEFEE;color:#D92B20;padding:10px 14px;border-radius:8px;font-size:13px;font-weight:500;border-left:3px solid #FF3B30}
+.inv-error.show{display:block}
+.inv-success{display:none;background:#EDFAF1;color:#1A7A35;padding:14px 16px;border-radius:10px;font-size:13px;border-left:3px solid #34C759}
+.inv-success.show{display:block}
+.inv-success-pwd{display:block;margin-top:8px;background:#fff;padding:8px 12px;border-radius:6px;font-family:Menlo,Monaco,monospace;font-size:14px;color:#1D1D1F;border:1px dashed #34C759;user-select:all}
+.inv-submit{width:100%;padding:13px;background:linear-gradient(135deg,#FF9F0A,#FF6B00);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;margin-top:6px}
+.inv-submit:disabled{opacity:.6;cursor:not-allowed}
+
+/* ── ÉQUIPES ───────────────────────────────────────────────────────── */
+.team-card{background:#fff;border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.06);margin-bottom:14px;overflow:hidden}
+.team-head{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;cursor:pointer;transition:.15s;flex-wrap:wrap;gap:10px}
+.team-head:hover{background:#FAFAFA}
+.team-head-info{display:flex;align-items:center;gap:14px;flex:1;min-width:200px}
+.team-icon{width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,#FF9F0A,#FF6B00);color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.team-name{font-size:16px;font-weight:700;color:#1D1D1F;margin-bottom:2px}
+.team-meta{font-size:12px;color:#86868B}
+.team-actions{display:flex;align-items:center;gap:8px}
+.team-chevron{font-size:14px;color:#86868B;transition:.2s}
+.team-card.open .team-chevron{transform:rotate(180deg)}
+
+.team-body{display:none;padding:0 20px 18px;border-top:1px solid #F5F5F7}
+.team-card.open .team-body{display:block}
+.team-members-list{margin-top:14px;display:flex;flex-direction:column;gap:6px}
+.team-member-row{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#FAFAFA;border-radius:8px;font-size:13px;gap:10px}
+.team-member-info{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
+.team-member-name{font-weight:600;color:#1D1D1F;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.team-member-email{color:#6E6E73;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.team-owner-badge{background:linear-gradient(135deg,#FF9F0A,#FF6B00);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:980px;letter-spacing:.4px;text-transform:uppercase}
+.team-empty-members{padding:14px 16px;background:#FFF8EC;border-radius:8px;color:#7A4A00;font-size:13px;margin-top:10px}
+.team-add-section{margin-top:14px;padding-top:14px;border-top:1px solid #F5F5F7}
+.team-add-section label{font-size:11px;font-weight:700;color:#6E6E73;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px}
+.team-add-row{display:flex;gap:8px;flex-wrap:wrap}
+.team-add-select{flex:1;min-width:200px;padding:9px 12px;border:1.5px solid #E5E5EA;border-radius:8px;font-size:13px;font-family:inherit;background:#fff;cursor:pointer}
+.team-add-btn{padding:9px 16px;background:#1D1D1F;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer}
+.team-add-btn:hover{background:#000}
+
 /* Toggle */
 .toggle-wrap{display:flex;align-items:center;gap:8px}
 .toggle{position:relative;width:40px;height:24px;cursor:pointer}
@@ -77,10 +223,83 @@ nav{background:rgba(255,255,255,.9);backdrop-filter:blur(20px);border-bottom:1px
 .toast{position:fixed;bottom:24px;right:24px;background:#1D1D1F;color:#fff;padding:12px 18px;border-radius:10px;font-size:14px;font-weight:500;box-shadow:0 4px 20px rgba(0,0,0,.2);transform:translateY(80px);opacity:0;transition:.3s;z-index:999}
 .toast.show{transform:translateY(0);opacity:1}
 
-@media(max-width:600px){
-  .stats{grid-template-columns:1fr 1fr}
-  .table-row{grid-template-columns:1fr 80px;gap:8px}
+/* Slot bar */
+.slots-bar{background:#fff;border-radius:14px;padding:18px 22px;margin-bottom:20px;box-shadow:0 2px 12px rgba(0,0,0,.06);display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.slots-bar-text{flex:1;min-width:200px}
+.slots-bar-text strong{font-size:18px;font-weight:700;color:#1D1D1F}
+.slots-bar-text small{display:block;font-size:12px;color:#6E6E73;margin-top:2px}
+.slots-progress{flex:2;min-width:240px;height:10px;background:#F5F5F7;border-radius:5px;overflow:hidden;position:relative}
+.slots-fill{height:100%;background:linear-gradient(90deg,#FF9F0A,#FF6B00);border-radius:5px;transition:width .4s ease-out}
+
+/* ── RESPONSIVE : tablette / iPad (≤1024) ──────────────────────────── */
+@media(max-width:1024px){
+  .container{padding:24px 16px}
+  .fnd-row{grid-template-columns:90px 1fr 1fr 1fr 110px 90px;gap:8px}
+  .col-fnd-company{display:none}
+}
+
+/* ── RESPONSIVE : iPhone (≤768) ────────────────────────────────────── */
+@media(max-width:768px){
+  /* Nav */
+  nav{padding:0 14px;height:48px}
+  .nav-brand{font-size:14px}
+  .nav-right span{display:none}
+  .btn-sm{padding:5px 10px;font-size:12px}
+
+  /* Container */
+  .container{padding:18px 14px}
+
+  /* Tabs : permettre wrap pour les 2 onglets */
+  .tabs{width:100%;flex-wrap:wrap}
+  .tab-btn{flex:1;justify-content:center;padding:10px 14px;font-size:13px}
+
+  /* Stats : 1 colonne sur 2 */
+  .stats{grid-template-columns:1fr 1fr;gap:10px}
+  .stat-card{padding:14px 16px}
+  .stat-value{font-size:22px}
+
+  /* Table header : on stack barre recherche + bouton invite */
+  .table-header{flex-direction:column;align-items:stretch;gap:8px}
+  .search-input{width:100%}
+  .btn-invite{width:100%;justify-content:center}
+
+  /* Tables : on cache colonnes secondaires, garde l'essentiel */
+  .table-row{grid-template-columns:1fr 90px;gap:8px;padding:12px 14px}
   .col-email,.col-provider,.col-date{display:none}
+  /* Founders : 4 colonnes visibles (nom / email / statut / actions) */
+  .fnd-row{grid-template-columns:minmax(0,1fr) minmax(0,1.2fr) 96px 72px;gap:8px;padding:12px 14px}
+  .col-fnd-date,.col-fnd-phone,.col-fnd-company{display:none}
+  .fnd-name{font-size:13px}
+  .fnd-email a{font-size:12px}
+
+  /* Slots bar verticale */
+  .slots-bar{flex-direction:column;align-items:stretch;gap:12px;padding:14px 16px}
+  .slots-bar-text{min-width:0}
+  .slots-progress{flex:none;width:100%}
+
+  /* Modale invite : full width */
+  .inv-modal{padding:24px 20px;border-radius:14px;max-width:calc(100vw - 24px)}
+  .inv-row{grid-template-columns:1fr;gap:10px}
+  .inv-pwd-row{flex-direction:column;align-items:stretch;gap:6px}
+  .inv-pwd-btn{width:100%}
+}
+
+/* ── RESPONSIVE : iPhone très étroit (≤480) ────────────────────────── */
+@media(max-width:480px){
+  .container{padding:14px 12px}
+  .login-card{padding:28px 22px;border-radius:14px}
+  .stats{grid-template-columns:1fr 1fr;gap:8px}
+  .stat-card{padding:12px 14px}
+  .stat-value{font-size:20px}
+  .tab-btn{font-size:12px;padding:9px 10px;gap:5px}
+  .tab-btn .tab-count{font-size:10px;padding:1px 6px}
+  .table-row{grid-template-columns:1fr 76px;font-size:13px}
+  /* Encore plus étroit : 3 colonnes — l'email apparaît sous le nom */
+  .fnd-row{grid-template-columns:minmax(0,1fr) 90px 64px;padding:10px 12px;gap:6px}
+  .fnd-email{display:none}
+  .fnd-email-mobile{display:block}
+  .fnd-name{font-size:13px}
+  .status-select{font-size:11px;padding:4px 6px}
 }
 </style>
 </head>
@@ -111,41 +330,252 @@ nav{background:rgba(255,255,255,.9);backdrop-filter:blur(20px);border-bottom:1px
     </div>
   </nav>
 
+  <!-- A1 — Layout sidebar + main content -->
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="sidebar-section">Vue d'ensemble</div>
+      <button class="sidebar-item" data-tab="overview" onclick="switchTab('overview')">
+        <span class="si-icon">📊</span> Overview
+      </button>
+
+      <div class="sidebar-section">Gestion</div>
+      <button class="sidebar-item active" data-tab="users" onclick="switchTab('users')">
+        <span class="si-icon">👤</span> Utilisateurs <span class="si-count" id="tabCountUsers">0</span>
+      </button>
+      <button class="sidebar-item" data-tab="teams" onclick="switchTab('teams')">
+        <span class="si-icon">🏢</span> Équipes <span class="si-count" id="tabCountTeams">0</span>
+      </button>
+      <button class="sidebar-item" data-tab="founders" onclick="switchTab('founders')">
+        <span class="si-icon">🔥</span> Early Adopters <span class="si-count" id="tabCountFounders">0</span>
+      </button>
+    </aside>
+
+    <div class="sidebar-main">
   <div class="container">
-    <!-- Stats -->
-    <div class="stats">
-      <div class="stat-card">
-        <div class="stat-label">Total utilisateurs</div>
-        <div class="stat-value" id="stat-total">—</div>
+
+    <!-- TABS (anciens — masqués par .tabs{display:none} ; conservés pour rétrocompat JS) -->
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="users" onclick="switchTab('users')">
+        👤 Utilisateurs
+      </button>
+      <button class="tab-btn" data-tab="teams" onclick="switchTab('teams')">
+        🏢 Équipes
+      </button>
+      <button class="tab-btn" data-tab="founders" onclick="switchTab('founders')">
+        🔥 Early Adopters
+      </button>
+    </div>
+
+    <!-- A1 — Nouvel onglet OVERVIEW (placeholder en attente du commit A2) -->
+    <div class="tab-pane" id="pane-overview">
+      <div class="page-header">
+        <h1>Overview</h1>
+        <p>Vue d'ensemble de l'activité FOXSCAN — métriques business, signups, revenus.</p>
       </div>
-      <div class="stat-card">
-        <div class="stat-label">Abonnements actifs</div>
-        <div class="stat-value green" id="stat-active">—</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Inactifs</div>
-        <div class="stat-value orange" id="stat-inactive">—</div>
+      <div class="coming-soon">
+        <div class="coming-soon-icon">📈</div>
+        <h3>Tableau de bord arrive bientôt</h3>
+        <p>
+          MRR Stripe, signups quotidiens, taux de conversion Founders, EDL finalisés —
+          tout sera affiché ici dans le prochain commit (A2). Pour l'instant, utilisez
+          les onglets de gauche pour gérer utilisateurs, équipes et Early Adopters.
+        </p>
       </div>
     </div>
 
-    <!-- Table -->
-    <div class="table-header">
-      <div class="table-title">Utilisateurs</div>
-      <input class="search-input" id="search" type="text" placeholder="Rechercher…" oninput="renderTable()"/>
+    <!-- ════════ TAB : UTILISATEURS ════════ -->
+    <div class="tab-pane active" id="pane-users">
+      <div class="stats">
+        <div class="stat-card">
+          <div class="stat-label">Total utilisateurs</div>
+          <div class="stat-value" id="stat-total">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Abonnements actifs</div>
+          <div class="stat-value green" id="stat-active">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Inactifs</div>
+          <div class="stat-value orange" id="stat-inactive">—</div>
+        </div>
+      </div>
+
+      <div class="table-header">
+        <div class="table-title">Utilisateurs</div>
+        <input class="search-input" id="search" type="text" placeholder="Rechercher…" oninput="renderTable()"/>
+      </div>
+
+      <div class="users-table">
+        <div class="table-row table-head">
+          <div>Nom</div>
+          <div class="col-email">Email</div>
+          <div class="col-provider">Provider</div>
+          <div class="col-date">Inscrit le</div>
+          <div>Abonnement</div>
+        </div>
+        <div id="users-body">
+          <div class="empty">Chargement…</div>
+        </div>
+      </div>
     </div>
 
-    <div class="users-table">
-      <div class="table-row table-head">
-        <div>Nom</div>
-        <div class="col-email">Email</div>
-        <div class="col-provider">Provider</div>
-        <div class="col-date">Inscrit le</div>
-        <div>Abonnement</div>
+    <!-- ════════ TAB : AVANTAGE SPÉCIAL (FOUNDERS) ════════ -->
+    <!-- ════════ TAB : ÉQUIPES ════════ -->
+    <div class="tab-pane" id="pane-teams">
+      <div class="stats">
+        <div class="stat-card">
+          <div class="stat-label">Équipes</div>
+          <div class="stat-value" id="teamStatTotal">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Membres total</div>
+          <div class="stat-value blue" id="teamStatMembers">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Sans équipe</div>
+          <div class="stat-value orange" id="teamStatOrphans">—</div>
+        </div>
       </div>
-      <div id="users-body">
+
+      <div class="table-header">
+        <div class="table-title">Équipes (entreprises / agences)</div>
+        <button class="btn-invite" onclick="openCreateTeamModal()">+ Créer une équipe</button>
+      </div>
+
+      <div id="teams-list">
         <div class="empty">Chargement…</div>
       </div>
     </div>
+
+    <div class="tab-pane" id="pane-founders">
+      <!-- Compteur de places -->
+      <div class="slots-bar">
+        <div class="slots-bar-text">
+          <strong id="slotsText">— / 20 places réservées</strong>
+          <small id="slotsSubText">Programme licence à vie · 200 € paiement unique</small>
+        </div>
+        <div class="slots-progress">
+          <div class="slots-fill" id="slotsFill" style="width:0%"></div>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="stat-card">
+          <div class="stat-label">Inscrits</div>
+          <div class="stat-value" id="fndStatTotal">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">À contacter</div>
+          <div class="stat-value orange" id="fndStatPending">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Convertis</div>
+          <div class="stat-value green" id="fndStatConverted">—</div>
+        </div>
+      </div>
+
+      <div class="table-header">
+        <div class="table-title">Réservations Lifetime</div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <input class="search-input" id="fndSearch" type="text" placeholder="Rechercher (nom, email, société…)" oninput="renderFounders()"/>
+          <button class="btn-invite" onclick="openInviteModal()">+ Inviter un Founder</button>
+        </div>
+      </div>
+
+      <div class="founders-table">
+        <div class="fnd-row head">
+          <div class="col-fnd-date">Date</div>
+          <div>Nom</div>
+          <div>Contact</div>
+          <div class="col-fnd-phone">Téléphone</div>
+          <div class="col-fnd-company">Société · Activité</div>
+          <div>Statut</div>
+          <div></div>
+        </div>
+        <div id="founders-body">
+          <div class="empty">Chargement…</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+    </div><!-- /.sidebar-main -->
+  </div><!-- /.layout -->
+</div><!-- /.admin-app -->
+
+<!-- ════════ MODAL : Inviter un Founder manuellement ════════ -->
+<div class="inv-overlay" id="inviteModal" onclick="if(event.target===this)closeInviteModal()">
+  <div class="inv-modal" role="dialog" aria-labelledby="invTitle">
+    <button class="inv-close" onclick="closeInviteModal()" aria-label="Fermer">×</button>
+    <h2 class="inv-title" id="invTitle">🔥 Inviter un Founder</h2>
+    <p class="inv-sub">Crée manuellement un compte avec accès à vie + envoie un email de bienvenue. Idéal pour comp accounts, beta-testeurs, presse, partenaires.</p>
+
+    <form id="inviteForm" class="inv-form" onsubmit="submitInvite(event)">
+      <div class="inv-row">
+        <div class="inv-field">
+          <label for="invEmail">Email *</label>
+          <input type="email" id="invEmail" required maxlength="120" autocomplete="off"/>
+        </div>
+        <div class="inv-field">
+          <label for="invName">Nom (facultatif)</label>
+          <input type="text" id="invName" maxlength="100" autocomplete="off"/>
+        </div>
+      </div>
+
+      <div class="inv-field">
+        <label for="invPassword">Mot de passe</label>
+        <div class="inv-pwd-row">
+          <input type="text" id="invPassword" maxlength="60" placeholder="Laisser vide = auto-généré" autocomplete="new-password"/>
+          <button type="button" class="inv-pwd-btn" onclick="generateInvitePassword()">⟳ Générer</button>
+        </div>
+      </div>
+
+      <label class="inv-checkbox">
+        <input type="checkbox" id="invSendEmail" checked/>
+        Envoyer l'email de bienvenue avec les identifiants
+      </label>
+
+      <div class="inv-help">
+        ℹ️ Le compte sera créé avec <strong>licence à vie active</strong>, marqué comme <em>founder</em>, et apparaîtra dans la liste avec le statut "Converti" et la source "admin_invite". <strong>Cette invitation ne consomme pas une des 20 places publiques.</strong>
+      </div>
+
+      <div class="inv-error" id="invError"></div>
+      <div class="inv-success" id="invSuccess"></div>
+
+      <button type="submit" class="inv-submit" id="invSubmit">Créer le compte + envoyer l'email</button>
+    </form>
+  </div>
+</div>
+
+<!-- ════════ MODAL : Créer une équipe ════════ -->
+<div class="inv-overlay" id="teamModal" onclick="if(event.target===this)closeCreateTeamModal()">
+  <div class="inv-modal" role="dialog" aria-labelledby="teamModalTitle">
+    <button class="inv-close" onclick="closeCreateTeamModal()" aria-label="Fermer">×</button>
+    <h2 class="inv-title" id="teamModalTitle">🏢 Créer une équipe</h2>
+    <p class="inv-sub">Une équipe regroupe plusieurs comptes utilisateurs (typiquement les agents d'une même agence). Chaque membre peut voir les biens et EDL de l'équipe.</p>
+
+    <form id="teamForm" class="inv-form" onsubmit="submitCreateTeam(event)">
+      <div class="inv-field">
+        <label for="teamName">Nom de l'équipe *</label>
+        <input type="text" id="teamName" required maxlength="80" placeholder="ex: Agence Belleville Immobilier" autocomplete="off"/>
+      </div>
+
+      <div class="inv-field">
+        <label for="teamOwner">Admin de l'équipe (facultatif)</label>
+        <select id="teamOwner" class="team-add-select">
+          <option value="">— Aucun pour l'instant —</option>
+        </select>
+      </div>
+
+      <div class="inv-help">
+        ℹ️ L'admin de l'équipe est le compte qui aura les droits de gestion (rôle directeur d'agence par exemple). Vous pourrez l'attribuer plus tard.
+      </div>
+
+      <div class="inv-error" id="teamError"></div>
+      <div class="inv-success" id="teamSuccess"></div>
+
+      <button type="submit" class="inv-submit" id="teamSubmit" style="background:linear-gradient(135deg,#0071E3,#5856D6)">Créer l'équipe</button>
+    </form>
   </div>
 </div>
 
@@ -155,6 +585,8 @@ nav{background:rgba(255,255,255,.9);backdrop-filter:blur(20px);border-bottom:1px
 const API_BASE = localStorage.getItem("foxscan_api_base_url") || "https://foxscan.fr";
 let adminKey = "";
 let allUsers = [];
+let allFounders = [];
+let allTeams = [];
 
 document.getElementById("nav-api").textContent = API_BASE;
 
@@ -166,17 +598,34 @@ function showToast(msg, ok = true) {
   setTimeout(() => t.classList.remove("show"), 3000);
 }
 
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[c]));
+}
+
+function providerLabel(p) {
+  if (p === "email") return "📧 Email";
+  if (p === "google") return "🔵 Google";
+  if (p === "apple") return "🍎 Apple";
+  return p || "—";
+}
+
+function switchTab(name) {
+  // A1 — Met à jour à la fois les anciens tab-btn (masqués mais on les garde
+  // pour ne rien casser) ET les nouveaux sidebar-item.
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('.sidebar-item').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.id === `pane-${name}`));
+}
+
 async function login() {
   const key = document.getElementById("admin-key-input").value.trim();
   if (!key) return;
-
   const errEl = document.getElementById("login-error");
   errEl.textContent = "";
-
   try {
-    const res = await fetch(`${API_BASE}/admin/users`, {
-      headers: { "x-admin-key": key }
-    });
+    const res = await fetch(`${API_BASE}/admin/users`, { headers: { "x-admin-key": key } });
     if (!res.ok) throw new Error("Clé invalide");
     const data = await res.json();
     adminKey = key;
@@ -186,6 +635,8 @@ async function login() {
     allUsers = data.users || [];
     updateStats();
     renderTable();
+    loadFounders();  // charge en parallèle
+    loadTeams();     // charge les équipes en parallèle
   } catch (e) {
     errEl.textContent = "Clé incorrecte ou API inaccessible.";
   }
@@ -204,55 +655,76 @@ function updateStats() {
   document.getElementById("stat-total").textContent = allUsers.length;
   document.getElementById("stat-active").textContent = active;
   document.getElementById("stat-inactive").textContent = allUsers.length - active;
+  document.getElementById("tabCountUsers").textContent = allUsers.length;
 }
 
 function formatDate(iso) {
   if (!iso) return "—";
   try { return new Date(iso).toLocaleDateString("fr-FR"); } catch { return "—"; }
 }
+function formatDateTime(iso) {
+  if (!iso) return "—";
+  try {
+    const d = new Date(iso);
+    return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" }) +
+           " " + d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  } catch { return "—"; }
+}
 
 function renderTable() {
   const q = document.getElementById("search").value.toLowerCase();
   const filtered = q
-    ? allUsers.filter(u =>
-        (u.name || "").toLowerCase().includes(q) ||
-        (u.email || "").toLowerCase().includes(q)
-      )
+    ? allUsers.filter(u => (u.name || "").toLowerCase().includes(q) || (u.email || "").toLowerCase().includes(q))
     : allUsers;
 
   const body = document.getElementById("users-body");
-  if (!filtered.length) {
-    body.innerHTML = `<div class="empty">Aucun utilisateur trouvé.</div>`;
-    return;
-  }
+  if (!filtered.length) { body.innerHTML = `<div class="empty">Aucun utilisateur trouvé.</div>`; return; }
 
-  body.innerHTML = filtered.map(u => `
+  body.innerHTML = filtered.map(u => {
+    // Badge de statut selon accessStatus
+    let statusBadge = '';
+    if (u.accessStatus === 'lifetime' || u.foundersAccount) {
+      statusBadge = '<span class="badge active" style="background:#EDFAF1;color:#1A7A35">🔥 À vie</span>';
+    } else if (u.accessStatus === 'subscription') {
+      statusBadge = '<span class="badge active">📅 Abonné</span>';
+    } else if (u.accessStatus === 'trial') {
+      const days = u.trialDaysRemaining || 0;
+      const color = days <= 3 ? '#FF3B30' : '#FF9F0A';
+      const bg = days <= 3 ? '#FFEFEE' : '#FFF8EC';
+      statusBadge = `<span class="badge" style="background:${bg};color:${color}">⏱ Essai ${days}j</span>`;
+    } else {
+      statusBadge = '<span class="badge inactive">⚠ Expiré</span>';
+    }
+
+    const teamBadge = u.teamId
+      ? `<div style="font-size:11px;color:#0071E3;font-weight:600;margin-top:3px">🏢 ${esc(u.teamName || "")}${u.isTeamOwner ? ' · admin' : ''}</div>`
+      : '';
+
+    return `
     <div class="table-row" id="row-${u.id}">
       <div>
         <div class="user-name">${esc(u.name || "—")}</div>
         <div class="user-email col-email">${esc(u.email || "—")}</div>
+        ${teamBadge}
       </div>
       <div class="col-email" style="font-size:13px;color:#6E6E73">${esc(u.email || "—")}</div>
-      <div class="user-provider col-provider">${u.authProvider === "email" ? "📧 Email" : "🍎 Apple"}</div>
+      <div class="user-provider col-provider">${providerLabel(u.authProvider)}</div>
       <div class="date-cell col-date">${formatDate(u.createdAt)}</div>
       <div class="toggle-wrap">
-        <label class="toggle" title="${u.subscriptionActive ? 'Désactiver' : 'Activer'} l'abonnement">
-          <input type="checkbox" ${u.subscriptionActive ? "checked" : ""}
-            onchange="toggleSub('${u.id}', this.checked)"/>
+        <label class="toggle" title="${u.subscriptionActive ? 'Désactiver' : 'Activer'} l'accès">
+          <input type="checkbox" ${u.subscriptionActive ? "checked" : ""} onchange="toggleSub('${u.id}', this.checked)"/>
           <span class="toggle-slider"></span>
         </label>
-        <span class="badge ${u.subscriptionActive ? 'active' : 'inactive'}">
-          ${u.subscriptionActive ? 'Actif' : 'Inactif'}
-        </span>
+        ${statusBadge}
       </div>
     </div>
-  `).join("");
+  `;
+  }).join("");
 }
 
 async function toggleSub(userId, active) {
   const user = allUsers.find(u => u.id === userId);
   if (!user) return;
-
   try {
     const res = await fetch(`${API_BASE}/admin/users/${userId}/subscription`, {
       method: "PATCH",
@@ -260,16 +732,483 @@ async function toggleSub(userId, active) {
       body: JSON.stringify({ subscriptionActive: active })
     });
     if (!res.ok) throw new Error("Erreur API");
-
     user.subscriptionActive = active;
     updateStats();
     renderTable();
     showToast(`${user.name} — abonnement ${active ? "activé ✓" : "désactivé"}`);
   } catch (e) {
     showToast("Erreur lors de la mise à jour", false);
-    user.subscriptionActive = !active; // rollback
+    user.subscriptionActive = !active;
     renderTable();
   }
+}
+
+// ── FOUNDERS ──────────────────────────────────────────────────────────────
+async function loadFounders() {
+  try {
+    const res = await fetch(`${API_BASE}/admin/founders`, { headers: { "x-admin-key": adminKey } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    allFounders = data.items || [];
+    updateFoundersStats(data.taken, data.total, data.remaining);
+    renderFounders();
+  } catch (e) {
+    document.getElementById("founders-body").innerHTML = `<div class="empty">❌ ${esc(e.message)}</div>`;
+  }
+}
+
+function updateFoundersStats(taken, total, remaining) {
+  const pending = allFounders.filter(f => f.status === "pending").length;
+  const converted = allFounders.filter(f => f.status === "converted").length;
+  document.getElementById("fndStatTotal").textContent = String(taken ?? allFounders.length);
+  document.getElementById("fndStatPending").textContent = String(pending);
+  document.getElementById("fndStatConverted").textContent = String(converted);
+  document.getElementById("tabCountFounders").textContent = String(taken ?? allFounders.length);
+  if (typeof total === "number") {
+    document.getElementById("slotsText").textContent = `${taken} / ${total} places réservées`;
+    document.getElementById("slotsSubText").textContent = remaining > 0
+      ? `Plus que ${remaining} place${remaining > 1 ? 's' : ''} disponibles · 200 € paiement unique`
+      : `Programme complet — toutes les places sont réservées`;
+    document.getElementById("slotsFill").style.width = `${Math.min(100, (taken / total) * 100)}%`;
+  }
+}
+
+function renderFounders() {
+  const q = (document.getElementById("fndSearch").value || "").toLowerCase();
+  const filtered = q
+    ? allFounders.filter(f =>
+        (f.name || "").toLowerCase().includes(q) ||
+        (f.email || "").toLowerCase().includes(q) ||
+        (f.company || "").toLowerCase().includes(q) ||
+        (f.role || "").toLowerCase().includes(q) ||
+        (f.phone || "").toLowerCase().includes(q))
+    : allFounders;
+
+  const body = document.getElementById("founders-body");
+  if (!filtered.length) {
+    body.innerHTML = `<div class="empty">${q ? 'Aucun résultat.' : 'Aucune réservation pour le moment.'}</div>`;
+    return;
+  }
+
+  body.innerHTML = filtered.map(f => {
+    const statusOpts = ["pending", "contacted", "converted", "cancelled"]
+      .map(s => `<option value="${s}" ${f.status === s ? "selected" : ""}>${
+        s === "pending" ? "À contacter" : s === "contacted" ? "Contacté" : s === "converted" ? "Converti" : "Annulé"
+      }</option>`).join("");
+    const phoneCell = f.phone
+      ? `<a href="tel:${esc(f.phone)}" style="color:#1D1D1F;text-decoration:none">${esc(f.phone)}</a>`
+      : '<span style="color:#C7C7CC">—</span>';
+    return `
+      <div class="fnd-row" id="fnd-${f.id}">
+        <div class="date-cell col-fnd-date">${formatDateTime(f.createdAt)}</div>
+        <div>
+          <div class="fnd-name">${esc(f.name || "—")}</div>
+          <div class="fnd-email-mobile">${esc(f.email)}</div>
+          ${f.comment ? `<div class="fnd-comment" title="${esc(f.comment)}">💬 ${esc(f.comment)}</div>` : ""}
+        </div>
+        <div class="fnd-email"><a href="mailto:${esc(f.email)}">${esc(f.email)}</a></div>
+        <div class="fnd-phone col-fnd-phone">${phoneCell}</div>
+        <div class="col-fnd-company">
+          <div class="fnd-name" style="font-size:13px">${esc(f.company || "—")}</div>
+          <div class="fnd-sub">${esc(f.role || "—")}</div>
+        </div>
+        <div>
+          <select class="status-select s-${f.status}" onchange="setFounderStatus('${f.id}', this.value, this)">
+            ${statusOpts}
+          </select>
+        </div>
+        <div>
+          <button class="action-btn resend" onclick="resendFounderEmail('${f.id}')" title="Renvoyer l'email de bienvenue (réinitialise le mot de passe)">📧</button>
+          <button class="action-btn" onclick="deleteFounder('${f.id}')" title="Supprimer">🗑</button>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+async function setFounderStatus(id, status, selectEl) {
+  try {
+    const res = await fetch(`${API_BASE}/admin/founders/${id}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+      body: JSON.stringify({ status })
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const f = allFounders.find(x => x.id === id);
+    if (f) f.status = status;
+    selectEl.className = `status-select s-${status}`;
+    updateFoundersStats(allFounders.length, 20, Math.max(0, 20 - allFounders.length));
+    showToast(`Statut mis à jour : ${status}`);
+  } catch (e) {
+    showToast("Erreur : " + e.message, false);
+  }
+}
+
+async function deleteFounder(id) {
+  const f = allFounders.find(x => x.id === id);
+  if (!f) return;
+  if (!confirm(`Supprimer la réservation de ${f.name} (${f.email}) ?\n\nCette action est définitive.`)) return;
+  try {
+    const res = await fetch(`${API_BASE}/admin/founders/${id}`, {
+      method: "DELETE",
+      headers: { "x-admin-key": adminKey }
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    allFounders = allFounders.filter(x => x.id !== id);
+    updateFoundersStats(allFounders.length, 20, Math.max(0, 20 - allFounders.length));
+    renderFounders();
+    showToast("Réservation supprimée");
+  } catch (e) {
+    showToast("Erreur : " + e.message, false);
+  }
+}
+
+async function resendFounderEmail(id) {
+  const f = allFounders.find(x => x.id === id);
+  if (!f) return;
+  if (!confirm(`Renvoyer l'email de bienvenue à ${f.email} ?\n\n⚠️ Cela RÉINITIALISE son mot de passe (un nouveau sera envoyé).`)) return;
+  try {
+    const res = await fetch(`${API_BASE}/admin/founders/${id}/resend-email`, {
+      method: "POST",
+      headers: { "x-admin-key": adminKey, "Content-Type": "application/json" },
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.detail || data.emailError || `HTTP ${res.status}`);
+    showToast(`✓ Email renvoyé à ${f.email}`);
+  } catch (e) {
+    showToast("Erreur : " + e.message, false);
+  }
+}
+
+// ── INVITE MODAL ──────────────────────────────────────────────────────────────
+function openInviteModal() {
+  document.getElementById('inviteForm').reset();
+  document.getElementById('invSendEmail').checked = true;
+  document.getElementById('invError').classList.remove('show');
+  document.getElementById('invSuccess').classList.remove('show');
+  document.getElementById('inviteModal').classList.add('show');
+  setTimeout(() => document.getElementById('invEmail')?.focus(), 50);
+}
+
+function closeInviteModal() {
+  document.getElementById('inviteModal').classList.remove('show');
+}
+
+function generateInvitePassword() {
+  // Génère côté client un mot de passe aléatoire fort, sans caractères ambigus
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+  let p = "";
+  const randomBytes = new Uint8Array(12);
+  crypto.getRandomValues(randomBytes);
+  for (let i = 0; i < 12; i++) p += chars[randomBytes[i] % chars.length];
+  document.getElementById('invPassword').value = p;
+}
+
+async function submitInvite(e) {
+  e.preventDefault();
+  const submitBtn = document.getElementById('invSubmit');
+  const errBox = document.getElementById('invError');
+  const okBox = document.getElementById('invSuccess');
+  errBox.classList.remove('show');
+  okBox.classList.remove('show');
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Création…';
+
+  const payload = {
+    email: document.getElementById('invEmail').value.trim(),
+    name: document.getElementById('invName').value.trim(),
+    password: document.getElementById('invPassword').value.trim(),
+    sendEmail: document.getElementById('invSendEmail').checked,
+  };
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/founders/invite`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+
+    let msg = `<strong>✓ Compte créé pour ${esc(payload.email)}</strong>`;
+    if (data.passwordGenerated && data.password) {
+      msg += `<br><span style="font-size:12px;opacity:.85">Mot de passe généré (à conserver) :</span>`;
+      msg += `<code class="inv-success-pwd">${esc(data.password)}</code>`;
+    } else if (payload.password) {
+      msg += `<br><span style="font-size:12px;opacity:.85">Mot de passe : celui que vous avez saisi (non ré-affiché ici).</span>`;
+    }
+    if (payload.sendEmail) {
+      msg += data.emailSent
+        ? `<br><span style="font-size:12px;opacity:.85">📧 Email de bienvenue envoyé à ${esc(payload.email)}.</span>`
+        : `<br><span style="color:#D92B20;font-size:12px">⚠️ Compte créé mais email NON envoyé : ${esc(data.emailError || "erreur inconnue")}</span>`;
+    } else {
+      msg += `<br><span style="font-size:12px;opacity:.85">Email de bienvenue non envoyé (case décochée).</span>`;
+    }
+    okBox.innerHTML = msg;
+    okBox.classList.add('show');
+
+    // Refresh la liste pour voir le nouveau founder
+    await loadFounders();
+  } catch (err) {
+    errBox.textContent = err.message || "Erreur lors de la création.";
+    errBox.classList.add('show');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Créer le compte + envoyer l\'email';
+  }
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    const m = document.getElementById('inviteModal');
+    if (m && m.classList.contains('show')) closeInviteModal();
+  }
+});
+
+// ── ÉQUIPES ───────────────────────────────────────────────────────────────
+async function loadTeams() {
+  try {
+    const res = await fetch(`${API_BASE}/admin/teams`, { headers: { "x-admin-key": adminKey } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    allTeams = data.items || [];
+    renderTeams();
+    updateTeamStats();
+  } catch (e) {
+    document.getElementById("teams-list").innerHTML = `<div class="empty">❌ ${esc(e.message)}</div>`;
+  }
+}
+
+function updateTeamStats() {
+  const totalMembers = allTeams.reduce((s, t) => s + (t.membersCount || 0), 0);
+  const orphans = allUsers.filter(u => !u.teamId).length;
+  document.getElementById("teamStatTotal").textContent = String(allTeams.length);
+  document.getElementById("teamStatMembers").textContent = String(totalMembers);
+  document.getElementById("teamStatOrphans").textContent = String(orphans);
+  document.getElementById("tabCountTeams").textContent = String(allTeams.length);
+}
+
+function renderTeams() {
+  const root = document.getElementById("teams-list");
+  if (!allTeams.length) {
+    root.innerHTML = `
+      <div class="empty">
+        <p>Aucune équipe pour le moment.</p>
+        <p style="margin-top:8px;font-size:12px;color:#86868B">Créez votre première équipe pour regrouper plusieurs comptes utilisateurs (typiquement les agents d'une même agence).</p>
+      </div>
+    `;
+    return;
+  }
+
+  root.innerHTML = allTeams.map(t => {
+    const membersHtml = (t.members || []).length
+      ? `<div class="team-members-list">${
+          t.members.map(m => `
+            <div class="team-member-row">
+              <div class="team-member-info">
+                <div>
+                  <div class="team-member-name">${esc(m.name || "—")}</div>
+                  <div class="team-member-email">${esc(m.email || "")}</div>
+                </div>
+                ${m.isOwner ? '<span class="team-owner-badge">Admin équipe</span>' : ''}
+              </div>
+              <div style="display:flex;gap:6px">
+                ${!m.isOwner ? `<button class="action-btn resend" onclick="setTeamOwner('${t.id}','${m.id}')" title="Définir comme admin de l'équipe">👑</button>` : ''}
+                <button class="action-btn" onclick="removeTeamMember('${t.id}','${m.id}','${esc(m.name || m.email)}')" title="Retirer de l'équipe">−</button>
+              </div>
+            </div>
+          `).join("")
+        }</div>`
+      : `<div class="team-empty-members">Aucun membre. Ajoutez-en ci-dessous.</div>`;
+
+    // Liste des users non-membres pour le select d'ajout
+    const availableUsers = allUsers.filter(u => !u.teamId);
+    const optionsHtml = availableUsers.length
+      ? availableUsers.map(u => `<option value="${u.id}">${esc(u.name || "—")} · ${esc(u.email)}</option>`).join("")
+      : `<option value="" disabled>Tous les users sont déjà dans une équipe</option>`;
+
+    return `
+      <div class="team-card" id="team-card-${t.id}">
+        <div class="team-head" onclick="toggleTeamCard('${t.id}')">
+          <div class="team-head-info">
+            <div class="team-icon">🏢</div>
+            <div>
+              <div class="team-name">${esc(t.name)}</div>
+              <div class="team-meta">${t.membersCount} membre${t.membersCount > 1 ? "s" : ""} · admin : ${esc(t.ownerName || "non défini")}</div>
+            </div>
+          </div>
+          <div class="team-actions" onclick="event.stopPropagation()">
+            <button class="action-btn resend" onclick="renameTeam('${t.id}','${esc(t.name).replace(/'/g, "&#39;")}')" title="Renommer">✏️</button>
+            <button class="action-btn" onclick="deleteTeam('${t.id}','${esc(t.name).replace(/'/g, "&#39;")}')" title="Supprimer">🗑</button>
+            <span class="team-chevron">▼</span>
+          </div>
+        </div>
+        <div class="team-body">
+          ${membersHtml}
+          <div class="team-add-section">
+            <label>Ajouter un membre</label>
+            <div class="team-add-row">
+              <select class="team-add-select" id="add-select-${t.id}">
+                ${optionsHtml}
+              </select>
+              <button class="team-add-btn" onclick="addTeamMember('${t.id}')" ${availableUsers.length === 0 ? "disabled" : ""}>+ Ajouter</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function toggleTeamCard(id) {
+  document.getElementById(`team-card-${id}`)?.classList.toggle("open");
+}
+
+function openCreateTeamModal() {
+  document.getElementById("teamForm").reset();
+  document.getElementById("teamError").classList.remove("show");
+  document.getElementById("teamSuccess").classList.remove("show");
+
+  // Remplit le select avec les users sans équipe
+  const select = document.getElementById("teamOwner");
+  select.innerHTML = '<option value="">— Aucun pour l\'instant —</option>';
+  for (const u of allUsers.filter(u => !u.teamId)) {
+    const opt = document.createElement("option");
+    opt.value = u.id;
+    opt.textContent = `${u.name || "—"} · ${u.email}`;
+    select.appendChild(opt);
+  }
+  document.getElementById("teamModal").classList.add("show");
+  setTimeout(() => document.getElementById("teamName")?.focus(), 50);
+}
+
+function closeCreateTeamModal() {
+  document.getElementById("teamModal").classList.remove("show");
+}
+
+async function submitCreateTeam(e) {
+  e.preventDefault();
+  const errBox = document.getElementById("teamError");
+  errBox.classList.remove("show");
+  const name = document.getElementById("teamName").value.trim();
+  const ownerUserId = document.getElementById("teamOwner").value;
+  if (!name) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/teams`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+      body: JSON.stringify({ name, ownerUserId: ownerUserId || undefined }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+    closeCreateTeamModal();
+    showToast(`✓ Équipe "${name}" créée`);
+    await loadTeams();
+    // Recharge aussi les users (ownerUserId a peut-être changé)
+    const usersRes = await fetch(`${API_BASE}/admin/users`, { headers: { "x-admin-key": adminKey } });
+    if (usersRes.ok) {
+      allUsers = (await usersRes.json()).users || [];
+      updateStats();
+      renderTable();
+    }
+  } catch (err) {
+    errBox.textContent = err.message;
+    errBox.classList.add("show");
+  }
+}
+
+async function addTeamMember(teamId) {
+  const select = document.getElementById(`add-select-${teamId}`);
+  const userId = select?.value;
+  if (!userId) return;
+  try {
+    const res = await fetch(`${API_BASE}/admin/teams/${teamId}/members`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+      body: JSON.stringify({ userIds: [userId] }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    showToast("✓ Membre ajouté");
+    await Promise.all([loadTeams(), refreshUsersTable()]);
+    document.getElementById(`team-card-${teamId}`)?.classList.add("open");
+  } catch (e) {
+    showToast("Erreur : " + e.message, false);
+  }
+}
+
+async function removeTeamMember(teamId, userId, memberName) {
+  if (!confirm(`Retirer ${memberName} de l'équipe ?`)) return;
+  try {
+    const res = await fetch(`${API_BASE}/admin/teams/${teamId}/members/${userId}`, {
+      method: "DELETE",
+      headers: { "x-admin-key": adminKey },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    showToast("✓ Membre retiré");
+    await Promise.all([loadTeams(), refreshUsersTable()]);
+    document.getElementById(`team-card-${teamId}`)?.classList.add("open");
+  } catch (e) {
+    showToast("Erreur : " + e.message, false);
+  }
+}
+
+async function setTeamOwner(teamId, userId) {
+  try {
+    const res = await fetch(`${API_BASE}/admin/teams/${teamId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+      body: JSON.stringify({ ownerUserId: userId }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    showToast("✓ Admin de l'équipe défini");
+    await Promise.all([loadTeams(), refreshUsersTable()]);
+    document.getElementById(`team-card-${teamId}`)?.classList.add("open");
+  } catch (e) {
+    showToast("Erreur : " + e.message, false);
+  }
+}
+
+async function renameTeam(teamId, currentName) {
+  const newName = prompt("Nouveau nom de l'équipe :", currentName);
+  if (!newName || newName === currentName) return;
+  try {
+    const res = await fetch(`${API_BASE}/admin/teams/${teamId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+      body: JSON.stringify({ name: newName.trim() }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    showToast("✓ Équipe renommée");
+    await loadTeams();
+  } catch (e) {
+    showToast("Erreur : " + e.message, false);
+  }
+}
+
+async function deleteTeam(teamId, name) {
+  if (!confirm(`Supprimer l'équipe "${name}" ?\n\nLes membres seront détachés (pas supprimés).`)) return;
+  try {
+    const res = await fetch(`${API_BASE}/admin/teams/${teamId}`, {
+      method: "DELETE",
+      headers: { "x-admin-key": adminKey },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    showToast("✓ Équipe supprimée");
+    await Promise.all([loadTeams(), refreshUsersTable()]);
+  } catch (e) {
+    showToast("Erreur : " + e.message, false);
+  }
+}
+
+async function refreshUsersTable() {
+  try {
+    const res = await fetch(`${API_BASE}/admin/users`, { headers: { "x-admin-key": adminKey } });
+    if (!res.ok) return;
+    allUsers = (await res.json()).users || [];
+    updateStats();
+    renderTable();
+  } catch {}
 }
 
 // Auto-login si clé en session
