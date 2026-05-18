@@ -2730,6 +2730,75 @@ app.get("/admin/metrics", async (req, res) => {
   });
 });
 
+// ─── A3 — /admin/audit ──────────────────────────────────────────────────────
+// Liste les events stockés dans store.auditEvents[] avec pagination + filtres.
+//
+// Query params :
+//   - type : filtre exact (ex: "auth.password.reset.completed")
+//   - userID : filtre par utilisateur
+//   - since : ISO date début
+//   - limit : max items retournés (défaut 200, max 1000)
+//
+// Enrichit chaque event avec l'email de l'user (pour affichage humain) si
+// disponible — réduit le nombre de lookups côté frontend.
+app.get("/admin/audit", (req, res) => {
+  if (!requireAdminKey(req, res)) return;
+
+  const store = readStore();
+  const events = store.auditEvents || [];
+
+  // Filtres optionnels
+  const typeFilter = String(req.query.type || "").trim();
+  const userFilter = String(req.query.userID || "").trim();
+  const since = String(req.query.since || "").trim();
+  const limit = Math.min(1000, Math.max(1, parseInt(req.query.limit || "200", 10)));
+
+  // Index users pour enrichissement
+  const userByID = new Map((store.users || []).map((u) => [u.id, u]));
+
+  let filtered = events;
+  if (typeFilter) filtered = filtered.filter((e) => e.type === typeFilter);
+  if (userFilter) filtered = filtered.filter((e) => e.userID === userFilter);
+  if (since) {
+    const sinceMs = new Date(since).getTime();
+    if (!isNaN(sinceMs)) {
+      filtered = filtered.filter((e) => new Date(e.createdAt || 0).getTime() >= sinceMs);
+    }
+  }
+
+  // Tri décroissant par date (plus récent en haut)
+  filtered.sort((a, b) =>
+    new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+  );
+
+  const items = filtered.slice(0, limit).map((e) => {
+    const user = userByID.get(e.userID);
+    return {
+      id: e.id,
+      type: e.type,
+      userID: e.userID || null,
+      userEmail: user?.email || null,
+      userName: user?.name || null,
+      createdAt: e.createdAt,
+      payload: e.payload || {},
+    };
+  });
+
+  // Stats agrégées pour faciliter l'analyse côté frontend
+  const typeCounts = {};
+  for (const e of events) {
+    typeCounts[e.type] = (typeCounts[e.type] || 0) + 1;
+  }
+
+  res.json({
+    ok: true,
+    items,
+    total: filtered.length,
+    totalAll: events.length,
+    typeCounts,
+  });
+});
+
 app.get("/admin/users", (req, res) => {
   const adminKey = process.env.ADMIN_SECRET_KEY || "";
   const provided = req.header("x-admin-key") || "";
