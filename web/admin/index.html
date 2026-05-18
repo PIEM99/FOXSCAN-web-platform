@@ -565,7 +565,10 @@ nav{background:rgba(255,255,255,.9);backdrop-filter:blur(20px);border-bottom:1px
 
       <div class="table-header">
         <div class="table-title">Utilisateurs</div>
-        <input class="search-input" id="search" type="text" placeholder="Rechercher…" oninput="renderTable()"/>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input class="search-input" id="search" type="text" placeholder="Rechercher…" oninput="renderTable()"/>
+          <button class="btn-sm" onclick="exportCSV('users')" title="Télécharger CSV">⬇ CSV</button>
+        </div>
       </div>
 
       <div class="users-table">
@@ -641,6 +644,7 @@ nav{background:rgba(255,255,255,.9);backdrop-filter:blur(20px);border-bottom:1px
         <div class="table-title">Réservations Lifetime</div>
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
           <input class="search-input" id="fndSearch" type="text" placeholder="Rechercher (nom, email, société…)" oninput="renderFounders()"/>
+          <button class="btn-sm" onclick="exportCSV('founders')" title="Télécharger CSV">⬇ CSV</button>
           <button class="btn-invite" onclick="openInviteModal()">+ Inviter un Founder</button>
         </div>
       </div>
@@ -674,6 +678,7 @@ nav{background:rgba(255,255,255,.9);backdrop-filter:blur(20px);border-bottom:1px
             <option value="">Tous les types d'événements</option>
           </select>
           <input class="search-input" id="auditUserFilter" type="text" placeholder="Filtrer par email user…" oninput="onAuditUserFilterChange()"/>
+          <button class="btn-sm" onclick="exportCSV('audit')" title="Télécharger CSV">⬇ CSV</button>
         </div>
         <div style="font-size:12px;color:#86868B" id="auditCountInfo">—</div>
       </div>
@@ -845,6 +850,92 @@ function updateStats() {
   document.getElementById("stat-inactive").textContent = allUsers.length - active;
   document.getElementById("tabCountUsers").textContent = allUsers.length;
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// A5 — Export CSV par table (users, founders, audit).
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Échappe une valeur pour CSV : entoure de guillemets si contient virgule,
+// guillemet ou retour à la ligne, et double les guillemets internes.
+function csvEscape(val) {
+  if (val === null || val === undefined) return "";
+  const s = String(val);
+  if (s.includes(",") || s.includes("\"") || s.includes("\n") || s.includes("\r")) {
+    return `"${s.replace(/"/g, '""')}"`;
+  }
+  return s;
+}
+
+function downloadCsv(filename, rows) {
+  // BOM UTF-8 pour qu'Excel ouvre correctement les accents
+  const bom = "﻿";
+  const csv = bom + rows.map((row) => row.map(csvEscape).join(",")).join("\r\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 100);
+}
+
+window.exportCSV = function(table) {
+  const ts = new Date().toISOString().slice(0, 10);
+
+  if (table === "users") {
+    const header = ["ID","Nom","Email","Provider","Inscrit le","Abonnement actif","Status","Stripe Customer ID"];
+    const rows = [header];
+    for (const u of allUsers || []) {
+      rows.push([
+        u.id, u.name || "", u.email || "", u.authProvider || "",
+        u.createdAt || "",
+        u.subscriptionActive ? "OUI" : "NON",
+        u.subscriptionStatus || "",
+        u.stripeCustomerId || "",
+      ]);
+    }
+    downloadCsv(`foxscan-users-${ts}.csv`, rows);
+    return;
+  }
+
+  if (table === "founders") {
+    const header = ["ID","Date inscription","Nom","Email","Téléphone","Société","Activité","Statut","Commentaire"];
+    const rows = [header];
+    for (const f of allFounders || []) {
+      rows.push([
+        f.id, f.createdAt || "", f.name || "", f.email || "",
+        f.phone || "", f.company || "", f.activity || "",
+        f.status || "", f.comment || "",
+      ]);
+    }
+    downloadCsv(`foxscan-founders-${ts}.csv`, rows);
+    return;
+  }
+
+  if (table === "audit") {
+    // On re-fetch sans filtres pour avoir tout (pas seulement ce qui est affiché).
+    fetch(`${API_BASE}/admin/audit?limit=1000`, {
+      headers: { "x-admin-key": adminKey },
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        const header = ["Date","Type","User ID","User Email","User Name","Payload JSON"];
+        const rows = [header];
+        for (const e of data.items || []) {
+          rows.push([
+            e.createdAt || "", e.type || "",
+            e.userID || "", e.userEmail || "", e.userName || "",
+            JSON.stringify(e.payload || {}),
+          ]);
+        }
+        downloadCsv(`foxscan-audit-${ts}.csv`, rows);
+      })
+      .catch((err) => alert("Erreur export audit : " + err.message));
+    return;
+  }
+};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // A4 — Command palette (Cmd+K) : recherche globale users/founders + actions.
