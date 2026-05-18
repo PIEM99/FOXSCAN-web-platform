@@ -283,8 +283,6 @@ body{
 .cal-event.entry{background:#EDFAF1;color:#1A9940}
 .cal-event.exit{background:#FFEEDD;color:#C95A1F}
 .cal-event.inventory{background:#F1ECFF;color:#5840C9}
-.cal-event.completed{opacity:.62;text-decoration:line-through;text-decoration-color:rgba(0,0,0,.35);text-decoration-thickness:1px}
-.cal-event.completed::before{content:"✓";font-size:10px;font-weight:800;margin-right:1px;opacity:.85;text-decoration:none}
 .cal-event-time{font-weight:700;font-size:10px;opacity:.85}
 .cal-event-label{flex:1;overflow:hidden;text-overflow:ellipsis;font-weight:600}
 .cal-event-more{font-size:10px;color:var(--text-soft);padding:1px 4px;font-weight:500}
@@ -1046,61 +1044,6 @@ window.closeProjectDetail = function closeProjectDetail() {
   if (overlay) { overlay.classList.remove("show"); overlay.style.display = "none"; }
 };
 
-// V5.3.28 — Wrapper utilisé par les events du calendrier pour ouvrir la
-// modale détail sans dépendre de window._projCardsByKey (qui n'est
-// peuplé qu'après renderProjects). On reconstruit un item depuis les
-// données déjà en mémoire (allIosProjects, allBiens, allExports).
-window.openProjectDetailFromCalendar = function(id, source) {
-  let item = null;
-  // 1) Match avec un bien (id == propertyID)
-  const bien = (allBiens || []).find(b => b.propertyID === id);
-  if (bien) {
-    item = {
-      type: "bien",
-      id: bien.propertyID,
-      title: bien.address || "Bien",
-      addr: bien.tenantName ? "👤 " + bien.tenantName : "",
-      raw: bien,
-    };
-  }
-  // 2) Match avec un projet iOS
-  if (!item) {
-    const ios = (allIosProjects || []).find(p => p.id === id);
-    if (ios) {
-      item = {
-        type: "ios",
-        id: ios.id,
-        title: ios.address && ios.address !== "-" ? ios.address : (ios.name || id),
-        addr: ios.tenantName ? "👤 " + ios.tenantName : "",
-        raw: ios,
-      };
-    }
-  }
-  // 3) Match avec un export brut
-  if (!item) {
-    const exp = (allExports || []).find(e => e.id === id);
-    if (exp) {
-      item = {
-        type: "bien",
-        id: exp.id,
-        title: exp.propertyAddress || exp.fileName || "Export",
-        addr: exp.tenantName ? "👤 " + exp.tenantName : "",
-        raw: { address: exp.propertyAddress, tenantName: exp.tenantName, exports: [exp] },
-      };
-    }
-  }
-  if (!item) return;
-
-  const overlay = document.getElementById("projectDetailModal");
-  const body = document.getElementById("projectDetailBody");
-  const title = document.getElementById("projectDetailTitle");
-  if (!overlay || !body || !title) return;
-  title.textContent = item.title || "Détail du projet";
-  body.innerHTML = renderProjectDetailBody(item);
-  overlay.classList.add("show");
-  overlay.style.display = "flex";
-};
-
 function renderProjectDetailBody(item) {
   const raw = item.raw || {};
   const sections = [];
@@ -1393,91 +1336,20 @@ function parseScheduled(iso){
   };
 }
 
-// Indexe les événements par YYYY-MM-DD pour le mois affiché.
-// V5.3.28 — On agrège désormais 3 sources pour que le calendrier soit
-// vraiment représentatif du travail de l'agent :
-//   1. allDrafts (brouillons web + iPhone non finalisés) → date `scheduledAt`
-//   2. allIosProjects status=completed → date d'inspection (updatedAt)
-//   3. allExports avec inspectionDate → date réelle de l'EDL
-// Dédup par identifiant pour ne jamais doubler le même EDL.
+// Indexe les drafts par YYYY-MM-DD pour le mois affiché.
 function calBuildEventIndex(){
-  const idx = {};            // ymd → [events]
-  const unscheduled = [];    // brouillons sans scheduledAt
-  const seenIds = new Set();
-
-  const pushAt = (ymdSource, evt) => {
-    const p = parseScheduled(ymdSource);
-    if (!p) return false;
-    if (!idx[p.ymd]) idx[p.ymd] = [];
-    idx[p.ymd].push({ ...evt, _hh: p.hh, _mm: p.mm, _date: p.date });
-    return true;
-  };
-
-  // 1) Brouillons (comportement legacy)
+  const idx = {};            // ymd → [drafts]
+  const unscheduled = [];    // drafts sans scheduledAt
   (allDrafts || []).forEach(d => {
-    if (!d.id || seenIds.has(d.id)) return;
-    seenIds.add(d.id);
     if (!d.scheduledAt) {
       unscheduled.push(d);
       return;
     }
-    if (!pushAt(d.scheduledAt, d)) unscheduled.push(d);
+    const p = parseScheduled(d.scheduledAt);
+    if (!p) { unscheduled.push(d); return; }
+    if (!idx[p.ymd]) idx[p.ymd] = [];
+    idx[p.ymd].push({ ...d, _hh: p.hh, _mm: p.mm, _date: p.date });
   });
-
-  // 2) Projets iOS FINALISÉS — on les affiche sur leur date de mise à jour
-  //    (qui correspond en pratique à la date de finalisation = date de
-  //    visite). Permet à l'agent de voir ses EDL réalisés dans le passé.
-  (allIosProjects || []).forEach(p => {
-    if (!p?.id || seenIds.has(p.id)) return;
-    if (p.status !== "completed") return; // les "in_progress" sont déjà dans drafts
-    seenIds.add(p.id);
-    // Source de la date : scheduledAt en priorité, sinon updatedAt, sinon createdAt
-    const when = p.scheduledAt || p.updatedAt || p.createdAt;
-    if (!when) return;
-    const edlType = p.inspectionType === "exit" ? "exit"
-                  : p.inspectionType === "entry" ? "entry"
-                  : "entry";
-    pushAt(when, {
-      id: p.id,
-      source: "ios",
-      edlType,
-      address: p.address,
-      tenantName: p.tenantName,
-      scheduledAt: when,
-      _completed: true,
-    });
-  });
-
-  // 3) Exports (PDF EDL uploadés) — utilise inspectionDate qui est la
-  //    VRAIE date d'EDL (telle qu'enregistrée dans le rapport iOS).
-  (allExports || []).forEach(e => {
-    // On ne crée un événement qu'à partir de PDFs d'EDL (inspectionPDF),
-    // pour ne pas polluer avec chaque photo individuelle.
-    if (e.kind !== "inspectionPDF") return;
-    const key = `export-${e.id}`;
-    if (seenIds.has(key)) return;
-    // Évite la double comptabilisation si le projet iOS est déjà indexé
-    if (e.projectID && seenIds.has(e.projectID)) {
-      // Le projet a déjà une entrée calendrier ; on skip l'export.
-      return;
-    }
-    seenIds.add(key);
-    const when = e.inspectionDate || e.createdAt;
-    if (!when) return;
-    const edlType = e.inspectionType === "exit" ? "exit"
-                  : e.inspectionType === "entry" ? "entry"
-                  : "entry";
-    pushAt(when, {
-      id: e.projectID || e.id,
-      source: e.projectID ? "ios" : "export",
-      edlType,
-      address: e.propertyAddress || e.fileName,
-      tenantName: e.tenantName,
-      scheduledAt: when,
-      _completed: true,
-    });
-  });
-
   // Tri par heure dans chaque jour
   Object.keys(idx).forEach(k => idx[k].sort((a,b) => (a._hh+a._mm).localeCompare(b._hh+b._mm)));
   // Tri des non-programmés par updatedAt desc
@@ -1501,13 +1373,7 @@ function calCellHtml(dateObj, isOtherMonth, events, todayYmd){
     const cssType = ["entry","exit","inventory"].includes(ev.edlType) ? ev.edlType : "entry";
     const srcCls = ev.source === "ios" ? "ios" : "web";
     const label = ev.tenantName ? ev.tenantName : (ev.address || "EDL").split(",")[0];
-    const completedCls = ev._completed ? " completed" : "";
-    // V5.3.28 — Pour les EDL finalisés on ouvre la modale détail (avec PDFs)
-    // au lieu de la modale d'édition (qui ne sert qu'aux brouillons).
-    const clickHandler = ev._completed
-      ? `event.stopPropagation();openProjectDetailFromCalendar('${ev.id}','${ev.source||'ios'}')`
-      : `event.stopPropagation();openEditDate('${ev.id}','${ev.source||'web'}')`;
-    return `<div class="cal-event ${cssType}${completedCls}" onclick="${clickHandler}" title="${escapeHtml(ev.address||'')}${ev._completed?' · EDL finalisé':''}">`
+    return `<div class="cal-event ${cssType}" onclick="event.stopPropagation();openEditDate('${ev.id}','${ev.source||'web'}')" title="${escapeHtml(ev.address||'')}">`
          + `<span class="src-dot ${srcCls}"></span>`
          + `<span class="cal-event-time">${ev._hh}:${ev._mm}</span>`
          + `<span class="cal-event-label">${escapeHtml(label)}</span>`
@@ -2078,8 +1944,6 @@ async function bootstrap(){
       allIosProjects = r?.items || [];
       console.log("[FOXSCAN] Projets iOS :", allIosProjects.length);
       renderProjects();
-      // V5.3.28 — Le calendrier inclut désormais les projets iOS finalisés
-      renderCalendar();
     })
     .catch(e => console.warn("[FOXSCAN] fetchProjects erreur :", e.message));
 
@@ -2089,8 +1953,6 @@ async function bootstrap(){
     .then(r => {
       allExports = r?.items || [];
       console.log("[FOXSCAN] Exports :", allExports.length);
-      // V5.3.28 — Le calendrier inclut aussi les exports avec inspectionDate
-      renderCalendar();
     })
     .catch(e => console.warn("[FOXSCAN] fetchExports erreur :", e.message));
 
