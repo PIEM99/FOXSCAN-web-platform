@@ -283,6 +283,8 @@ body{
 .cal-event.entry{background:#EDFAF1;color:#1A9940}
 .cal-event.exit{background:#FFEEDD;color:#C95A1F}
 .cal-event.inventory{background:#F1ECFF;color:#5840C9}
+.cal-event.completed{opacity:.6;text-decoration:line-through;text-decoration-thickness:1px}
+.cal-event.completed::before{content:"✓ ";font-size:10px;font-weight:800;opacity:.9;text-decoration:none}
 .cal-event-time{font-weight:700;font-size:10px;opacity:.85}
 .cal-event-label{flex:1;overflow:hidden;text-overflow:ellipsis;font-weight:600}
 .cal-event-more{font-size:10px;color:var(--text-soft);padding:1px 4px;font-weight:500}
@@ -1338,7 +1340,7 @@ function parseScheduled(iso){
 
 // Indexe les drafts par YYYY-MM-DD pour le mois affiché.
 function calBuildEventIndex(){
-  const idx = {};            // ymd → [drafts]
+  const idx = {};            // ymd → [events]
   const unscheduled = [];    // drafts sans scheduledAt
   (allDrafts || []).forEach(d => {
     if (!d.scheduledAt) {
@@ -1350,6 +1352,40 @@ function calBuildEventIndex(){
     if (!idx[p.ymd]) idx[p.ymd] = [];
     idx[p.ymd].push({ ...d, _hh: p.hh, _mm: p.mm, _date: p.date });
   });
+
+  // V5.3.28 — Ajoute les EDL iOS déjà signés (status=completed) sur leur
+  // date de finalisation. Wrappé dans try/catch pour qu'une éventuelle
+  // anomalie de données ne casse jamais l'affichage des brouillons.
+  try {
+    (allIosProjects || []).forEach(p => {
+      if (!p || !p.id || p.status !== "completed") return;
+      const when = p.scheduledAt || p.updatedAt || p.createdAt;
+      if (!when) return;
+      const parsed = parseScheduled(when);
+      if (!parsed) return;
+      if (!idx[parsed.ymd]) idx[parsed.ymd] = [];
+      // Accepte les variantes français ("Entrée"/"Sortie") + anglais ("entry"/"exit").
+      const typeStr = String(p.inspectionType || "").toLowerCase();
+      const edlType = (typeStr === "exit" || typeStr.startsWith("sort")) ? "exit"
+                    : (typeStr === "entry" || typeStr.startsWith("entr")) ? "entry"
+                    : "entry";
+      idx[parsed.ymd].push({
+        id: p.id,
+        source: "ios",
+        edlType,
+        address: p.address,
+        tenantName: p.tenantName,
+        scheduledAt: when,
+        _hh: parsed.hh,
+        _mm: parsed.mm,
+        _date: parsed.date,
+        _completed: true,
+      });
+    });
+  } catch (err) {
+    console.warn("[FOXSCAN] calBuildEventIndex completed loop failed:", err.message);
+  }
+
   // Tri par heure dans chaque jour
   Object.keys(idx).forEach(k => idx[k].sort((a,b) => (a._hh+a._mm).localeCompare(b._hh+b._mm)));
   // Tri des non-programmés par updatedAt desc
@@ -1373,7 +1409,14 @@ function calCellHtml(dateObj, isOtherMonth, events, todayYmd){
     const cssType = ["entry","exit","inventory"].includes(ev.edlType) ? ev.edlType : "entry";
     const srcCls = ev.source === "ios" ? "ios" : "web";
     const label = ev.tenantName ? ev.tenantName : (ev.address || "EDL").split(",")[0];
-    return `<div class="cal-event ${cssType}" onclick="event.stopPropagation();openEditDate('${ev.id}','${ev.source||'web'}')" title="${escapeHtml(ev.address||'')}">`
+    // V5.3.28 — EDL terminé : style grisé + clic ouvre la modale détail (avec PDF
+    // téléchargeable) via la carte projet du même bien, au lieu de la modale
+    // d'édition brouillon (qui n'a aucun sens sur un EDL signé).
+    const completedCls = ev._completed ? " completed" : "";
+    const onClickAttr = ev._completed
+      ? `event.stopPropagation();openProjectDetail('ios-${ev.id}')`
+      : `event.stopPropagation();openEditDate('${ev.id}','${ev.source||'web'}')`;
+    return `<div class="cal-event ${cssType}${completedCls}" onclick="${onClickAttr}" title="${escapeHtml(ev.address||'')}${ev._completed?' · ✓ EDL signé':''}">`
          + `<span class="src-dot ${srcCls}"></span>`
          + `<span class="cal-event-time">${ev._hh}:${ev._mm}</span>`
          + `<span class="cal-event-label">${escapeHtml(label)}</span>`
