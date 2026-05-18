@@ -4584,6 +4584,105 @@ app.get("/api/projects/:projectID/inspection", requireCurrentUser, (req, res) =>
   }
 });
 
+// V5.3.26 — Endpoint qui retourne TOUS les EDL d'un projet (pluriel).
+// Bug observé 2026-05-18 : la route /inspection (singulier) ci-dessus ne
+// retournait QUE le report le plus récent, ce qui faisait croire que
+// l'EDL de sortie était "supprimé" après duplication en EDL d'entrée
+// pour nouveaux occupants (cf. duplicateForNewTenant côté iOS).
+//
+// Cette nouvelle route permet au dashboard d'afficher la liste complète
+// des EDL d'un projet (sortie + entrée + …), avec leurs payloads.
+//
+// Réponse :
+// {
+//   ok: true,
+//   count: N,
+//   reports: [
+//     { id, projectID, fileName, createdAt, tenantName, isFinalized,
+//       finalizedAt, inspectionType, payload: {...full report...} }
+//   ]
+// }
+app.get("/api/projects/:projectID/inspections", requireCurrentUser, (req, res) => {
+  const projectID = safeProjectID(req.params.projectID);
+  if (!projectID) {
+    return res.status(400).json({ ok: false, detail: "Invalid projectID" });
+  }
+  const user = req._user;
+
+  try {
+    const store = req._store;
+    const project = (store.projects || []).find(
+      (p) => p.id === projectID && p.userID === user.id
+    );
+    if (!project) {
+      return res.status(404).json({ ok: false, detail: "Project not found" });
+    }
+
+    const reports = (store.reports || [])
+      .filter((r) => r.projectID === projectID && r.userID === user.id)
+      .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")))
+      .map((r) => ({
+        id: r.id,
+        projectID: r.projectID,
+        fileName: r.fileName || `${r.id}.pdf`,
+        createdAt: r.createdAt,
+        // Métadonnées de surface pour affichage liste sans déballer payload
+        tenantName: r.tenantName || r.payload?.tenantName || null,
+        isFinalized: r.isFinalized === true || r.payload?.isFinalized === true,
+        finalizedAt: r.finalizedAt || r.payload?.finalizedAt || null,
+        inspectionType: r.payload?.inspectionType || null,
+        address: r.address || null,
+        // Payload complet pour navigation détaillée
+        payload: r.payload || null,
+      }));
+
+    return res.json({
+      ok: true,
+      count: reports.length,
+      reports,
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, detail: e.message });
+  }
+});
+
+// V5.3.26 — Endpoint pour récupérer un report par son ID (complet).
+// Permet à l'app iOS de "tirer" depuis le backend un report qu'elle aurait
+// perdu localement (recovery scenario). Ownership vérifié via JWT.
+app.get("/api/reports/:reportID", requireCurrentUser, (req, res) => {
+  const reportID = String(req.params.reportID || "").trim();
+  if (!reportID) {
+    return res.status(400).json({ ok: false, detail: "Invalid reportID" });
+  }
+  const user = req._user;
+
+  try {
+    const store = req._store;
+    const report = (store.reports || []).find(
+      (r) => r.id === reportID && r.userID === user.id
+    );
+    if (!report) {
+      return res.status(404).json({ ok: false, detail: "Report not found" });
+    }
+    return res.json({
+      ok: true,
+      report: {
+        id: report.id,
+        projectID: report.projectID,
+        fileName: report.fileName,
+        createdAt: report.createdAt,
+        tenantName: report.tenantName || report.payload?.tenantName || null,
+        isFinalized: report.isFinalized === true,
+        finalizedAt: report.finalizedAt || null,
+        address: report.address || null,
+        payload: report.payload || null,
+      },
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, detail: e.message });
+  }
+});
+
 // ── ROUTE 5 : GET /api/projects/:projectID/files (liste des fichiers) ─────
 //
 // V5 — Fallback sur `store.exports[]` quand le projet n'a pas de bundle
