@@ -132,17 +132,6 @@ body{
 
 /* PROJECT CARD */
 .proj-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;transition:.2s;cursor:pointer}
-.proj-card:focus{outline:2px solid var(--orange);outline-offset:2px}
-/* V5.3.28 — EDL row dans modale projet */
-.edl-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;background:#FAFAFA;border:1px solid var(--border);border-radius:10px;transition:.15s}
-.edl-row:hover{border-color:var(--orange);background:#FFFBF5}
-.edl-row-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
-.edl-row-title{font-size:14px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.edl-row-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--text-soft)}
-.edl-row-actions{display:flex;gap:6px;flex-shrink:0}
-.btn-edl-view,.btn-edl-dl{padding:8px 12px;border-radius:8px;font-size:12px;font-weight:600;border:1px solid var(--border);background:#fff;color:var(--text);cursor:pointer;transition:.15s}
-.btn-edl-view:hover{background:#0071E3;color:#fff;border-color:#0071E3}
-.btn-edl-dl:hover{background:var(--orange);color:#fff;border-color:var(--orange)}
 .proj-card:hover{border-color:var(--orange);box-shadow:var(--shadow-md);transform:translateY(-2px)}
 .proj-card-title{font-size:16px;font-weight:700;color:var(--text);letter-spacing:-.01em;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .proj-card-addr{font-size:13px;color:var(--text-soft);margin-bottom:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -693,27 +682,6 @@ body{
 
 </main>
 
-<!-- V5.3.28 ── MODAL : DÉTAIL D'UN PROJET / BIEN ───────── -->
-<!-- Affiche tous les EDL d'un projet avec actions Voir / Télécharger.
-     Ouverte au clic sur une proj-card. Fix UX du bug "EDL disparu". -->
-<div class="modal-overlay" id="projectDetailModal" onclick="if(event.target===this)closeProjectDetail()">
-  <div class="modal" role="dialog" aria-labelledby="projectDetailTitle" style="max-width:760px">
-    <button class="modal-close" onclick="closeProjectDetail()" aria-label="Fermer">×</button>
-    <h2 id="projectDetailTitle">Chargement…</h2>
-    <p class="modal-sub" id="projectDetailSubtitle"></p>
-
-    <div id="projectDetailLoading" style="display:flex;align-items:center;justify-content:center;padding:48px 0;color:var(--text-soft)">
-      <div>⏳ Chargement des EDL…</div>
-    </div>
-
-    <div id="projectDetailList" style="display:flex;flex-direction:column;gap:8px"></div>
-
-    <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border);font-size:12px;color:var(--text-soft)">
-      💡 Si un EDL semble manquant, vérifiez sur l'app iPhone — il a peut-être été créé en local mais pas encore synchronisé.
-    </div>
-  </div>
-</div>
-
 <!-- ───────── MODAL : NOUVEAU BROUILLON ───────── -->
 <div class="modal-overlay" id="draftModal" onclick="if(event.target===this)closeNewDraftModal()">
   <div class="modal" role="dialog" aria-labelledby="draftModalTitle">
@@ -890,17 +858,13 @@ import {
   createDraft,
   dashboardSession,
   deleteDraft,
-  downloadExportFile,
   fetchDrafts,
   fetchExports,
   fetchExtractedProjects,
   fetchModels,
   fetchProjectFiles,
-  fetchProjectInspections,
   fetchProperties,
   getApiBaseUrl,
-  getExportFileBlobURL,
-  getProjectPDFBlobURL,
   getSessionUser,
   logoutApi,
 } from "../js/foxscan-client.js";
@@ -946,190 +910,12 @@ function renderProjects(){
     return;
   }
   root.innerHTML=filtered.map(item=>`
-    <div class="proj-card" data-type="${escapeHtml(item.type)}" data-id="${escapeHtml(item.id)}" tabindex="0" role="button">
+    <div class="proj-card">
       <div class="proj-card-title">${escapeHtml(item.title)}</div>
       <div class="proj-card-addr">${escapeHtml(item.addr)||"—"}</div>
       <div class="proj-card-badges">${item.badges.map(b=>`<span class="badge ${b.cls}">${escapeHtml(b.text)}</span>`).join("")}</div>
     </div>
   `).join("");
-  // V5.3.28 — Délégation d'événements : on attache le click via data-*
-  // au lieu de inline onclick (évite les soucis d'échappement quand
-  // l'UUID contient des caractères spéciaux ou si CSP bloque l'inline).
-  root.querySelectorAll(".proj-card").forEach(card => {
-    card.addEventListener("click", () => {
-      const type = card.dataset.type;
-      const id = card.dataset.id;
-      window.openProjectDetail(type, id);
-    });
-    card.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        window.openProjectDetail(card.dataset.type, card.dataset.id);
-      }
-    });
-  });
-}
-
-// V5.3.28 — Modale détail projet (déclenchée par clic sur proj-card).
-// Affiche les EDL du projet/bien avec actions Voir PDF / Télécharger.
-window.openProjectDetail = async function openProjectDetail(type, id){
-  const modal = document.getElementById("projectDetailModal");
-  const titleEl = document.getElementById("projectDetailTitle");
-  const subtitleEl = document.getElementById("projectDetailSubtitle");
-  const listEl = document.getElementById("projectDetailList");
-  const loadingEl = document.getElementById("projectDetailLoading");
-
-  if (!modal || !listEl) {
-    console.error("Modale projectDetailModal absente dans le DOM");
-    return;
-  }
-
-  // Reset
-  listEl.innerHTML = "";
-  loadingEl.style.display = "flex";
-  titleEl.textContent = "Chargement…";
-  subtitleEl.textContent = "";
-  modal.classList.add("show");
-
-  try {
-    if (type === "bien") {
-      const b = allBiens.find(x => x.propertyID === id);
-      if (!b) throw new Error("Bien introuvable dans la liste locale");
-      titleEl.textContent = b.address || "Bien sans adresse";
-      subtitleEl.textContent = b.tenantName ? "👤 " + b.tenantName : "Pas de locataire renseigné";
-      renderProjectDetailExports(b.exports || []);
-    } else if (type === "projet") {
-      const p = allProjects.find(x => x.projectID === id);
-      if (!p) throw new Error("Projet introuvable");
-      titleEl.textContent = p.name || p.projectID;
-      subtitleEl.textContent = ((p.files || []).length) + " fichier(s)";
-      const resp = await fetchProjectInspections(p.projectID).catch(() => ({ reports: [] }));
-      renderProjectDetailReports(resp.reports || [], p);
-    } else {
-      throw new Error("Type inconnu: " + type);
-    }
-  } catch (err) {
-    listEl.innerHTML = `<div class="empty" style="padding:24px"><div class="empty-icon">⚠️</div><h3>Erreur</h3><p>${escapeHtml(err.message || "Détail indisponible")}</p></div>`;
-  } finally {
-    loadingEl.style.display = "none";
-  }
-};
-
-window.closeProjectDetail = function closeProjectDetail(){
-  const modal = document.getElementById("projectDetailModal");
-  if (modal) modal.classList.remove("show");
-};
-
-function renderProjectDetailExports(exports){
-  const listEl = document.getElementById("projectDetailList");
-  if (!exports.length) {
-    listEl.innerHTML = `<div class="empty" style="padding:24px"><div class="empty-icon">📭</div><h3>Aucun fichier</h3><p>Ce bien n'a encore aucun EDL exporté.</p></div>`;
-    return;
-  }
-  window.__currentExportsMap = new Map(exports.map(e => [e.id, e]));
-  listEl.innerHTML = exports.map(e => {
-    const badge = e.inspectionType === "entry"
-      ? '<span class="badge complet">Entrée</span>'
-      : e.inspectionType === "exit"
-      ? '<span class="badge complet" style="background:#FFEED8;color:#8B4500">Sortie</span>'
-      : '<span class="badge" style="background:#F1F3F5;color:#666">Autre</span>';
-    const date = e.inspectionDate || e.createdAt;
-    const sizeKB = e.sizeBytes ? Math.round(e.sizeBytes / 1024) + " Ko" : "";
-    return `
-      <div class="edl-row">
-        <div class="edl-row-info">
-          <div class="edl-row-title">${escapeHtml(e.fileName || "Document.pdf")}</div>
-          <div class="edl-row-meta">${badge} <span>${escapeHtml(formatDate(date))}</span> ${sizeKB ? "<span>· " + escapeHtml(sizeKB) + "</span>" : ""}</div>
-        </div>
-        <div class="edl-row-actions">
-          <button class="btn-edl-view" data-export-id="${escapeHtml(e.id)}" data-action="view">👁 Voir</button>
-          <button class="btn-edl-dl" data-export-id="${escapeHtml(e.id)}" data-action="download">⬇ Télécharger</button>
-        </div>
-      </div>
-    `;
-  }).join("");
-  // Délégation des clics
-  listEl.querySelectorAll("[data-action]").forEach(btn => {
-    btn.addEventListener("click", async (ev) => {
-      ev.stopPropagation();
-      const exportID = btn.dataset.exportId;
-      const action = btn.dataset.action;
-      const e = window.__currentExportsMap?.get(exportID);
-      if (!e) { showToast("Fichier introuvable", true); return; }
-      try {
-        if (action === "view") {
-          const res = await getExportFileBlobURL(exportID, 0);
-          window.open(res.blobUrl, "_blank");
-        } else {
-          if (e.downloadPath) {
-            await downloadExportFile(e.downloadPath, e.fileName);
-          } else {
-            const res = await getExportFileBlobURL(exportID, 0);
-            const a = document.createElement("a");
-            a.href = res.blobUrl;
-            a.download = e.fileName || "document.pdf";
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-          }
-        }
-      } catch (err) {
-        showToast("Erreur : " + err.message, true);
-      }
-    });
-  });
-}
-
-function renderProjectDetailReports(reports, project){
-  const listEl = document.getElementById("projectDetailList");
-  if (!reports.length) {
-    listEl.innerHTML = `<div class="empty" style="padding:24px"><div class="empty-icon">📭</div><h3>Aucun EDL</h3><p>Aucun état des lieux enregistré pour ce projet.</p></div>`;
-    return;
-  }
-  listEl.innerHTML = reports.map(r => {
-    const isExit = r.inspectionType === "Sortie" || r.inspectionType === "exit";
-    const typeBadge = isExit
-      ? '<span class="badge complet" style="background:#FFEED8;color:#8B4500">Sortie</span>'
-      : '<span class="badge complet">Entrée</span>';
-    const finalizedBadge = r.isFinalized
-      ? '<span class="badge" style="background:#E5F5EA;color:#1A7A35">✓ Signé</span>'
-      : '<span class="badge" style="background:#FFF6E5;color:#8B4500">En cours</span>';
-    return `
-      <div class="edl-row">
-        <div class="edl-row-info">
-          <div class="edl-row-title">${escapeHtml(r.tenantName || "(locataire à renseigner)")}</div>
-          <div class="edl-row-meta">${typeBadge} ${finalizedBadge} <span>${escapeHtml(formatDate(r.createdAt))}</span></div>
-        </div>
-        <div class="edl-row-actions">
-          <button class="btn-edl-view" data-project-id="${escapeHtml(project.projectID)}" data-action="view">👁 Voir PDF</button>
-          <button class="btn-edl-dl" data-project-id="${escapeHtml(project.projectID)}" data-report-id="${escapeHtml(r.id)}" data-action="download">⬇ Télécharger</button>
-        </div>
-      </div>
-    `;
-  }).join("");
-  listEl.querySelectorAll("[data-action]").forEach(btn => {
-    btn.addEventListener("click", async (ev) => {
-      ev.stopPropagation();
-      const projectID = btn.dataset.projectId;
-      const action = btn.dataset.action;
-      try {
-        const res = await getProjectPDFBlobURL(projectID);
-        if (action === "view") {
-          window.open(res.blobUrl, "_blank");
-        } else {
-          const reportID = btn.dataset.reportId;
-          const a = document.createElement("a");
-          a.href = res.blobUrl;
-          a.download = "EDL_" + reportID + ".pdf";
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-        }
-      } catch (err) {
-        showToast("Erreur PDF : " + err.message, true);
-      }
-    });
-  });
 }
 
 // ── BROUILLONS ────────────────────────────────────────────────────────
