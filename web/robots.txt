@@ -1,6 +1,11 @@
+# FOXSCAN — robots.txt
+# https://foxscan.fr/
+
 User-agent: *
 Allow: /
-Disallow: /dashboard/
-Disallow: /login.html
 
+# Sitemap
 Sitemap: https://foxscan.fr/sitemap.xml
+
+# Crawl delay
+Crawl-delay: 1

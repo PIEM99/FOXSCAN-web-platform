@@ -3,61 +3,255 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Scan LiDAR immobilier: guide pratique agence | FOXSCAN</title>
-<meta name="description" content="Guide pratique du scan LiDAR en immobilier: cas d'usage, limites, bonnes pratiques et intégration au process d'état des lieux."/>
+<title>Scan LiDAR immobilier : mesurer un appartement avec un iPhone (guide 2026) | FOXSCAN</title>
+<meta name="description" content="Comment scanner un appartement au LiDAR avec un iPhone Pro ? Précision, surfaces, m² loi Carrez, plans 2D, modèle 3D. Le guide pour agents immobiliers."/>
+<meta name="keywords" content="scan LiDAR appartement, mesurer surface iPhone, plan 2D LiDAR, modèle 3D logement, m² loi Carrez application, scanner pièce iPhone Pro, RoomPlan immobilier, ARKit mesure"/>
 <link rel="canonical" href="https://foxscan.fr/articles/lidar-immobilier-guide.html"/>
+<link rel="stylesheet" href="_article.css"/>
+
 <meta property="og:type" content="article"/>
-<meta property="og:title" content="Scan LiDAR immobilier: guide pratique agence"/>
-<meta property="og:description" content="Comment utiliser le LiDAR pour accélérer et fiabiliser vos états des lieux."/>
+<meta property="og:title" content="Scan LiDAR immobilier : mesurer un appartement avec un iPhone (guide 2026)"/>
+<meta property="og:description" content="Comment scanner un appartement au LiDAR avec un iPhone Pro ? Précision, surfaces, m², plans 2D, modèle 3D."/>
 <meta property="og:url" content="https://foxscan.fr/articles/lidar-immobilier-guide.html"/>
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap');
-body{font-family:'Inter',sans-serif;background:#F5F5F7;color:#1D1D1F;margin:0;line-height:1.7}
-main{max-width:860px;margin:0 auto;padding:40px 20px 80px}
-a{color:#0071E3;text-decoration:none}
-a:hover{text-decoration:underline}
-.article{background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:18px;padding:36px}
-h1{font-size:36px;line-height:1.15;margin:10px 0 18px;letter-spacing:-1px}
-h2{font-size:24px;margin:28px 0 10px;letter-spacing:-.4px}
-p,li{font-size:16px;color:#2B2B2D}
-.kicker{font-size:12px;color:#0071E3;text-transform:uppercase;font-weight:700;letter-spacing:1px}
-.meta{font-size:13px;color:#6E6E73;margin-bottom:20px}
-</style>
+<meta property="og:locale" content="fr_FR"/>
+<meta property="article:published_time" content="2026-02-08T09:00:00+01:00"/>
+<meta property="article:modified_time" content="2026-04-26T10:00:00+02:00"/>
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:title" content="Scan LiDAR immobilier : guide pour agents 2026"/>
+<meta name="twitter:description" content="Mesurer un appartement avec un iPhone Pro : précision, surfaces, plans 2D, 3D."/>
+
 <script type="application/ld+json">
-{
-  "@context":"https://schema.org",
-  "@type":"Article",
-  "headline":"Scan LiDAR immobilier: guide pratique agence",
-  "author":{"@type":"Organization","name":"FOXSCAN"},
-  "publisher":{"@type":"Organization","name":"FOXSCAN"},
-  "datePublished":"2026-04-20",
-  "dateModified":"2026-04-20",
-  "mainEntityOfPage":"https://foxscan.fr/articles/lidar-immobilier-guide.html"
-}
+{"@context":"https://schema.org","@type":"Article","headline":"Scan LiDAR immobilier : mesurer un appartement avec un iPhone (guide 2026)","description":"Comment scanner un appartement au LiDAR avec un iPhone Pro : précision, surfaces, m², plans 2D, modèle 3D.","author":{"@type":"Organization","name":"FOXSCAN","url":"https://foxscan.fr"},"publisher":{"@type":"Organization","name":"FOXSCAN"},"datePublished":"2026-02-08","dateModified":"2026-04-26","mainEntityOfPage":{"@type":"WebPage","@id":"https://foxscan.fr/articles/lidar-immobilier-guide.html"}}
 </script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Quels iPhones ont un capteur LiDAR ?","acceptedAnswer":{"@type":"Answer","text":"Tous les modèles iPhone Pro depuis l'iPhone 12 Pro (12 Pro, 12 Pro Max, 13 Pro, 13 Pro Max, 14 Pro, 14 Pro Max, 15 Pro, 15 Pro Max, 16 Pro, 16 Pro Max). Les iPad Pro depuis 2020 également."}},
+{"@type":"Question","name":"Quelle est la précision d'un scan LiDAR iPhone ?","acceptedAnswer":{"@type":"Answer","text":"La marge d'erreur est généralement inférieure à 5% sur les surfaces (m²). Pour des longueurs, on est précis au centimètre près."}},
+{"@type":"Question","name":"Le LiDAR iPhone est-il valable pour la loi Carrez ?","acceptedAnswer":{"@type":"Answer","text":"Légalement, la mesure loi Carrez doit être effectuée par un géomètre certifié. Mais le LiDAR fournit une excellente estimation préalable."}}]}
+</script>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 </head>
 <body>
-<main>
-  <p><a href="../index.html">← Retour au site FOXSCAN</a></p>
-  <article class="article">
-    <div class="kicker">LiDAR</div>
-    <h1>Scan LiDAR immobilier: guide pratique agence</h1>
-    <p class="meta">Publié le 20 avril 2026 • Lecture 5 min</p>
 
-    <p>Le LiDAR améliore la qualité de vos états des lieux quand il est intégré à un protocole clair. Ce n'est pas seulement une technologie: c'est un standard de preuve.</p>
+<nav class="art-nav">
+  <a href="../index.html" class="art-brand">
+    <div class="art-icon"><svg viewBox="0 0 16 16"><path d="M3 4h10M3 8h7M3 12h8" stroke="#fff" stroke-width="2" stroke-linecap="round" fill="none"/></svg></div>
+    FOXSCAN
+  </a>
+  <a href="../index.html#articles" class="art-back">← Tous les articles</a>
+</nav>
 
-    <h2>Quand utiliser le LiDAR</h2>
-    <p>Utilisez-le pour les pièces complexes, les surfaces avec niches, les biens haut de gamme et tous les dossiers où la précision visuelle est critique.</p>
+<header class="art-hero">
+  <div class="art-hero-wrap">
+    <span class="art-kicker">LiDAR · Mesures</span>
+    <h1>Scan LiDAR immobilier : mesurer un appartement avec un iPhone (guide complet 2026)</h1>
+    <p class="art-lead">Comment scanner un logement au LiDAR avec un iPhone Pro ? Précision réelle, calcul des surfaces, plans 2D, modèle 3D, comparaison vs mètre laser : le guide pratique pour les agents immobiliers et les pros de la location.</p>
+    <div class="art-meta">
+      <span class="art-author"><span class="art-author-icon">F</span>Équipe FOXSCAN</span>
+      <span>📅 Mis à jour le 26 avril 2026</span>
+      <span>⏱ 8 min de lecture</span>
+    </div>
+  </div>
+</header>
 
-    <h2>Les limites à connaître</h2>
-    <p>Le LiDAR ne remplace pas l'observation métier. Les défauts de finition, traces d'usage ou micro-dégradations doivent toujours être documentés avec photos et annotations.</p>
+<article class="art-body">
 
-    <h2>Workflow recommandé</h2>
-    <p>1) Capture LiDAR pièce par pièce. 2) Vérification visuelle des zones non couvertes. 3) Ajout de photos probantes. 4) Validation sur place avec le locataire/propriétaire.</p>
+  <div class="art-toc">
+    <div class="art-toc-title">Sommaire</div>
+    <ol>
+      <li><a href="#cest-quoi">Le LiDAR, c'est quoi exactement ?</a></li>
+      <li><a href="#iphones">Quels iPhones ont un LiDAR ?</a></li>
+      <li><a href="#precision">Quelle précision réelle ?</a></li>
+      <li><a href="#cas-usages">5 cas d'usage en immobilier</a></li>
+      <li><a href="#comment-scanner">Comment scanner un appartement</a></li>
+      <li><a href="#metre-laser">LiDAR vs mètre laser vs géomètre</a></li>
+      <li><a href="#carrez">LiDAR et loi Carrez : possible ?</a></li>
+      <li><a href="#applications">Quelle application choisir ?</a></li>
+      <li><a href="#faq">FAQ</a></li>
+    </ol>
+  </div>
 
-    <h2>Gains mesurables</h2>
-    <p>Les équipes qui industrialisent le LiDAR réduisent le temps de traitement et améliorent la qualité des dossiers. Le bénéfice principal reste la réduction des contestations à la sortie.</p>
-  </article>
-</main>
+  <h2 id="cest-quoi">1. Le LiDAR, c'est quoi exactement ?</h2>
+  <p>Le <strong>LiDAR</strong> (Light Detection And Ranging) est une technologie de télédétection qui utilise des impulsions laser invisibles pour <strong>mesurer la distance</strong> entre le capteur et les surfaces environnantes. Le capteur envoie des milliers de faisceaux par seconde et calcule le temps de retour de chaque rayon réfléchi.</p>
+  <p>Résultat : un <strong>nuage de points 3D</strong> ultra-précis qui reconstitue l'espace en quelques secondes. Cette technologie était autrefois réservée à l'aéronautique, à l'archéologie ou aux voitures autonomes. Depuis 2020, Apple l'a intégrée à ses iPhones Pro.</p>
+  <div class="art-callout">
+    <strong>💡 À retenir :</strong> Contrairement à une simple photo, le LiDAR ne « voit » pas l'image — il <strong>mesure</strong> les distances. C'est pour ça qu'il fonctionne aussi bien dans le noir total ou face à des surfaces uniformes.
+  </div>
+
+  <h2 id="iphones">2. Quels iPhones ont un LiDAR ?</h2>
+  <p>Tous les modèles <strong>iPhone Pro depuis l'iPhone 12 Pro (sorti en 2020)</strong> intègrent un capteur LiDAR. Côté iPad, c'est tous les iPad Pro depuis 2020.</p>
+  <table class="art-table">
+    <thead><tr><th>Modèle</th><th>LiDAR</th><th>Année</th></tr></thead>
+    <tbody>
+      <tr><td>iPhone 12 / 13 / 14 / 15 / 16 (standard)</td><td>❌ Non</td><td>—</td></tr>
+      <tr><td>iPhone 12 Pro / 12 Pro Max</td><td>✅ Oui</td><td>2020</td></tr>
+      <tr><td>iPhone 13 Pro / 13 Pro Max</td><td>✅ Oui</td><td>2021</td></tr>
+      <tr><td>iPhone 14 Pro / 14 Pro Max</td><td>✅ Oui</td><td>2022</td></tr>
+      <tr><td>iPhone 15 Pro / 15 Pro Max</td><td>✅ Oui</td><td>2023</td></tr>
+      <tr><td>iPhone 16 Pro / 16 Pro Max</td><td>✅ Oui</td><td>2024</td></tr>
+      <tr><td>iPad Pro 11" / 12.9" (depuis M1)</td><td>✅ Oui</td><td>2020+</td></tr>
+    </tbody>
+  </table>
+  <p>Les modèles standards (iPhone 13, 14, 15, 16 sans « Pro ») n'ont <strong>pas de LiDAR</strong>. Ils peuvent quand même utiliser certaines fonctions de réalité augmentée, mais sans la précision LiDAR.</p>
+
+  <h2 id="precision">3. Quelle précision réelle pour mesurer un appartement ?</h2>
+  <p>Apple annonce une précision « jusqu'à 5 mètres ». En pratique :</p>
+  <ul>
+    <li><strong>Mesures linéaires</strong> (longueurs de mur) : précision <strong>au centimètre près</strong></li>
+    <li><strong>Surfaces (m²)</strong> : marge d'erreur <strong>inférieure à 5%</strong> sur un appartement standard</li>
+    <li><strong>Volumes</strong> : très bon pour les pièces rectangulaires, moins pour les pièces très complexes (mansardes, alcôves)</li>
+  </ul>
+  <p>Sur un appartement T3 de 65 m² scanné avec FOXSCAN, l'écart par rapport à un relevé géomètre certifié est typiquement de <strong>0,5 à 2 m²</strong> — soit moins de 3% d'erreur.</p>
+  <div class="art-callout art-callout-success">
+    <strong>✅ Pour 99% des usages immobiliers</strong>, cette précision est <strong>largement suffisante</strong> : EDL, descriptifs commerciaux, photos en agence, comparaison avant/après, simulations de réagencement.
+  </div>
+
+  <h2 id="cas-usages">4. Cinq cas d'usage du LiDAR en immobilier</h2>
+  <h3>4.1 État des lieux locatif</h3>
+  <p>Le LiDAR mesure automatiquement la surface de chaque pièce, génère un plan 2D et un modèle 3D inclus dans l'EDL. <strong>Plus besoin de mètre ruban</strong>, plus d'erreurs de saisie. Voir notre <a href="etat-des-lieux-numerique.html">guide complet sur l'EDL numérique</a>.</p>
+  <h3>4.2 Estimation de bien</h3>
+  <p>Pour un agent qui visite un bien à estimer, scanner en 4 minutes permet d'avoir <strong>tous les m² instantanément</strong>, par pièce, sans contestation possible. Très utile pour comparer plusieurs biens d'un coup.</p>
+  <h3>4.3 Diagnostic immobilier</h3>
+  <p>Le LiDAR sert de <strong>support visuel</strong> aux diagnostics (DPE, plomb, amiante, etc.) en fournissant un plan précis du logement. Pratique pour annoter les zones concernées.</p>
+  <h3>4.4 Visite virtuelle 3D</h3>
+  <p>Le scan LiDAR peut être <strong>partagé en ligne</strong> avec un acheteur, un locataire ou un partenaire qui voit le bien en 3D depuis son navigateur. Idéal pour pré-qualifier les visites.</p>
+  <h3>4.5 Pré-relevé pour travaux</h3>
+  <p>Avant des travaux, le LiDAR fournit un plan de base au m² près à l'artisan. Utile pour les <strong>devis de peinture, sol, électricité</strong>.</p>
+
+  <h2 id="comment-scanner">5. Comment scanner un appartement avec un iPhone</h2>
+  <p>La méthode optimale en 5 minutes :</p>
+  <h3>Étape 1 — Préparer le logement</h3>
+  <ul>
+    <li>Allumer toutes les lumières (le LiDAR fonctionne sans, mais une bonne lumière améliore les textures associées)</li>
+    <li>Ouvrir toutes les portes intérieures</li>
+    <li>Dégager rapidement les zones encombrées (pas besoin de déplacer les meubles, juste pas de cartons en travers)</li>
+  </ul>
+  <h3>Étape 2 — Lancer le scan dans l'app</h3>
+  <p>Ouvrez votre application (FOXSCAN, Magicplan, Polycam…) et démarrez un nouveau scan. Tenez l'iPhone à hauteur de poitrine, l'écran face à vous.</p>
+  <h3>Étape 3 — Tourner lentement dans la pièce</h3>
+  <p>Faites <strong>un tour complet</strong> de la pièce en 30-60 secondes, en orientant l'iPhone vers les murs, le sol et le plafond alternativement. L'application reconstruit le volume en temps réel sur votre écran.</p>
+  <div class="art-callout art-callout-warning">
+    <strong>⚠️ À éviter :</strong> les mouvements trop rapides (le tracking se perd), les surfaces très réfléchissantes (miroirs entiers, baies vitrées propres) qui peuvent renvoyer des données erronées. Si le scan « décroche », l'app vous le signale.
+  </div>
+  <h3>Étape 4 — Passer à la pièce suivante</h3>
+  <p>Sortez de la pièce sans interrompre le scan, et passez à la suivante. L'application enchaîne automatiquement et fait la liaison entre les pièces.</p>
+  <h3>Étape 5 — Validation</h3>
+  <p>À la fin du parcours, l'application affiche le plan 2D et le modèle 3D. Vous pouvez <strong>renommer chaque pièce</strong>, ajuster les murs si besoin, ajouter des annotations.</p>
+
+  <div class="art-cta">
+    <h3>📲 Faites votre 1er scan en 4 minutes avec FOXSCAN</h3>
+    <p>L'application iOS dédiée aux pros de l'immobilier. Scan, EDL et PDF dans la foulée.</p>
+    <a class="art-cta-btn" href="../index.html">Découvrir FOXSCAN</a>
+  </div>
+
+  <h2 id="metre-laser">6. LiDAR iPhone vs mètre laser vs géomètre</h2>
+  <table class="art-table">
+    <thead><tr><th></th><th>Mètre ruban</th><th>Mètre laser</th><th>LiDAR iPhone</th><th>Géomètre certifié</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Précision</strong></td><td>±2 cm</td><td>±2 mm</td><td>±1-3 cm</td><td>±1 mm</td></tr>
+      <tr><td><strong>Temps T3 65 m²</strong></td><td>45 min</td><td>30 min</td><td><strong>4 min</strong></td><td>1 h</td></tr>
+      <tr><td><strong>Plan 2D auto</strong></td><td>❌ Non</td><td>❌ Non</td><td>✅ Oui</td><td>✅ Oui</td></tr>
+      <tr><td><strong>Modèle 3D</strong></td><td>❌ Non</td><td>❌ Non</td><td>✅ Oui</td><td>Optionnel</td></tr>
+      <tr><td><strong>Photos liées</strong></td><td>❌ Non</td><td>❌ Non</td><td>✅ Oui</td><td>Manuelles</td></tr>
+      <tr><td><strong>Coût</strong></td><td>~10 €</td><td>~50 €</td><td>App + iPhone Pro</td><td>200-500 €/visite</td></tr>
+      <tr><td><strong>Valeur loi Carrez</strong></td><td>❌</td><td>❌</td><td>❌ (estimation)</td><td><strong>✅ Légale</strong></td></tr>
+    </tbody>
+  </table>
+  <p>Le LiDAR est le <strong>meilleur compromis</strong> rapidité/précision/coût pour les usages courants (EDL, estimations, descriptifs). Pour la loi Carrez, le géomètre reste obligatoire.</p>
+
+  <h2 id="carrez">7. LiDAR et loi Carrez : ce qu'il faut savoir</h2>
+  <p>La <strong>loi Carrez du 18 décembre 1996</strong> impose une mesure précise pour la vente de copropriétés. La responsabilité du vendeur est engagée si la surface annoncée diffère de plus de 5% de la mesure réelle.</p>
+  <p>En pratique :</p>
+  <ul>
+    <li>La mesure légale doit être réalisée par un <strong>professionnel certifié</strong> (géomètre-expert ou diagnostiqueur certifié) pour engager la responsabilité.</li>
+    <li>Le LiDAR iPhone fournit une <strong>très bonne estimation préalable</strong> (à 2-3% près)</li>
+    <li>Vous pouvez l'utiliser pour <strong>vérifier</strong> rapidement la cohérence d'une annonce, repérer une anomalie, anticiper le passage du géomètre.</li>
+  </ul>
+  <div class="art-callout">
+    <strong>💡 Conseil :</strong> certains agents font systématiquement un pré-scan LiDAR <strong>avant</strong> de mandater un géomètre. Si l'écart estimé est important (> 5%), ils alertent immédiatement le vendeur.
+  </div>
+
+  <h2 id="applications">8. Quelle application LiDAR choisir ?</h2>
+  <p>Plusieurs apps utilisent le LiDAR de l'iPhone, mais peu sont vraiment dédiées aux pros de l'immobilier :</p>
+  <table class="art-table">
+    <thead><tr><th>Application</th><th>Spécialité</th><th>EDL intégré</th><th>Tarif</th></tr></thead>
+    <tbody>
+      <tr><td><strong>FOXSCAN</strong></td><td>Immobilier locatif (EDL)</td><td>✅ Oui (auto-rempli IA)</td><td>29 €/mois</td></tr>
+      <tr><td>Magicplan</td><td>Plans 2D / construction</td><td>❌ Non</td><td>10-100 €/mois</td></tr>
+      <tr><td>Polycam</td><td>Modélisation 3D générique</td><td>❌ Non</td><td>15 €/mois</td></tr>
+      <tr><td>RoomPlan (Apple)</td><td>API native, pas une app finie</td><td>—</td><td>Gratuit (dev)</td></tr>
+      <tr><td>Canvas</td><td>Plans architecte</td><td>❌ Non</td><td>129 $/mois</td></tr>
+    </tbody>
+  </table>
+  <p>FOXSCAN est la seule application dédiée à l'<strong>état des lieux locatif</strong> avec scan LiDAR + remplissage auto par IA + comparaison entrée/sortie. Voir nos <a href="../index.html#pricing">tarifs détaillés</a>.</p>
+
+  <h2 id="faq">9. Questions fréquentes</h2>
+  <div class="art-faq">
+    <div class="art-faq-item">
+      <div class="art-faq-q" onclick="this.parentElement.classList.toggle('open')">Quels iPhones ont un capteur LiDAR ?</div>
+      <div class="art-faq-a">Tous les modèles iPhone Pro depuis l'iPhone 12 Pro (12 Pro, 12 Pro Max, 13 Pro, 13 Pro Max, 14 Pro, 14 Pro Max, 15 Pro, 15 Pro Max, 16 Pro, 16 Pro Max). Les iPad Pro depuis 2020 également. Les modèles standards (iPhone 13, 14, 15, 16 sans Pro) n'ont pas de LiDAR.</div>
+    </div>
+    <div class="art-faq-item">
+      <div class="art-faq-q" onclick="this.parentElement.classList.toggle('open')">Quelle est la précision d'un scan LiDAR iPhone ?</div>
+      <div class="art-faq-a">La marge d'erreur est généralement inférieure à 5% sur les surfaces (m²). Pour des longueurs, on est précis au centimètre près. Suffisant pour des EDL, des estimations commerciales, et même des relevés architecturaux légers.</div>
+    </div>
+    <div class="art-faq-item">
+      <div class="art-faq-q" onclick="this.parentElement.classList.toggle('open')">Le LiDAR iPhone est-il valable pour la loi Carrez ?</div>
+      <div class="art-faq-a">Légalement, la mesure loi Carrez doit être effectuée par un géomètre certifié pour engager la responsabilité du vendeur. Mais le LiDAR fournit une excellente estimation préalable utile pour vérifier ou pré-mesurer un bien avant le passage du géomètre.</div>
+    </div>
+    <div class="art-faq-item">
+      <div class="art-faq-q" onclick="this.parentElement.classList.toggle('open')">Le LiDAR consomme-t-il beaucoup de batterie ?</div>
+      <div class="art-faq-a">Un scan complet d'appartement (5-10 min) consomme environ 5-10% de batterie. C'est plus gourmand qu'une utilisation classique mais raisonnable. Sur une journée de visites avec 4-5 EDL, prévoyez une batterie externe.</div>
+    </div>
+    <div class="art-faq-item">
+      <div class="art-faq-q" onclick="this.parentElement.classList.toggle('open')">Le LiDAR fonctionne-t-il en extérieur ?</div>
+      <div class="art-faq-a">Oui, mais la portée est limitée à environ 5 mètres. Idéal pour scanner une terrasse, un balcon ou une cour. Pour des grandes surfaces extérieures (jardins, parkings), un drone est plus adapté.</div>
+    </div>
+    <div class="art-faq-item">
+      <div class="art-faq-q" onclick="this.parentElement.classList.toggle('open')">Faut-il un Wi-Fi pour scanner ?</div>
+      <div class="art-faq-a">Non. Le scan LiDAR fonctionne entièrement hors-ligne. La connexion réseau est seulement utile ensuite pour synchroniser avec le cloud (sauvegarde, dashboard web).</div>
+    </div>
+  </div>
+
+  <div class="art-cta" style="margin-top:48px">
+    <h3>📲 Téléchargez FOXSCAN sur l'App Store</h3>
+    <p>L'application LiDAR pensée pour les pros de l'immobilier. Scan, EDL et PDF dans la foulée.</p>
+    <a class="art-cta-btn" href="../index.html">Voir les tarifs</a>
+  </div>
+
+</article>
+
+<section class="art-related">
+  <div class="art-related-wrap">
+    <h3>Articles connexes</h3>
+    <div class="art-related-grid">
+      <a class="art-related-card" href="etat-des-lieux-numerique.html">
+        <div class="art-related-kicker">EDL Numérique</div>
+        <h4>État des lieux numérique : guide complet 2026</h4>
+        <p>Étapes, mentions obligatoires, signature électronique, photos. Le guide pratique.</p>
+      </a>
+      <a class="art-related-card" href="sortie-locative-checklist.html">
+        <div class="art-related-kicker">Sortie locative</div>
+        <h4>Sortie locative : checklist anti-litiges</h4>
+        <p>Pièces à contrôler, photos à capturer, formalisation des réserves.</p>
+      </a>
+    </div>
+  </div>
+</section>
+
+<footer class="art-footer">
+  <div class="art-footer-links">
+    <a href="../index.html">Accueil</a>
+    <a href="../legal/cgu.html">CGU</a>
+    <a href="../legal/confidentialite.html">Confidentialité</a>
+    <a href="../legal/rgpd.html">RGPD</a>
+    <a href="../support/contact.html">Contact</a>
+  </div>
+  <div class="art-footer-copy">© 2026 FOXSCAN — Tous droits réservés</div>
+</footer>
+
 </body>
 </html>

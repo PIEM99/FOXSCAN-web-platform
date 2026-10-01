@@ -3713,6 +3713,10 @@ app.get("/projects", requireCurrentUser, (req, res) => {
         archivedAt: p.archivedAt || null,
         scheduledAt: p.scheduledAt || null,
         propertyImageFileName: p.propertyImageFileName || null,
+        // Action admin en attente : l'app la lit ici, l'applique une fois,
+        // puis l'acquitte (sans ces deux champs, elle ne la voyait jamais).
+        adminAction: p.adminAction || null,
+        adminActionID: p.adminActionID || null,
         // Métadonnées résumées pour affichage list.
         tenantName: p.tenantName || null,
         tenantEmail: p.tenantEmail || null,
@@ -4822,6 +4826,122 @@ app.patch("/admin/users/:userId/subscription", async (req, res) => {
 // Le dashboard utilise le Bearer JWT, les scripts CLI utilisent la clé.
 
 // GET /admin/users/:userId — détail enrichi d'un user (avec stats + audit)
+/**
+ * Ce qu'une personne — ou une organisation — paie, et ce qu'elle a consommé.
+ *
+ * Rassemble les trois sources que l'écran devait sinon recouper à la main :
+ * l'abonnement (statut, prix, Stripe), les factures émises, et la
+ * consommation d'analyses réellement mesurée.
+ */
+function billingFor(store, { userIds, teamId, clientName }) {
+  const ids = new Set(userIds || []);
+
+  let calls = 0, costMicros = 0, costMicrosThisMonth = 0;
+  const now = new Date();
+  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).getTime();
+  for (const e of store.usageEvents || []) {
+    if (!ids.has(e.userId || e.userID)) continue;
+    calls += e.calls || 0;
+    costMicros += e.costMicros || 0;
+    if (new Date(e.createdAt || 0).getTime() >= monthStart) costMicrosThisMonth += e.costMicros || 0;
+  }
+
+  // Une facture se rattache par l'organisation si on la connaît, sinon par le
+  // nom saisi : les deux cas existent, un client peut être facturé sans équipe.
+  const wanted = String(clientName || "").trim().toLowerCase();
+  const invoices = (store.invoices || [])
+    .filter((i) => (teamId && i.client?.teamId === teamId)
+                || (wanted && String(i.client?.name || "").trim().toLowerCase() === wanted))
+    .sort((a, b) => String(b.issuedAt || "").localeCompare(String(a.issuedAt || "")))
+    .map((i) => ({
+      id: i.id, number: i.number, issuedAt: i.issuedAt, dueAt: i.dueAt,
+      totalEur: i.totalEur, status: i.status, kind: i.kind,
+    }));
+
+  const billedCents = invoices.filter((i) => i.kind !== "creditNote")
+    .reduce((n, i) => n + Math.round((i.totalEur || 0) * 100), 0);
+  const paidCents = invoices.filter((i) => i.status === "paid")
+    .reduce((n, i) => n + Math.round((i.totalEur || 0) * 100), 0);
+
+  return {
+    analyses: {
+      calls,
+      costEur: Math.round(costMicros / 10000) / 100,
+      costThisMonthEur: Math.round(costMicrosThisMonth / 10000) / 100,
+      // Le dire plutôt que de laisser croire à une consommation nulle.
+      measured: calls > 0,
+    },
+    invoices,
+    totals: {
+      billedEur: billedCents / 100,
+      paidEur: paidCents / 100,
+      outstandingEur: (billedCents - paidCents) / 100,
+    },
+  };
+}
+
+/**
+ * Le parcours, dans l'ordre. Ce que l'écran « fiche » doit raconter :
+ * d'où vient la personne, où elle en est, et ce qui a bougé en dernier.
+ */
+function journeyFor(store, users) {
+  const list = Array.isArray(users) ? users : [users];
+  const ids = new Set(list.map((u) => u.id));
+  const ev = [];
+  const push = (at, label, detail) => { if (at) ev.push({ at, label, detail: detail || null }); };
+
+  for (const u of list) {
+    const who = list.length > 1 ? (u.name || u.email || u.id) : null;
+    push(u.createdAt, "Inscription", [who, u.authProvider].filter(Boolean).join(" · ") || null);
+    push(u.trialEndsAt, "Fin de l'essai gratuit", who);
+    if (u.subscriptionStatus === "active" || u.stripeSubscriptionId) {
+      push(u.subscriptionActivatedAt || u.updatedAt, "Abonnement actif",
+           [who, u.stripeSubscriptionId ? "Stripe" : "activé à la main"].filter(Boolean).join(" · "));
+    }
+    push(u.lastLoginAt, "Dernière connexion", who);
+  }
+
+  const mine = (store.exports || []).filter((e) => ids.has(e.userID))
+    .sort((a, b) => String(a.createdAt || "").localeCompare(String(b.createdAt || "")));
+  if (mine.length) {
+    push(mine[0].createdAt, "Premier document produit", mine[0].fileName || null);
+    if (mine.length > 1) {
+      push(mine[mine.length - 1].createdAt, "Dernier document produit",
+           `${mine.length} au total`);
+    }
+  }
+
+  for (const i of store.invoices || []) {
+    const match = list.some((u) => u.teamId && i.client?.teamId === u.teamId);
+    if (match) push(i.issuedAt, `Facture ${i.number}`, `${i.totalEur} € · ${i.status === "paid" ? "payée" : "en attente"}`);
+  }
+
+  return ev
+    .filter((e) => !Number.isNaN(new Date(e.at).getTime()))
+    .sort((a, b) => String(b.at).localeCompare(String(a.at)))
+    .slice(0, 40);
+}
+
+// GET /admin/teams/:id — la fiche d'une organisation.
+app.get("/admin/teams/:id", (req, res) => {
+  if (!requireSuperAdminKey(req, res)) return;
+  const store = readStore();
+  const team = (store.teams || []).find((t) => t.id === req.params.id);
+  if (!team) return res.status(404).json({ ok: false, detail: "Organisation introuvable" });
+
+  const members = (store.users || []).filter((u) => u.teamId === team.id);
+  res.json({
+    ok: true,
+    team: teamSummary(team, store.users, store),
+    billing: billingFor(store, {
+      userIds: members.map((u) => u.id),
+      teamId: team.id,
+      clientName: team.name,
+    }),
+    journey: journeyFor(store, members),
+  });
+});
+
 app.get("/admin/users/:userId", (req, res) => {
   if (!requireAdminKey(req, res)) return;
   const store = readStore();
@@ -4873,6 +4993,22 @@ app.get("/admin/users/:userId", (req, res) => {
       exports: exportsCount,
       activeRefreshTokens,
     },
+    // Ce qu'il paie et ce qu'il a consommé — la question qu'on se pose en
+    // ouvrant une fiche, et qui obligeait jusqu'ici à croiser trois écrans.
+    billing: billingFor(store, {
+      userIds: [user.id],
+      teamId: user.teamId || null,
+      clientName: (store.teams || []).find((t) => t.id === user.teamId)?.name || null,
+    }),
+    usage: userUsage(store, user.id),
+    product: productProfile(store, user),
+    journey: journeyFor(store, user),
+    team: user.teamId
+      ? (() => {
+          const t = (store.teams || []).find((x) => x.id === user.teamId);
+          return t ? { id: t.id, name: t.name } : null;
+        })()
+      : null,
     recentAudit,
   });
 });
@@ -6100,6 +6236,240 @@ app.patch("/admin/users/:userId/role", express.json({ limit: "4kb" }), async (re
 // NB : utilise requireAdminKey (Bearer admin OU x-admin-key). L'ancienne
 // version n'acceptait que la clé CLI, ce qui rendait la liste inatteignable
 // depuis le dashboard — d'où l'absence d'écran d'administration des organisations.
+// ═══════════════════════════════════════════════════════════════════════════
+// FACTURATION CLIENT
+//
+// Une facture n'est pas une fiche de plus : c'est une pièce comptable. Trois
+// règles la distinguent du reste de ce fichier, et elles ont guidé le code.
+//
+//  1. NUMÉROTATION CONTINUE. L'article 242 nonies A de l'annexe II au CGI
+//     impose un numéro unique, « basé sur une séquence chronologique continue,
+//     sans rupture ». Le compteur passe donc par `mutateStore` : deux factures
+//     créées en même temps ne peuvent pas recevoir le même numéro.
+//  2. IMMUABLE. Une facture émise ne se modifie ni ne se supprime. Une erreur
+//     se corrige par un AVOIR, qui est lui-même une facture — d'où l'absence
+//     volontaire de route DELETE ou PATCH sur les montants.
+//  3. MENTIONS OBLIGATOIRES. Elles sont figées ci-dessous plutôt que saisies
+//     à la main : une facture à laquelle il manque la mention 293 B ou
+//     l'indemnité de recouvrement est irrégulière.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * L'émetteur. Pour un entrepreneur individuel, la facture porte le nom de
+ * l'entrepreneur suivi de « EI » (obligatoire depuis le 15 mai 2022) ; le nom
+ * commercial l'accompagne sans le remplacer.
+ */
+const INVOICE_ISSUER = {
+  legalName: "Pierre-Emmanuel EMERY--DUVAREILLE (EI)",
+  tradeName: "TruFox",
+  address: "7 ter boulevard de Verdun",
+  postalCode: "42800",
+  city: "Saint-Martin-la-Plaine",
+  country: "France",
+  siret: "102 982 899 00019",
+  siren: "102 982 899",
+  legalForm: "Entrepreneur individuel (micro-entreprise)",
+  vatNote: "TVA non applicable — article 293 B du Code général des impôts",
+  email: "contact@foxscan.fr",
+  website: "foxscan.fr",
+};
+
+/** Mentions que la loi impose de faire figurer sur une facture entre professionnels. */
+const INVOICE_LEGAL_TERMS = {
+  paymentTermDays: 30,
+  latePenalty:
+    "Tout retard de paiement entraîne des pénalités au taux d'intérêt appliqué par la "
+    + "Banque centrale européenne à son opération de refinancement la plus récente, "
+    + "majoré de 10 points de pourcentage (art. L441-10 du Code de commerce).",
+  recoveryIndemnity:
+    "Indemnité forfaitaire pour frais de recouvrement en cas de retard : 40 € "
+    + "(art. D441-5 du Code de commerce).",
+  noDiscount: "Pas d'escompte pour paiement anticipé.",
+};
+
+const centsFromEuros = (v) => Math.round((Number(v) || 0) * 100);
+const eurosFromCents = (c) => Math.round(c) / 100;
+
+/** Normalise et vérifie une ligne de facture. Retourne null si inexploitable. */
+function sanitizeInvoiceLine(raw) {
+  const label = String(raw?.label || "").trim().slice(0, 160);
+  if (!label) return null;
+  const qty = Number(raw?.qty);
+  const quantity = Number.isFinite(qty) && qty > 0 ? Math.round(qty * 100) / 100 : 1;
+  // Le prix arrive en euros depuis l'écran ; on travaille en centimes pour ne
+  // jamais accumuler d'erreur de virgule flottante sur un montant dû.
+  const unitCents = centsFromEuros(raw?.unitPriceEur);
+  return {
+    label,
+    quantity,
+    unitPriceCents: unitCents,
+    totalCents: Math.round(quantity * unitCents),
+  };
+}
+
+app.get("/admin/invoices", (req, res) => {
+  if (!requireSuperAdminKey(req, res)) return;
+  const store = readStore();
+  const items = [...(store.invoices || [])].sort(
+    (a, b) => String(b.issuedAt || "").localeCompare(String(a.issuedAt || "")),
+  );
+  const totalIssuedCents = items
+    .filter((i) => i.kind !== "creditNote")
+    .reduce((n, i) => n + (i.totalCents || 0), 0);
+  const totalPaidCents = items
+    .filter((i) => i.status === "paid")
+    .reduce((n, i) => n + (i.totalCents || 0), 0);
+  res.json({
+    ok: true,
+    total: items.length,
+    items,
+    issuer: INVOICE_ISSUER,
+    terms: INVOICE_LEGAL_TERMS,
+    totals: {
+      issuedEur: eurosFromCents(totalIssuedCents),
+      paidEur: eurosFromCents(totalPaidCents),
+      outstandingEur: eurosFromCents(totalIssuedCents - totalPaidCents),
+    },
+  });
+});
+
+/**
+ * Pré-remplissage : ce qu'on peut facturer à une organisation sur une période.
+ *
+ * L'abonnement est un montant connu ; les analyses, elles, sont refacturées à
+ * leur coût réel — ce chiffre ne doit donc jamais être saisi à la main, il se
+ * lit dans les relevés de consommation des membres de l'organisation.
+ */
+app.get("/admin/invoices/prefill", (req, res) => {
+  if (!requireSuperAdminKey(req, res)) return;
+  const store = readStore();
+  const teamId = String(req.query.teamId || "").trim();
+  const team = (store.teams || []).find((t) => t.id === teamId);
+
+  const now = new Date();
+  const parse = (v, fb) => {
+    const d = new Date(String(v || ""));
+    return Number.isNaN(d.getTime()) ? fb : d;
+  };
+  const from = parse(req.query.from, new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)));
+  const to = parse(req.query.to, new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 0, 23, 59, 59)));
+
+  const memberIds = new Set(
+    (store.users || []).filter((u) => u.teamId && u.teamId === teamId).map((u) => u.id),
+  );
+
+  let calls = 0;
+  let costMicros = 0;
+  for (const e of store.usageEvents || []) {
+    if (!memberIds.has(e.userId || e.userID)) continue;
+    const t = new Date(e.createdAt || 0);
+    if (t < from || t > to) continue;
+    calls += e.calls || 0;
+    costMicros += e.costMicros || 0;
+  }
+
+  res.json({
+    ok: true,
+    team: team ? { id: team.id, name: team.name } : null,
+    members: memberIds.size,
+    period: { from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10) },
+    subscription: { label: "Abonnement FOXSCAN — utilisateurs illimités", unitPriceEur: 29 },
+    analyses: {
+      calls,
+      costEur: Math.round(costMicros / 10000) / 100,
+      // Le relevé est volontairement transmis tel quel : si le compteur
+      // n'a rien enregistré, il faut que ça se voie avant d'émettre.
+      measured: calls > 0,
+    },
+  });
+});
+
+app.post("/admin/invoices", express.json({ limit: "64kb" }), async (req, res, next) => {
+  if (!requireSuperAdminKey(req, res)) return;
+  try {
+    const b = req.body || {};
+    const clientName = String(b.clientName || "").trim().slice(0, 160);
+    if (!clientName) {
+      return res.status(400).json({ ok: false, detail: "Le nom de l'organisation à facturer est obligatoire." });
+    }
+
+    const lines = (Array.isArray(b.lines) ? b.lines : []).map(sanitizeInvoiceLine).filter(Boolean);
+    if (!lines.length) {
+      return res.status(400).json({ ok: false, detail: "Au moins une ligne de prestation est requise." });
+    }
+
+    const kind = b.kind === "creditNote" ? "creditNote" : "invoice";
+    const sign = kind === "creditNote" ? -1 : 1;
+    const totalCents = sign * lines.reduce((n, l) => n + l.totalCents, 0);
+
+    const issuedAt = new Date();
+    const dueAt = new Date(issuedAt.getTime() + INVOICE_LEGAL_TERMS.paymentTermDays * 86400000);
+
+    let created = null;
+    await mutateStore((fresh) => {
+      fresh.invoices = fresh.invoices || [];
+      // Compteur jamais remis à zéro : une séquence continue se défend, une
+      // séquence qui repart à 1 chaque année oblige à prouver la série.
+      fresh.invoiceCounter = (fresh.invoiceCounter || 0) + 1;
+      const seq = String(fresh.invoiceCounter).padStart(4, "0");
+      const prefix = kind === "creditNote" ? "AV" : "FA";
+      created = {
+        id: `inv_${crypto.randomBytes(5).toString("hex")}`,
+        number: `TF-${prefix}-${issuedAt.getUTCFullYear()}-${seq}`,
+        kind,
+        issuedAt: issuedAt.toISOString(),
+        dueAt: dueAt.toISOString(),
+        periodFrom: String(b.periodFrom || "").slice(0, 10) || null,
+        periodTo: String(b.periodTo || "").slice(0, 10) || null,
+        client: {
+          teamId: String(b.teamId || "").trim() || null,
+          name: clientName,
+          address: String(b.clientAddress || "").trim().slice(0, 240),
+          siret: String(b.clientSiret || "").trim().slice(0, 32),
+          vatNumber: String(b.clientVat || "").trim().slice(0, 32),
+          email: String(b.clientEmail || "").trim().slice(0, 160),
+        },
+        lines,
+        totalCents,
+        totalEur: eurosFromCents(totalCents),
+        currency: "EUR",
+        // Franchise en base : pas de TVA, mais la mention est obligatoire.
+        vatNote: INVOICE_ISSUER.vatNote,
+        notes: String(b.notes || "").trim().slice(0, 600),
+        correctsInvoiceId: kind === "creditNote" ? (String(b.correctsInvoiceId || "").trim() || null) : null,
+        status: "issued",
+        paidAt: null,
+        createdAtDb: nowIso(),
+      };
+      fresh.invoices.push(created);
+    });
+
+    console.log(`[facture] ${created.number} · ${created.client.name} · ${created.totalEur} €`);
+    res.json({ ok: true, invoice: created, issuer: INVOICE_ISSUER, terms: INVOICE_LEGAL_TERMS });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+app.post("/admin/invoices/:id/paid", async (req, res, next) => {
+  if (!requireSuperAdminKey(req, res)) return;
+  try {
+    let found = null;
+    await mutateStore((fresh) => {
+      const inv = (fresh.invoices || []).find((i) => i.id === req.params.id);
+      if (!inv) return;
+      // On ne touche jamais aux montants : seul l'encaissement est consigné.
+      inv.status = inv.status === "paid" ? "issued" : "paid";
+      inv.paidAt = inv.status === "paid" ? nowIso() : null;
+      found = inv;
+    });
+    if (!found) return res.status(404).json({ ok: false, detail: "Facture introuvable" });
+    res.json({ ok: true, invoice: found });
+  } catch (err) {
+    return next(err);
+  }
+});
+
 app.get("/admin/teams", (req, res) => {
   if (!requireSuperAdminKey(req, res)) return;
   const store = readStore();
@@ -10083,9 +10453,12 @@ app.get("/ai/usage/summary", requireCurrentUser, (req, res) => {
 //   2. l'app les lit à son prochain pull GET /projects, applique l'action UNE
 //      fois, puis acquitte ici ;
 //   3. le serveur efface l'action.
-// Actions supportées par l'app : "unfinalize", "clearStatusOverride".
+// Actions supportées par l'app : "unfinalize", "clearStatusOverride", et
+// "delete" (ménage d'un dossier vide : l'app le met à SA corbeille — 30 jours —
+// puis demande la suppression ici ; elle refuse si le dossier a du contenu
+// chez elle que le serveur n'a jamais reçu).
 
-const APP_ADMIN_ACTIONS = new Set(["unfinalize", "clearStatusOverride"]);
+const APP_ADMIN_ACTIONS = new Set(["unfinalize", "clearStatusOverride", "delete"]);
 
 // POST /admin/projects/:projectID/action — programme une action (admin)
 app.post("/admin/projects/:projectID/action", express.json({ limit: "4kb" }), async (req, res) => {
@@ -10732,6 +11105,263 @@ app.put("/api/user/grille", requireCurrentUser, express.json({ limit: "512kb" })
 // ── Prestataires / fiches entreprise (persistance serveur, par compte) ───────
 // Chaque agence/intervenant gère son propre annuaire d'entreprises, auxquelles
 // les interventions (postes de la grille) pourront être rattachées.
+// ═══════════════════════════════════════════════════════════════════════════
+// DEMANDES DE DEVIS ET MANDATS D'INTERVENTION
+//
+// Chaîne complète : un élément dégradé au comparatif → une demande de devis
+// envoyée à plusieurs entreprises → les montants reçus → le mandat à celle
+// qu'on retient.
+//
+// UN POINT DE CONCEPTION QUI N'EST PAS NÉGOCIABLE : rien ne part tout seul.
+// Envoyer une demande engage le temps d'un tiers ; mandater engage de
+// l'argent. Les deux sont donc des routes distinctes, appelées sur un geste
+// explicite, jamais un effet de bord de la création. « Automatique » veut
+// dire « en un clic », pas « à l'insu de celui qui signe ».
+// ═══════════════════════════════════════════════════════════════════════════
+
+const WORK_ORDER_STATUSES = new Set(["draft", "quoted", "mandated", "done", "cancelled"]);
+
+function sanitizeWorkOrderLine(raw) {
+  const element = String(raw?.element || "").trim().slice(0, 160);
+  if (!element) return null;
+  return {
+    room: String(raw?.room || "").trim().slice(0, 120),
+    element,
+    category: String(raw?.category || "").trim().slice(0, 60),
+    description: String(raw?.description || "").trim().slice(0, 400),
+    estimateHT: Math.max(0, Math.round((Number(raw?.estimateHT) || 0) * 100) / 100),
+  };
+}
+
+function workOrderSummary(wo) {
+  const quotes = wo.quotes || [];
+  const received = quotes.filter((q) => q.status === "received" && q.amountHT != null);
+  const best = received.length
+    ? received.reduce((a, b) => (b.amountHT < a.amountHT ? b : a))
+    : null;
+  return {
+    ...wo,
+    estimateHT: (wo.lines || []).reduce((n, l) => n + (l.estimateHT || 0), 0),
+    quotesRequested: quotes.length,
+    quotesReceived: received.length,
+    bestQuote: best ? { providerId: best.providerId, providerName: best.providerName, amountHT: best.amountHT } : null,
+  };
+}
+
+app.get("/work-orders", requireCurrentUser, (req, res) => {
+  const store = req._store;
+  const mine = (store.workOrders || [])
+    .filter((w) => w.userID === req._user.id)
+    .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+  res.json({ ok: true, total: mine.length, items: mine.map(workOrderSummary) });
+});
+
+app.post("/work-orders", requireCurrentUser, express.json({ limit: "128kb" }), async (req, res, next) => {
+  try {
+    const b = req.body || {};
+    const lines = (Array.isArray(b.lines) ? b.lines : []).map(sanitizeWorkOrderLine).filter(Boolean);
+    if (!lines.length) {
+      return res.status(400).json({ ok: false, detail: "Au moins un poste de travaux est requis." });
+    }
+    const wo = {
+      id: `wo_${crypto.randomBytes(5).toString("hex")}`,
+      userID: req._user.id,
+      projectID: String(b.projectID || "").trim() || null,
+      reportID: String(b.reportID || "").trim() || null,
+      propertyLabel: String(b.propertyLabel || "").trim().slice(0, 200),
+      tenantName: String(b.tenantName || "").trim().slice(0, 160),
+      lines,
+      quotes: [],
+      status: "draft",
+      mandatedProviderId: null,
+      mandatedAt: null,
+      mandateAmountHT: null,
+      createdAt: nowIso(),
+      updatedAt: nowIso(),
+    };
+    await mutateStore((fresh) => {
+      fresh.workOrders = fresh.workOrders || [];
+      fresh.workOrders.push(wo);
+    });
+    res.json({ ok: true, workOrder: workOrderSummary(wo) });
+  } catch (err) { return next(err); }
+});
+
+/**
+ * Envoi des demandes de devis. Route séparée, appelée sur un geste explicite :
+ * la création d'un dossier de travaux n'envoie rien par elle-même.
+ */
+app.post("/work-orders/:id/request-quotes", requireCurrentUser, express.json({ limit: "32kb" }), async (req, res, next) => {
+  try {
+    const store = req._store;
+    const user = req._user;
+    const wo = (store.workOrders || []).find((w) => w.id === req.params.id && w.userID === user.id);
+    if (!wo) return res.status(404).json({ ok: false, detail: "Dossier introuvable" });
+
+    const wanted = Array.isArray(req.body?.providerIds) ? req.body.providerIds.map(String) : [];
+    const mine = (store.providers || {})[user.id] || [];
+    const targets = mine.filter((p) => wanted.includes(String(p.id)) && p.email);
+    if (!targets.length) {
+      return res.status(400).json({ ok: false, detail: "Aucune entreprise sélectionnée avec une adresse e-mail." });
+    }
+
+    const totalHT = (wo.lines || []).reduce((n, l) => n + (l.estimateHT || 0), 0);
+    const rows = (wo.lines || []).map((l) =>
+      `<tr><td style="padding:7px 0;border-bottom:1px solid #E5E5EA">
+         <strong>${escapeHtml(l.element)}</strong>${l.room ? ` — ${escapeHtml(l.room)}` : ""}
+         ${l.description ? `<br><span style="color:#6E6E73;font-size:13px">${escapeHtml(l.description)}</span>` : ""}
+       </td></tr>`).join("");
+
+    const sent = [];
+    const failed = [];
+    for (const p of targets) {
+      const body = `
+        <h1 style="margin:0 0 14px;font-size:20px;font-weight:800">Demande de devis</h1>
+        <p style="margin:0 0 16px;font-size:15px;line-height:1.6">
+          Bonjour ${escapeHtml(p.contactName || p.companyName || "")},<br>
+          Nous souhaitons recevoir un devis pour la remise en état suivante
+          ${wo.propertyLabel ? `au <strong>${escapeHtml(wo.propertyLabel)}</strong>` : ""}.
+        </p>
+        <table role="presentation" style="width:100%;border-collapse:collapse;margin:16px 0">${rows}</table>
+        <p style="margin:16px 0 0;font-size:13px;color:#6E6E73">
+          Merci de répondre directement à cet e-mail avec votre proposition chiffrée
+          et vos délais d'intervention.
+        </p>`;
+      try {
+        await sendMail({
+          to: p.email,
+          subject: `Demande de devis${wo.propertyLabel ? ` — ${wo.propertyLabel}` : ""}`,
+          html: emailLayout("Demande de devis", body),
+          replyTo: user.email || undefined,
+        });
+        sent.push(p.id);
+      } catch (e) {
+        console.error(`[devis] envoi échoué vers ${p.email}: ${e.message}`);
+        failed.push({ id: p.id, company: p.companyName, reason: e.message });
+      }
+    }
+
+    let updated = null;
+    await mutateStore((fresh) => {
+      const w = (fresh.workOrders || []).find((x) => x.id === wo.id);
+      if (!w) return;
+      w.quotes = w.quotes || [];
+      for (const p of targets) {
+        if (!sent.includes(p.id)) continue;
+        if (w.quotes.some((q) => q.providerId === p.id)) continue;
+        w.quotes.push({
+          providerId: p.id,
+          providerName: p.companyName || p.contactName || "",
+          email: p.email,
+          requestedAt: nowIso(),
+          amountHT: null,
+          receivedAt: null,
+          note: "",
+          status: "pending",
+        });
+      }
+      if (w.status === "draft" && w.quotes.length) w.status = "quoted";
+      w.updatedAt = nowIso();
+      updated = w;
+    });
+
+    console.log(`[devis] ${wo.id} · ${sent.length} demande(s) envoyée(s), ${failed.length} échec(s) · total indicatif ${totalHT} €`);
+    res.json({ ok: true, sent: sent.length, failed, workOrder: updated ? workOrderSummary(updated) : null });
+  } catch (err) { return next(err); }
+});
+
+/** Consigne un devis reçu — saisi à la main depuis le tableau de bord. */
+app.patch("/work-orders/:id/quote", requireCurrentUser, express.json({ limit: "16kb" }), async (req, res, next) => {
+  try {
+    const providerId = String(req.body?.providerId || "").trim();
+    const raw = req.body?.amountHT;
+    const amountHT = raw == null || raw === "" ? null : Math.max(0, Math.round(Number(raw) * 100) / 100);
+    const declined = req.body?.declined === true;
+
+    let updated = null;
+    await mutateStore((fresh) => {
+      const w = (fresh.workOrders || []).find((x) => x.id === req.params.id && x.userID === req._user.id);
+      if (!w) return;
+      const q = (w.quotes || []).find((x) => x.providerId === providerId);
+      if (!q) return;
+      if (declined) {
+        q.status = "declined"; q.amountHT = null;
+      } else if (amountHT != null && Number.isFinite(amountHT)) {
+        q.status = "received"; q.amountHT = amountHT; q.receivedAt = nowIso();
+      }
+      q.note = String(req.body?.note || q.note || "").slice(0, 400);
+      w.updatedAt = nowIso();
+      updated = w;
+    });
+    if (!updated) return res.status(404).json({ ok: false, detail: "Dossier ou entreprise introuvable" });
+    res.json({ ok: true, workOrder: workOrderSummary(updated) });
+  } catch (err) { return next(err); }
+});
+
+/**
+ * Mandate une entreprise. C'est l'acte qui engage : il envoie l'ordre de
+ * mission et fige le montant. Il ne se déduit jamais d'un devis reçu — même
+ * le moins-disant doit être choisi explicitement.
+ */
+app.post("/work-orders/:id/mandate", requireCurrentUser, express.json({ limit: "16kb" }), async (req, res, next) => {
+  try {
+    const store = req._store;
+    const user = req._user;
+    const wo = (store.workOrders || []).find((w) => w.id === req.params.id && w.userID === user.id);
+    if (!wo) return res.status(404).json({ ok: false, detail: "Dossier introuvable" });
+    if (wo.status === "mandated") {
+      return res.status(409).json({ ok: false, detail: "Ce dossier est déjà mandaté." });
+    }
+
+    const providerId = String(req.body?.providerId || "").trim();
+    const provider = ((store.providers || {})[user.id] || []).find((p) => String(p.id) === providerId);
+    if (!provider || !provider.email) {
+      return res.status(400).json({ ok: false, detail: "Entreprise introuvable ou sans e-mail." });
+    }
+    const quote = (wo.quotes || []).find((q) => q.providerId === providerId);
+    const amountHT = quote?.amountHT ?? null;
+
+    const rows = (wo.lines || []).map((l) =>
+      `<tr><td style="padding:7px 0;border-bottom:1px solid #E5E5EA">
+         <strong>${escapeHtml(l.element)}</strong>${l.room ? ` — ${escapeHtml(l.room)}` : ""}
+       </td></tr>`).join("");
+    const body = `
+      <h1 style="margin:0 0 14px;font-size:20px;font-weight:800">Ordre d'intervention</h1>
+      <p style="margin:0 0 16px;font-size:15px;line-height:1.6">
+        Bonjour ${escapeHtml(provider.contactName || provider.companyName || "")},<br>
+        Nous vous confirmons l'intervention suivante
+        ${wo.propertyLabel ? `au <strong>${escapeHtml(wo.propertyLabel)}</strong>` : ""}
+        ${amountHT != null ? `, sur la base de votre devis de <strong>${amountHT.toFixed(2)} € HT</strong>` : ""}.
+      </p>
+      <table role="presentation" style="width:100%;border-collapse:collapse;margin:16px 0">${rows}</table>
+      <p style="margin:16px 0 0;font-size:13px;color:#6E6E73">
+        Merci de nous confirmer la date de passage en répondant à cet e-mail.
+      </p>`;
+
+    await sendMail({
+      to: provider.email,
+      subject: `Ordre d'intervention${wo.propertyLabel ? ` — ${wo.propertyLabel}` : ""}`,
+      html: emailLayout("Ordre d'intervention", body),
+      replyTo: user.email || undefined,
+    });
+
+    let updated = null;
+    await mutateStore((fresh) => {
+      const w = (fresh.workOrders || []).find((x) => x.id === wo.id);
+      if (!w) return;
+      w.status = "mandated";
+      w.mandatedProviderId = providerId;
+      w.mandatedAt = nowIso();
+      w.mandateAmountHT = amountHT;
+      w.updatedAt = nowIso();
+      updated = w;
+    });
+
+    console.log(`[mandat] ${wo.id} → ${provider.companyName} · ${amountHT ?? "montant non figé"}`);
+    res.json({ ok: true, workOrder: updated ? workOrderSummary(updated) : null });
+  } catch (err) { return next(err); }
+});
+
 app.get("/api/user/providers", requireCurrentUser, (req, res) => {
   const user = req._user;
   const store = req._store;

@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
+<!-- Charte graphique FOXSCAN : jetons partagés, source unique -->
+<link rel="stylesheet" href="../assets/foxscan-tokens.css">
+
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Paiement annulé · FOXSCAN</title>
@@ -8,18 +11,21 @@
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Inter',-apple-system,sans-serif;background:linear-gradient(135deg,#FAFAFC 0%,#F0F4F9 100%);color:#1D1D1F;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;-webkit-font-smoothing:antialiased}
+body{font-family:'Inter',-apple-system,sans-serif;background:linear-gradient(135deg,var(--bg) 0%,var(--accent-tint) 100%);color:var(--ink);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;-webkit-font-smoothing:antialiased}
 .card{background:#fff;border-radius:24px;padding:48px 40px;max-width:520px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.1);position:relative;overflow:hidden}
-.card::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#FF9F0A,#FF6B00)}
-.icon{width:80px;height:80px;border-radius:50%;background:#FFF5E5;color:#FF9F0A;font-size:40px;display:flex;align-items:center;justify-content:center;margin:0 auto 24px;border:2px dashed #FF9F0A}
+.card::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,var(--warning),var(--warning))}
+.icon{width:80px;height:80px;border-radius:50%;background:var(--warning-tint);color:var(--warning);font-size:40px;display:flex;align-items:center;justify-content:center;margin:0 auto 24px;border:2px dashed var(--warning)}
 h1{font-size:26px;font-weight:800;margin-bottom:14px;letter-spacing:-.5px}
-p{font-size:15px;color:#6E6E73;line-height:1.6;margin-bottom:24px}
-.btn{display:inline-flex;align-items:center;gap:8px;background:#1D1D1F;color:#fff;text-decoration:none;padding:13px 26px;border-radius:12px;font-weight:700;font-size:14px;transition:.2s;margin:6px 4px;border:none;cursor:pointer;font-family:inherit}
+p{font-size:15px;color:var(--ink-3);line-height:1.6;margin-bottom:24px}
+.btn{display:inline-flex;align-items:center;gap:8px;background:var(--ink);color:#fff;text-decoration:none;padding:13px 26px;border-radius:12px;font-weight:700;font-size:14px;transition:.2s;margin:6px 4px;border:none;cursor:pointer;font-family:inherit}
 .btn:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(0,0,0,.2)}
-.btn-secondary{background:#F5F5F7;color:#1D1D1F}
-.btn-secondary:hover{background:#E5E5EA;box-shadow:none}
-.note{background:#F5F5F7;border-radius:10px;padding:14px 18px;font-size:13px;color:#6E6E73;margin:18px 0;line-height:1.5}
+.btn-secondary{background:var(--bg-soft);color:var(--ink)}
+.btn-secondary:hover{background:var(--ink-5);box-shadow:none}
+.note{background:var(--bg-soft);border-radius:10px;padding:14px 18px;font-size:13px;color:var(--ink-3);margin:18px 0;line-height:1.5}
 </style>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 </head>
 <body>
 
@@ -33,7 +39,7 @@ p{font-size:15px;color:#6E6E73;line-height:1.6;margin-bottom:24px}
   </div>
 
   <a href="https://foxscan.fr/#pricing" class="btn">Revoir les tarifs</a>
-  <a href="mailto:contact@trufox.fr?subject=Probl%C3%A8me%20de%20paiement%20FOXSCAN" class="btn btn-secondary">Nous contacter</a>
+  <a href="mailto:contact@foxscan.fr?subject=Probl%C3%A8me%20de%20paiement%20FOXSCAN" class="btn btn-secondary">Nous contacter</a>
 </div>
 
 <script>

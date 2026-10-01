@@ -1,23 +1,128 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+
+  <!-- HOMEPAGE - FR (default) -->
   <url>
     <loc>https://foxscan.fr/</loc>
+    <lastmod>2026-05-23</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="fr-FR" href="https://foxscan.fr/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://foxscan.fr/en/"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://foxscan.fr/es/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://foxscan.fr/"/>
   </url>
+
+  <!-- HOMEPAGE - EN -->
+  <url>
+    <loc>https://foxscan.fr/en/</loc>
+    <lastmod>2026-05-23</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.95</priority>
+    <xhtml:link rel="alternate" hreflang="fr-FR" href="https://foxscan.fr/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://foxscan.fr/en/"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://foxscan.fr/es/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://foxscan.fr/"/>
+  </url>
+
+  <!-- HOMEPAGE - ES -->
+  <url>
+    <loc>https://foxscan.fr/es/</loc>
+    <lastmod>2026-05-23</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.95</priority>
+    <xhtml:link rel="alternate" hreflang="fr-FR" href="https://foxscan.fr/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://foxscan.fr/en/"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://foxscan.fr/es/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://foxscan.fr/"/>
+  </url>
+
+
+  <!-- Articles, support et mentions légales -->
+
+  <url>
+    <loc>https://foxscan.fr/articles/modele-etat-des-lieux-gratuit.html</loc>
+    <lastmod>2026-08-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <url>
+    <loc>https://foxscan.fr/articles/vetuste-location-grille-2026.html</loc>
+    <lastmod>2026-08-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
   <url>
     <loc>https://foxscan.fr/articles/etat-des-lieux-numerique.html</loc>
+    <lastmod>2026-08-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
-  <url>
-    <loc>https://foxscan.fr/articles/lidar-immobilier-guide.html</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
+
   <url>
     <loc>https://foxscan.fr/articles/sortie-locative-checklist.html</loc>
+    <lastmod>2026-08-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
+
+  <url>
+    <loc>https://foxscan.fr/articles/lidar-immobilier-guide.html</loc>
+    <lastmod>2026-08-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <url>
+    <loc>https://foxscan.fr/support/aide.html</loc>
+    <lastmod>2026-08-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+
+  <url>
+    <loc>https://foxscan.fr/support/contact.html</loc>
+    <lastmod>2026-08-20</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+
+  <url>
+    <loc>https://foxscan.fr/legal/cgv.html</loc>
+    <lastmod>2026-08-20</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+
+  <url>
+    <loc>https://foxscan.fr/legal/cgu.html</loc>
+    <lastmod>2026-08-20</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+
+  <url>
+    <loc>https://foxscan.fr/legal/confidentialite.html</loc>
+    <lastmod>2026-08-20</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+
+  <url>
+    <loc>https://foxscan.fr/legal/mentions-legales.html</loc>
+    <lastmod>2026-08-20</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+
+  <url>
+    <loc>https://foxscan.fr/legal/rgpd.html</loc>
+    <lastmod>2026-08-20</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+
 </urlset>

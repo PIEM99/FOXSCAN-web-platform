@@ -52,18 +52,29 @@ async function exchangeAppleToken(idToken) {
 
 async function handleSignInClick() {
   setLoading(true);
+  // Diagnostic : si le SDK Apple n'est pas chargé, on tente de le ré-initialiser.
+  if (!(window.AppleID && window.AppleID.auth)) {
+    setLoading(false);
+    alert("Le SDK Apple n'est pas chargé. Vérifiez votre connexion internet et rechargez la page (Cmd+Maj+R).");
+    return;
+  }
   try {
+    // Tente une (re)initialisation au cas où initApple() aurait échoué au boot.
+    try { initApple(); } catch (_) { /* déjà init, on ignore */ }
     const data = await window.AppleID.auth.signIn();
     const idToken = data?.authorization?.id_token;
     if (!idToken) {
-      throw new Error("Apple did not return id_token");
+      throw new Error("Apple n'a pas retourné de id_token");
     }
     await exchangeAppleToken(idToken);
   } catch (error) {
     setLoading(false);
     if (error?.error !== "popup_closed_by_user") {
-      alert("Connexion Apple impossible. Vérifie la configuration Apple Sign In et l'API FOXSCAN.");
-      console.error(error);
+      // Affiche le détail réel pour qu'on puisse diagnostiquer.
+      const code = error?.error || error?.code || "";
+      const msg = error?.error_description || error?.message || String(error);
+      alert(`Connexion Apple impossible.\n\nCode : ${code || "(inconnu)"}\nMessage : ${msg}`);
+      console.error("[Apple Sign In] Erreur complète :", error);
     }
   }
 }

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="FOXSCAN">
+  <!-- Vert sapin de l'app iOS + halo orange du scan LiDAR. Marque lisible
+       à 16 px : un carré plein et trois lignes de balayage décroissantes. -->
+  <rect width="64" height="64" rx="14" fill="#1B3A2F"/>
+  <g stroke-linecap="round" fill="none" stroke-width="6">
+    <path d="M16 22h32" stroke="#FF7A1A"/>
+    <path d="M16 34h22" stroke="#FFFFFF" opacity=".92"/>
+    <path d="M16 46h26" stroke="#FFFFFF" opacity=".62"/>
+  </g>
+</svg>

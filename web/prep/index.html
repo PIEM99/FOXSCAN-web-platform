@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<!-- Charte graphique FOXSCAN : jetons partagés, source unique -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/foxscan-tokens.css">
+
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+  <meta name="robots" content="noindex, nofollow"/>
+  <title>Pré-inspection — Foxscan</title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --orange:var(--accent-2);
+      --orange-dark:var(--accent);
+      --green:var(--success);
+      --red:var(--danger);
+      --bg:var(--bg-soft);
+      --card:#FFFFFF;
+      --text:var(--bg-dark);
+      --text-soft:var(--ink-3);
+      --text-mute:var(--ink-4);
+      --border:var(--ink-5);
+      --radius:16px;
+      --radius-sm:10px;
+    }
+    html,body{min-height:100dvh;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Helvetica,Arial,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased;overscroll-behavior:none}
+
+    /* ── LAYOUT ── */
+    .screen{display:none;flex-direction:column;min-height:100dvh;padding:env(safe-area-inset-top,16px) 0 env(safe-area-inset-bottom,32px) 0}
+    .screen.active{display:flex}
+    .screen-inner{flex:1;display:flex;flex-direction:column;padding:0 20px;max-width:480px;width:100%;margin:0 auto}
+
+    /* ── HEADER ── */
+    .prep-header{display:flex;align-items:center;gap:12px;padding:20px 20px 0;max-width:480px;width:100%;margin:0 auto}
+    .prep-logo{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--accent-2),var(--accent-deep));display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;color:#fff;font-family:'SF Pro Rounded',-apple-system,sans-serif;letter-spacing:-1px;flex-shrink:0}
+    .prep-logo-label{font-size:17px;font-weight:700;color:var(--text);letter-spacing:-.3px}
+    .prep-logo-sub{font-size:12px;color:var(--text-soft);font-weight:500}
+
+    /* ── CARD ── */
+    .card{background:var(--card);border-radius:var(--radius);padding:20px;margin-bottom:12px;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+    .card-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-soft);margin-bottom:12px}
+    .card-body{font-size:15px;color:var(--text);line-height:1.5}
+
+    /* ── BIEN INFO ── */
+    .bien-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-mute);margin-bottom:2px}
+    .bien-value{font-size:15px;font-weight:600;color:var(--text);margin-bottom:12px}
+    .bien-value:last-of-type{margin-bottom:0}
+    .edl-type-badge{display:inline-block;padding:3px 10px;border-radius:100px;font-size:12px;font-weight:700;background:rgba(255,120,73,.12);color:var(--orange);letter-spacing:.02em}
+
+    /* ── BUTTONS ── */
+    .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:15px 20px;border:none;border-radius:var(--radius-sm);font-family:inherit;font-size:16px;font-weight:700;cursor:pointer;transition:.15s;letter-spacing:-.2px;-webkit-tap-highlight-color:transparent}
+    .btn:active{transform:scale(0.98)}
+    .btn-primary{background:linear-gradient(135deg,var(--accent-2),var(--accent-deep));color:#fff;box-shadow:0 6px 20px rgba(255,85,32,.3)}
+    .btn-primary:hover{filter:brightness(1.05)}
+    .btn-secondary{background:var(--card);color:var(--text);border:1.5px solid var(--border)}
+    .btn-secondary:hover{background:var(--bg)}
+    .btn-green{background:linear-gradient(135deg,var(--success),var(--success));color:#fff;box-shadow:0 6px 20px rgba(52,199,89,.25)}
+    .btn-ghost{background:transparent;color:var(--text-soft);font-size:14px;padding:12px 20px}
+    .btn-sm{padding:10px 16px;font-size:14px;width:auto}
+    .btn-danger{background:rgba(255,59,48,.08);color:var(--red);border:1.5px solid rgba(255,59,48,.2)}
+
+    /* ── SPINNER ── */
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--orange);border-radius:50%;animation:spin .8s linear infinite}
+    .spinner-sm{width:20px;height:20px;border-width:2px}
+
+    /* ── ERROR/SUCCESS STATES ── */
+    .state-icon{font-size:52px;margin-bottom:16px;display:block;text-align:center}
+    .state-title{font-size:22px;font-weight:800;color:var(--text);text-align:center;margin-bottom:8px;letter-spacing:-.4px;line-height:1.2}
+    .state-body{font-size:15px;color:var(--text-soft);text-align:center;line-height:1.6;margin-bottom:24px}
+    .state-center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px}
+
+    /* ── PROGRESS BAR ── */
+    @keyframes indeterminate{0%{transform:translateX(-100%)}100%{transform:translateX(400%)}}
+    .progress-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin:8px 0}
+    .progress-bar-fill{height:100%;background:linear-gradient(90deg,var(--orange),var(--accent-2));border-radius:2px;transition:width .3s}
+    .progress-bar-fill.indeterminate{width:30%;animation:indeterminate 1.4s ease-in-out infinite}
+
+    /* ── ROOMS ── */
+    .rooms-list{display:flex;flex-direction:column;gap:12px;margin-bottom:16px}
+    .room-card{background:var(--card);border-radius:var(--radius);padding:16px;box-shadow:0 2px 10px rgba(0,0,0,.06);position:relative}
+    .room-header{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+    .room-num{width:24px;height:24px;border-radius:50%;background:var(--orange);color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .room-name-input{flex:1;border:none;background:transparent;font-size:16px;font-weight:600;font-family:inherit;color:var(--text);outline:none;min-width:0;padding:0}
+    .room-name-input::placeholder{color:var(--text-mute)}
+    .room-delete{background:none;border:none;color:var(--text-mute);cursor:pointer;padding:4px;font-size:18px;line-height:1;flex-shrink:0;-webkit-tap-highlight-color:transparent}
+    .room-delete:hover{color:var(--red)}
+    .photos-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+    .photo-thumb-wrap{position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;background:var(--bg-soft)}
+    .photo-thumb{width:100%;height:100%;object-fit:cover}
+    .photo-del-btn{position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,.5);color:#fff;border:none;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent}
+    .add-photo-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;aspect-ratio:1;border-radius:8px;border:2px dashed var(--border);background:var(--bg);cursor:pointer;-webkit-tap-highlight-color:transparent;transition:.15s}
+    .add-photo-btn:active{background:var(--bg-soft)}
+    .add-photo-icon{font-size:22px;line-height:1}
+    .add-photo-label{font-size:10px;font-weight:600;color:var(--text-mute);text-transform:uppercase;letter-spacing:.04em}
+    .room-note-input{width:100%;border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;font-size:14px;font-family:inherit;color:var(--text);background:var(--bg);resize:none;outline:none;transition:.15s}
+    .room-note-input:focus{border-color:var(--orange)}
+    .room-photo-count{font-size:12px;color:var(--text-mute);margin-bottom:8px}
+    .room-photo-count.warn{color:var(--orange);font-weight:600}
+
+    /* ── VALIDATION ── */
+    .submit-info{font-size:13px;color:var(--text-soft);text-align:center;line-height:1.5;margin-bottom:12px}
+
+    /* ── IOS CTA ── */
+    .ios-deep-link-badge{display:flex;align-items:center;gap:14px;padding:18px;background:var(--card);border-radius:var(--radius);box-shadow:0 2px 12px rgba(0,0,0,.06);margin-bottom:12px}
+    .ios-app-icon{width:52px;height:52px;border-radius:12px;background:linear-gradient(135deg,var(--bg-dark),#16213E);display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0}
+    .ios-badge-text .title{font-size:15px;font-weight:700;color:var(--text)}
+    .ios-badge-text .sub{font-size:13px;color:var(--text-soft);margin-top:2px}
+    .ios-sep{display:flex;align-items:center;gap:10px;margin:8px 0 16px;color:var(--text-mute);font-size:13px;font-weight:500}
+    .ios-sep::before,.ios-sep::after{content:'';flex:1;height:1px;background:var(--border)}
+
+    /* ── NOTICE ── */
+    .notice{font-size:12px;color:var(--text-mute);text-align:center;line-height:1.5;margin-top:8px;padding:0 12px}
+    .notice a{color:var(--orange);text-decoration:none}
+
+    /* ── VALIDATED BANNER ── */
+    .validated-banner{background:linear-gradient(135deg,var(--success-tint),var(--success-tint));border-radius:var(--radius);padding:20px;margin-bottom:12px;display:flex;flex-direction:column;align-items:center;gap:8px}
+    .validated-check{width:44px;height:44px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;font-weight:700}
+    .validated-title{font-size:16px;font-weight:800;color:var(--success)}
+    .validated-sub{font-size:13px;color:var(--success);text-align:center;line-height:1.5}
+
+    /* ── ERROR CALLOUT ── */
+    .error-callout{background:var(--danger-tint);border-left:3px solid var(--red);border-radius:8px;padding:12px 14px;font-size:13px;color:var(--danger);margin-bottom:14px;display:none}
+    .error-callout.show{display:block}
+
+    /* ── STICKY FOOTER ── */
+    .sticky-footer{padding:12px 20px calc(env(safe-area-inset-bottom,16px) + 12px);background:rgba(242,242,247,.9);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);position:sticky;bottom:0;border-top:1px solid var(--border)}
+    .sticky-footer-inner{max-width:480px;margin:0 auto}
+  </style>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+</head>
+<body>
+
+<!-- SCREEN: loading -->
+<div class="screen active" id="screenLoading">
+  <div class="state-center">
+    <div class="spinner" style="margin-bottom:24px"></div>
+    <div style="font-size:15px;color:var(--text-soft);font-weight:500">Vérification du lien…</div>
+  </div>
+</div>
+
+<!-- SCREEN: error -->
+<div class="screen" id="screenError">
+  <div class="prep-header">
+    <div class="prep-logo">F</div>
+    <div><div class="prep-logo-label">Foxscan</div><div class="prep-logo-sub">Pré-inspection</div></div>
+  </div>
+  <div class="state-center">
+    <span class="state-icon">🔒</span>
+    <div class="state-title" id="errorTitle">Lien invalide</div>
+    <div class="state-body" id="errorBody">Ce lien est invalide ou a expiré.<br>Contactez votre agence pour en obtenir un nouveau.</div>
+  </div>
+</div>
+
+<!-- SCREEN: welcome (iOS deep link + web fallback) -->
+<div class="screen" id="screenWelcome">
+  <div class="prep-header">
+    <div class="prep-logo">F</div>
+    <div><div class="prep-logo-label">Foxscan</div><div class="prep-logo-sub">Pré-inspection</div></div>
+  </div>
+  <div class="screen-inner" style="padding-top:20px">
+
+    <!-- Bien info card -->
+    <div class="card" id="wellcomeInfo">
+      <div class="card-title">Bien à inspecter</div>
+      <div id="infoAddress" class="bien-value" style="font-size:18px;letter-spacing:-.3px"></div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <div>
+          <div class="bien-label">Type de bien</div>
+          <div class="bien-value" id="infoPropType"></div>
+        </div>
+        <div>
+          <div class="bien-label">État des lieux</div>
+          <div class="bien-value"><span class="edl-type-badge" id="infoEdlType"></span></div>
+        </div>
+      </div>
+      <div id="infoScheduleWrap" style="display:none;margin-top:6px">
+        <div class="bien-label">Date prévue</div>
+        <div class="bien-value" id="infoSchedule"></div>
+      </div>
+    </div>
+
+    <!-- Instruction card -->
+    <div class="card">
+      <div class="card-title">Comment ça marche ?</div>
+      <div class="card-body">
+        <div style="display:flex;gap:12px;margin-bottom:12px">
+          <div style="width:26px;height:26px;border-radius:50%;background:var(--orange);color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">1</div>
+          <div>
+            <div style="font-weight:700;margin-bottom:2px">Entrez dans le logement</div>
+            <div style="font-size:14px;color:var(--text-soft)">Pièce par pièce, prenez des photos de l'état du bien : murs, sol, équipements.</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;margin-bottom:12px">
+          <div style="width:26px;height:26px;border-radius:50%;background:var(--orange);color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">2</div>
+          <div>
+            <div style="font-weight:700;margin-bottom:2px">Envoyez vos photos</div>
+            <div style="font-size:14px;color:var(--text-soft)">L'agence reçoit votre scan et le complète lors de la visite officielle.</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:12px">
+          <div style="width:26px;height:26px;border-radius:50%;background:var(--orange);color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">3</div>
+          <div>
+            <div style="font-weight:700;margin-bottom:2px">EDL finalisé ensemble</div>
+            <div style="font-size:14px;color:var(--text-soft)">L'agent vérifie et signe l'état des lieux final avec vous.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- iOS deep link (masqué si non-iOS) -->
+    <div id="iosSection" style="display:none">
+      <div class="ios-deep-link-badge">
+        <div class="ios-app-icon">📱</div>
+        <div class="ios-badge-text">
+          <div class="title">Vous avez l'app Foxscan ?</div>
+          <div class="sub">Ouvrez directement depuis l'app pour une meilleure expérience.</div>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="btnOpenApp" style="margin-bottom:12px">
+        📲 Ouvrir dans Foxscan
+      </button>
+      <div class="ios-sep">ou</div>
+    </div>
+
+    <!-- Already scanned notice (if status=scanned) -->
+    <div id="alreadyScannedNotice" style="display:none;padding:14px 16px;background:var(--warning-tint);border-radius:var(--radius-sm);border-left:3px solid var(--orange);margin-bottom:12px;font-size:14px;color:var(--warning);line-height:1.5">
+      📸 Vous avez déjà envoyé un scan. Vous pouvez envoyer un nouveau scan pour le remplacer.
+    </div>
+
+  </div>
+
+  <!-- Sticky CTA -->
+  <div class="sticky-footer">
+    <div class="sticky-footer-inner">
+      <button class="btn btn-primary" id="btnStartScan">
+        📸 Commencer l'inspection
+      </button>
+      <p class="notice" style="margin-top:8px">Vos photos restent confidentielles et ne sont accessibles qu'à votre agence.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN: validated (already finalized, read-only) -->
+<div class="screen" id="screenValidated">
+  <div class="prep-header">
+    <div class="prep-logo">F</div>
+    <div><div class="prep-logo-label">Foxscan</div><div class="prep-logo-sub">Pré-inspection</div></div>
+  </div>
+  <div class="state-center">
+    <div class="validated-check" style="margin-bottom:16px">✓</div>
+    <div class="state-title">Tout est prêt !</div>
+    <div class="state-body">L'agence a validé votre état des lieux.<br>Vous pouvez fermer cette page.</div>
+  </div>
+</div>
+
+<!-- SCREEN: scan form -->
+<div class="screen" id="screenScan">
+  <div class="prep-header">
+    <div class="prep-logo">F</div>
+    <div><div class="prep-logo-label">Foxscan</div><div class="prep-logo-sub">Pré-inspection — <span id="scanAddress" style="font-weight:500"></span></div></div>
+  </div>
+  <div class="screen-inner" style="padding-top:20px;padding-bottom:16px">
+
+    <div class="error-callout" id="scanError"></div>
+
+    <div style="margin-bottom:16px">
+      <div style="font-size:20px;font-weight:800;color:var(--text);letter-spacing:-.4px;margin-bottom:4px">Photographiez le logement</div>
+      <div style="font-size:14px;color:var(--text-soft);line-height:1.5">Ajoutez chaque pièce et prenez plusieurs photos. Plus vous en mettez, mieux c'est.</div>
+    </div>
+
+    <!-- Rooms list (dynamic) -->
+    <div class="rooms-list" id="roomsList"></div>
+
+    <!-- Add room button -->
+    <button class="btn btn-secondary" id="btnAddRoom" style="margin-bottom:20px">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      Ajouter une pièce
+    </button>
+
+  </div>
+
+  <!-- Sticky footer -->
+  <div class="sticky-footer">
+    <div class="sticky-footer-inner">
+      <div id="scanSummary" class="submit-info"></div>
+      <button class="btn btn-green" id="btnSubmitScan">
+        ✓ Envoyer à l'agence
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN: uploading -->
+<div class="screen" id="screenUploading">
+  <div class="state-center">
+    <div class="spinner" style="margin-bottom:24px"></div>
+    <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px;text-align:center">Envoi en cours…</div>
+    <div style="font-size:14px;color:var(--text-soft);text-align:center;margin-bottom:20px">Merci de ne pas fermer la page.</div>
+    <div style="width:200px">
+      <div class="progress-bar"><div class="progress-bar-fill indeterminate"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN: done -->
+<div class="screen" id="screenDone">
+  <div class="prep-header">
+    <div class="prep-logo">F</div>
+    <div><div class="prep-logo-label">Foxscan</div><div class="prep-logo-sub">Pré-inspection</div></div>
+  </div>
+  <div class="state-center">
+    <span class="state-icon">🎉</span>
+    <div class="state-title">Scan envoyé !</div>
+    <div class="state-body">
+      Votre inspection a été transmise à l'agence avec succès.<br>
+      L'agent la complétera lors de la visite officielle.<br><br>
+      <strong>Vous pouvez fermer cette page.</strong>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CONFIG ──────────────────────────────────────────────────────────────────
+const MAX_PHOTOS_PER_ROOM = 12;
+const MAX_ROOMS = 30;
+const API_BASE = window.location.origin; // même domaine
+
+// ── STATE ───────────────────────────────────────────────────────────────────
+let currentToken = null;
+let currentDraft = null;
+let currentStatus = null;
+// rooms: [{id, name, note, photos:[{id,dataURL,capturedAt}]}]
+let rooms = [];
+let nextRoomId = 1;
+let nextPhotoId = 1;
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+(async function init(){
+  // Extrait le token depuis ?t= dans l'URL
+  const qs = new URLSearchParams(window.location.search);
+  currentToken = qs.get("t") || "";
+
+  if (!currentToken){
+    showError("Lien incomplet", "Ce lien ne contient pas de token d'accès. Vérifiez que vous avez cliqué sur le bon lien reçu de votre agence.");
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/share/${encodeURIComponent(currentToken)}`);
+    const body = await res.json().catch(() => null);
+    if (!res.ok || !body?.ok){
+      const detail = body?.detail || `Erreur ${res.status}`;
+      showError("Lien invalide", detail);
+      return;
+    }
+
+    currentDraft = body.draft;
+    currentStatus = body.status;
+
+    if (body.status === "validated"){
+      showScreen("screenValidated");
+      return;
+    }
+
+    // Remplit les infos du bien
+    fillWelcomeInfo(body.draft, body.status);
+    setupiOS();
+    showScreen("screenWelcome");
+
+  } catch (err){
+    showError("Erreur de connexion", "Impossible de contacter le serveur. Vérifiez votre connexion et réessayez.");
+  }
+})();
+
+// ── WELCOME ─────────────────────────────────────────────────────────────────
+function fillWelcomeInfo(draft, status){
+  el("infoAddress").textContent = draft.address || "Adresse non renseignée";
+  el("infoPropType").textContent = formatPropType(draft.propertyType) || "—";
+  el("infoEdlType").textContent = formatEdlType(draft.edlType);
+
+  if (draft.scheduledAt){
+    el("infoScheduleWrap").style.display = "block";
+    el("infoSchedule").textContent = formatDate(draft.scheduledAt);
+  }
+
+  if (status === "scanned"){
+    el("alreadyScannedNotice").style.display = "block";
+  }
+
+  // Adresse dans le header du scan form
+  el("scanAddress").textContent = draft.address ? draft.address.split(",")[0] : "";
+}
+
+function setupiOS(){
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if (isIOS){
+    el("iosSection").style.display = "block";
+    el("btnOpenApp").addEventListener("click", () => {
+      window.location.href = `foxscan://prep/${encodeURIComponent(currentToken)}`;
+    });
+  }
+}
+
+el("btnStartScan").addEventListener("click", startScan);
+
+// ── SCAN FORM ────────────────────────────────────────────────────────────────
+function startScan(){
+  rooms = [];
+  nextRoomId = 1;
+  nextPhotoId = 1;
+  addRoom();
+  renderRooms();
+  updateSummary();
+  showScreen("screenScan");
+}
+
+el("btnAddRoom").addEventListener("click", () => {
+  if (rooms.length >= MAX_ROOMS){
+    showScanError(`Maximum ${MAX_ROOMS} pièces.`);
+    return;
+  }
+  addRoom();
+  renderRooms();
+  updateSummary();
+  // Scroll to last room
+  setTimeout(() => {
+    const cards = document.querySelectorAll(".room-card");
+    if (cards.length) cards[cards.length-1].scrollIntoView({behavior:"smooth",block:"nearest"});
+  }, 100);
+});
+
+el("btnSubmitScan").addEventListener("click", submitScan);
+
+function addRoom(name){
+  const id = nextRoomId++;
+  const defaultNames = ["Entrée","Salon","Cuisine","Chambre principale","Chambre 2","Salle de bain","WC","Chambre 3","Bureau","Buanderie","Cave","Garage"];
+  const suggestedName = name || defaultNames[(rooms.length) % defaultNames.length] || `Pièce ${id}`;
+  rooms.push({id, name: suggestedName, note:"", photos:[]});
+}
+
+function deleteRoom(roomId){
+  rooms = rooms.filter(r => r.id !== roomId);
+  if (rooms.length === 0) addRoom();
+  renderRooms();
+  updateSummary();
+}
+
+function updateRoomName(roomId, name){
+  const r = rooms.find(r => r.id === roomId);
+  if (r) r.name = name;
+}
+
+function updateRoomNote(roomId, note){
+  const r = rooms.find(r => r.id === roomId);
+  if (r) r.note = note;
+}
+
+function deletePhoto(roomId, photoId){
+  const r = rooms.find(r => r.id === roomId);
+  if (r) r.photos = r.photos.filter(p => p.id !== photoId);
+  renderRooms();
+  updateSummary();
+}
+
+function renderRooms(){
+  const list = el("roomsList");
+  list.innerHTML = rooms.map((room, idx) => `
+    <div class="room-card" data-room="${room.id}">
+      <div class="room-header">
+        <div class="room-num">${idx+1}</div>
+        <input class="room-name-input" value="${escHtml(room.name)}" placeholder="Nom de la pièce"
+          onchange="updateRoomName(${room.id},this.value)" oninput="updateRoomName(${room.id},this.value)"/>
+        ${rooms.length > 1 ? `<button class="room-delete" onclick="deleteRoom(${room.id})" aria-label="Supprimer">×</button>` : ""}
+      </div>
+
+      ${room.photos.length > 0 ? `
+        <div class="room-photo-count ${room.photos.length >= MAX_PHOTOS_PER_ROOM ? 'warn' : ''}">
+          ${room.photos.length} / ${MAX_PHOTOS_PER_ROOM} photo${room.photos.length > 1 ? "s" : ""}
+        </div>
+        <div class="photos-grid">
+          ${room.photos.map(p => `
+            <div class="photo-thumb-wrap">
+              <img class="photo-thumb" src="${p.dataURL}" alt=""/>
+              <button class="photo-del-btn" onclick="deletePhoto(${room.id},${p.id})" aria-label="Supprimer">×</button>
+            </div>
+          `).join("")}
+          ${room.photos.length < MAX_PHOTOS_PER_ROOM ? `
+            <label class="add-photo-btn" for="photoInput_${room.id}">
+              <span class="add-photo-icon">+</span>
+            </label>
+          ` : ""}
+        </div>
+      ` : `
+        <label class="add-photo-btn" for="photoInput_${room.id}" style="aspect-ratio:unset;padding:18px 10px;flex-direction:row;justify-content:center;gap:8px;border-radius:10px">
+          <span style="font-size:20px">📷</span>
+          <span style="font-size:14px;font-weight:700;color:var(--text-soft)">Ajouter des photos</span>
+        </label>
+      `}
+
+      <input type="file" id="photoInput_${room.id}" accept="image/*" capture="environment" multiple
+        style="display:none" onchange="handlePhotoAdd(${room.id},this)"/>
+
+      <textarea class="room-note-input" placeholder="Note optionnelle (ex: fissure au plafond, vitre rayée…)"
+        style="margin-top:10px;min-height:60px" maxlength="500"
+        oninput="updateRoomNote(${room.id},this.value)">${escHtml(room.note)}</textarea>
+    </div>
+  `).join("");
+}
+
+async function handlePhotoAdd(roomId, input){
+  const r = rooms.find(r => r.id === roomId);
+  if (!r) return;
+  const files = Array.from(input.files || []);
+  if (!files.length) return;
+
+  const available = MAX_PHOTOS_PER_ROOM - r.photos.length;
+  const toProcess = files.slice(0, available);
+
+  for (const file of toProcess){
+    try {
+      const dataURL = await readFileAsDataURL(file);
+      r.photos.push({id: nextPhotoId++, dataURL, capturedAt: new Date().toISOString()});
+    } catch {}
+  }
+
+  if (files.length > available){
+    showScanError(`Maximum ${MAX_PHOTOS_PER_ROOM} photos par pièce. Seules les ${available} premières ont été ajoutées.`);
+  }
+
+  input.value = ""; // reset so same file can be re-selected
+  renderRooms();
+  updateSummary();
+}
+
+function readFileAsDataURL(file){
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(fr.result);
+    fr.onerror = () => reject(fr.error);
+    fr.readAsDataURL(file);
+  });
+}
+
+function updateSummary(){
+  const totalPhotos = rooms.reduce((n,r) => n + r.photos.length, 0);
+  const namedRooms = rooms.filter(r => r.name.trim());
+  const summary = el("scanSummary");
+  if (totalPhotos === 0){
+    summary.textContent = "Ajoutez des photos pour continuer.";
+    summary.style.color = "var(--text-mute)";
+  } else {
+    summary.textContent = `${namedRooms.length} pièce${namedRooms.length > 1 ? "s" : ""} · ${totalPhotos} photo${totalPhotos > 1 ? "s" : ""}`;
+    summary.style.color = "var(--text-soft)";
+  }
+}
+
+// ── SUBMIT ───────────────────────────────────────────────────────────────────
+async function submitScan(){
+  hideScanError();
+
+  // Validation
+  const validRooms = rooms.filter(r => r.name.trim() && r.photos.length > 0);
+  if (validRooms.length === 0){
+    showScanError("Ajoutez au moins une pièce avec une photo pour continuer.");
+    return;
+  }
+
+  // Calcul score simple : couverture photo
+  const totalPhotos = validRooms.reduce((n,r) => n + r.photos.length, 0);
+  const score = Math.min(100, Math.round((totalPhotos / validRooms.length) * (100 / MAX_PHOTOS_PER_ROOM)));
+
+  const payload = {
+    rooms: validRooms.map(r => ({
+      name: r.name.trim(),
+      note: r.note.trim(),
+      photos: r.photos.map(p => ({
+        dataURL: p.dataURL,
+        capturedAt: p.capturedAt,
+        note: "",
+      })),
+    })),
+    score,
+  };
+
+  // Estimation de la taille
+  const payloadStr = JSON.stringify(payload);
+  const estimatedMB = (payloadStr.length / 1024 / 1024).toFixed(1);
+  if (payloadStr.length > 8 * 1024 * 1024){
+    showScanError(`Photos trop volumineuses (${estimatedMB} Mo). Supprimez quelques photos ou prenez des photos en résolution plus basse.`);
+    return;
+  }
+
+  showScreen("screenUploading");
+
+  try {
+    const res = await fetch(`${API_BASE}/share/${encodeURIComponent(currentToken)}/scan`, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: payloadStr,
+    });
+    const body = await res.json().catch(() => null);
+    if (!res.ok || !body?.ok){
+      const detail = body?.detail || `Erreur ${res.status}`;
+      showScreen("screenScan");
+      showScanError(detail);
+      return;
+    }
+    showScreen("screenDone");
+  } catch (err){
+    showScreen("screenScan");
+    showScanError("Erreur réseau. Vérifiez votre connexion et réessayez.");
+  }
+}
+
+// ── HELPERS ──────────────────────────────────────────────────────────────────
+function el(id){ return document.getElementById(id); }
+function showScreen(id){
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  const s = el(id);
+  if (s) s.classList.add("active");
+  window.scrollTo(0,0);
+}
+function showError(title, body){
+  el("errorTitle").textContent = title;
+  el("errorBody").textContent = body;
+  showScreen("screenError");
+}
+function showScanError(msg){
+  const e = el("scanError");
+  e.textContent = msg;
+  e.classList.add("show");
+  e.scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+function hideScanError(){
+  el("scanError").classList.remove("show");
+}
+function escHtml(str){
+  return String(str||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+function formatPropType(t){
+  const map = {studio:"Studio","T1":"T1","T2":"T2","T3":"T3","T4":"T4","T5+":"T5 et plus",maison:"Maison","local-commercial":"Local commercial"};
+  return map[t] || t || "—";
+}
+function formatEdlType(t){
+  const map = {entry:"Entrée",exit:"Sortie",inventory:"Inventaire"};
+  return map[t] || t || "—";
+}
+function formatDate(iso){
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric",hour:"2-digit",minute:"2-digit"});
+  } catch { return iso; }
+}
+</script>
+</body>
+</html>

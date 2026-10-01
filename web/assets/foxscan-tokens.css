@@ -1,0 +1,112 @@
+/* ============================================================================
+   FOXSCAN — jetons de charte graphique
+   Source unique de vérité pour les couleurs, la typographie et les rayons.
+   Toute page du site importe ce fichier ; aucune ne redéfinit ces valeurs.
+
+   POURQUOI CE FICHIER
+   Le site utilisait quatre bleus différents selon les pages (#1C5FD9 sur
+   l'accueil, #0071E3 sur les pages légales et la connexion, #0062C4 sur les
+   articles, #6E40C9 sur une page de support), deux verts et deux oranges.
+   Chaque page avait raison chez elle et tort à côté.
+
+   CONTRASTES
+   Chaque couleur de texte a été vérifiée contre le fond sur lequel elle se
+   pose. Les ratios notés sont ceux de WCAG 2.1 ; 4,5 est le seuil AA pour du
+   texte courant. Les couleurs vives d'iOS (#34C759, #FF9F0A) ont été écartées
+   comme couleurs de texte : sur blanc elles plafonnent à 2,0 — illisibles.
+   Elles restent valables en aplat sur fond sombre, d'où les variantes -on-dark.
+   ========================================================================== */
+
+:root {
+  /* ── Accent ────────────────────────────────────────────────────────────
+     Le bleu de FOXSCAN, relevé au pixel sur une capture de l'application
+     (v1.28, 19/09/2026) : c'est exactement la même couleur des deux côtés.
+     Le cyan LiDAR (#00F2FF) plafonne à 1,39 sur blanc : il ne peut pas
+     servir d'accent sur fond clair, d'où --cyan-on-dark plus bas.          */
+  --accent:        #1C5CE5;   /* 5,66 sur blanc · 5,20 sur #F5F5F7          */
+  --accent-2:      #4D8DF0;   /* survol, états clairs                       */
+  --accent-deep:   #1240A8;   /* appui, dégradés                           */
+  --accent-soft:   rgba(28, 92, 229, 0.08);
+  --accent-tint:   #E8F1FF;   /* aplat de fond ; texte accent dessus : 5,02 */
+
+  /* Le bleu nuit des en-têtes de document dans l'application. Distinct de
+     --bg-dark (#0A0F1E), qui est celui de l'écran de connexion.            */
+  --navy-doc:      #1F3B5E;   /* 11,38 sur blanc                            */
+
+  /* ── Encre ─────────────────────────────────────────────────────────────  */
+  --ink:           #1D1D1F;
+  --ink-2:         #424245;
+  --ink-3:         #6E6E73;
+  --ink-4:         #86868B;
+  --ink-5:         #D2D2D7;
+
+  /* ── Fonds ─────────────────────────────────────────────────────────────  */
+  --bg:            #FBFBFD;
+  --bg-2:          #FFFFFF;
+  --bg-soft:       #F5F5F7;
+  --bg-3:          #E8E8ED;
+  --bg-dark:       #0A0F1E;   /* le bleu nuit de l'application              */
+  --bg-deep:       #FFFFFF;
+
+  /* ── Traits et verre ───────────────────────────────────────────────────  */
+  --line:              rgba(0, 0, 0, 0.08);
+  --line-2:            rgba(0, 0, 0, 0.12);
+  --glass:             rgba(255, 255, 255, 0.7);
+  --glass-border:      rgba(255, 255, 255, 0.6);
+  --glass-border-2:    rgba(0, 0, 0, 0.10);
+  --glass-dark:        rgba(255, 255, 255, 0.06);
+  --glass-dark-border: rgba(255, 255, 255, 0.1);
+
+  /* ── Couleurs de sens ──────────────────────────────────────────────────
+     Deux tons par couleur : un pour le texte et les icônes sur fond clair,
+     un aplat pour les pastilles. Jamais l'un à la place de l'autre.        */
+  --success:       #15793F;   /* 5,47 sur blanc — dérivé du vert de l'app  */
+  --success-tint:  #E6F5EC;   /* texte --success dessus : 4,86             */
+  --warning:       #9A6100;   /* 5,14 sur blanc                            */
+  --warning-tint:  #FFF3E0;   /* texte --warning dessus : 4,69             */
+  --danger:        #C4271C;   /* 5,75 sur blanc                            */
+  --danger-tint:   #FDECEB;   /* texte --danger dessus : 5,03              */
+
+  /* Aplats vifs, réservés aux fonds sombres et aux pictogrammes pleins.
+     Sur #0A0F1E : vert 8,60 · ambre 9,29 · rouge 5,38 · cyan 13,77.        */
+  --success-on-dark: #34C759;
+  --warning-on-dark: #FF9F0A;
+  --danger-on-dark:  #FF453A;
+  --cyan-on-dark:    #33D9FF;   /* la signature LiDAR, fond sombre seulement */
+
+  /* ── Typographie ───────────────────────────────────────────────────────  */
+  --display: 'Outfit', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --body:    'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --mono:    ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+
+  /* ── Rayons ────────────────────────────────────────────────────────────  */
+  --radius-sm: 9px;
+  --radius:    14px;
+  --radius-lg: 22px;
+  --radius-xl: 28px;
+
+  /* ── Courbes d'animation ───────────────────────────────────────────────  */
+  --ease:        cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-soft:   cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ── Alias hérités ─────────────────────────────────────────────────────
+     Les noms employés par les pages légales, les articles et l'admin. Ils
+     pointent désormais sur les jetons ci-dessus : le CSS de ces pages n'a pas
+     eu à être réécrit, seules les valeurs ont changé. À ne pas employer dans
+     du code neuf.                                                           */
+  --blue:     var(--accent);
+  --blue-l:   var(--accent-tint);
+  --green:    var(--success);
+  --green-l:  var(--success-tint);
+  --orange:   var(--warning);
+  --orange-l: var(--warning-tint);
+  --red:      var(--danger);
+  --text:     var(--ink);
+  --text2:    var(--ink-3);
+  --text3:    var(--ink-4);
+  --bg2:      var(--bg-soft);
+  --bg3:      var(--bg-3);
+  --border:   var(--line);
+  --r:        var(--radius);
+}

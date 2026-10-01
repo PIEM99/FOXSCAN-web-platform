@@ -1,0 +1,13 @@
+# FOXSCAN — security.txt (RFC 9116)
+# Si vous découvrez une faille de sécurité, contactez-nous responsablement.
+
+Contact: mailto:security@foxscan.fr
+Contact: https://foxscan.fr/contact
+Expires: 2027-01-01T00:00:00.000Z
+Preferred-Languages: fr, en
+Canonical: https://foxscan.fr/.well-known/security.txt
+Policy: https://foxscan.fr/legal/security-policy
+Acknowledgments: https://foxscan.fr/legal/security-hall-of-fame
+
+# Nous vous remercions de signaler les vulnérabilités de manière responsable.
+# Engagement : réponse sous 48 h ouvrées.

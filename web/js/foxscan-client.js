@@ -57,26 +57,40 @@ async function rawRequest(path, options = {}) {
   return { response, body };
 }
 
+// Singleton refresh — si plusieurs appels simultanés obtiennent un 401,
+// un seul vrai appel /auth/refresh part ; les autres attendent le résultat.
+let _refreshPromise = null;
+
 async function refreshAccessToken() {
-  const refreshToken = localStorage.getItem(SESSION_KEYS.refreshToken);
-  if (!refreshToken) return false;
+  if (_refreshPromise) return _refreshPromise;
 
-  const { response, body } = await fetch(`${getApiBaseUrl()}/auth/refresh`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refreshToken }),
-  }).then(async (res) => {
-    const txt = await res.text();
-    return { response: res, body: parseJsonSafe(txt) };
-  });
+  _refreshPromise = (async () => {
+    const refreshToken = localStorage.getItem(SESSION_KEYS.refreshToken);
+    if (!refreshToken) return false;
 
-  if (!response.ok || !body) {
-    clearSession();
-    return false;
-  }
+    try {
+      const { response, body } = await fetch(`${getApiBaseUrl()}/auth/refresh`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refreshToken }),
+      }).then(async (res) => {
+        const txt = await res.text();
+        return { response: res, body: parseJsonSafe(txt) };
+      });
 
-  persistSession(body);
-  return true;
+      if (!response.ok || !body) {
+        clearSession();
+        return false;
+      }
+
+      persistSession(body);
+      return true;
+    } finally {
+      _refreshPromise = null;
+    }
+  })();
+
+  return _refreshPromise;
 }
 
 /**
@@ -330,6 +344,25 @@ export async function deleteDraft(draftID) {
   return request(`/drafts/${encodeURIComponent(draftID)}`, { method: "DELETE" });
 }
 
+// ── V6 — SELF-PREP TENANT (magic link) ───────────────────────────────────
+// L'agence demande un lien à envoyer au locataire ; le locataire scanne ;
+// l'agent valide. Côté serveur c'est apps/api/server.js.
+export async function createDraftShare(draftID) {
+  return request(`/drafts/${encodeURIComponent(draftID)}/share`, { method: "POST" });
+}
+export async function revokeDraftShare(draftID) {
+  return request(`/drafts/${encodeURIComponent(draftID)}/share`, { method: "DELETE" });
+}
+export async function fetchDraftShareScan(draftID) {
+  return request(`/drafts/${encodeURIComponent(draftID)}/share/scan`, { method: "GET" });
+}
+export async function validateDraftShare(draftID, agentAnnotations) {
+  return request(`/drafts/${encodeURIComponent(draftID)}/share/validate`, {
+    method: "PATCH",
+    body: JSON.stringify({ agentAnnotations: agentAnnotations || null }),
+  });
+}
+
 // Télécharge un fichier d'export en utilisant le Bearer token (sans transit du serveur tiers).
 // downloadPath ressemble à "/exports/files/usr_xxx/exp_xxx_filename.bin"
 export async function downloadExportFile(downloadPath, suggestedName) {
@@ -352,6 +385,38 @@ export async function downloadExportFile(downloadPath, suggestedName) {
   a.click();
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+}
+
+// ── V6.2 — ADMIN ENDPOINTS (visible seulement si user.role === "admin") ──
+export async function adminFetchUsers() {
+  return request("/admin/users", { method: "GET" });
+}
+export async function adminFetchUser(userID) {
+  return request(`/admin/users/${encodeURIComponent(userID)}`, { method: "GET" });
+}
+export async function adminPatchUser(userID, payload) {
+  return request(`/admin/users/${encodeURIComponent(userID)}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+export async function adminDeleteUser(userID) {
+  return request(`/admin/users/${encodeURIComponent(userID)}?confirm=true`, { method: "DELETE" });
+}
+export async function adminExtendTrial(userID, days) {
+  return request(`/admin/users/${encodeURIComponent(userID)}/extend-trial`, {
+    method: "POST",
+    body: JSON.stringify({ days }),
+  });
+}
+export async function adminUpdateSubscription(userID, active) {
+  return request(`/admin/users/${encodeURIComponent(userID)}/subscription`, {
+    method: "PATCH",
+    body: JSON.stringify({ subscriptionActive: active }),
+  });
+}
+export async function adminFetchHealth() {
+  return request("/admin/health", { method: "GET" });
 }
 
 export async function logoutApi() {

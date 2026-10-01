@@ -27,6 +27,41 @@
 //      seulement, et on tolère son absence (fallback Vision-only).
 //
 // Voir https://gitlab.com/autokent/pdf-parse/-/issues/19
+// Rasterisation Ghostscript : indispensable pour les scans denses (formulaires
+// A3 à cocher), où l'envoi du PDF brut perd la quasi-totalité des coches.
+const { rasterizePdf } = require("./pdfRaster.js");
+
+// ─── Arbitrage qualité / coût ─────────────────────────────────────────────
+//
+// Mesuré sur un formulaire A3 scanné dense :
+//   • une seule passe sur tout le document           → 69 % (1 pièce sur 8)
+//   • découpe en tuiles + extraction parallèle       → 81 %   (gpt-4o-mini)
+//   • + modèle gpt-4o                                → 85 %
+// Le gain vient donc de l'ARCHITECTURE, pas du modèle : +12 pts pour la
+// découpe (gratuite, Ghostscript local) contre +4 pts pour un modèle ~20× plus
+// cher. On garde donc le modèle économique pour le gros du travail.
+const VISION_MODEL = process.env.EDL_VISION_MODEL || "gpt-4o-mini";
+
+// Seule exception : le cartouche d'identité (noms, adresse, date) est
+// manuscrit et ne tolère pas l'à-peu-près. C'est UN SEUL appel par import,
+// donc on s'y autorise le modèle précis (~1,5 centime).
+const META_MODEL = process.env.EDL_META_MODEL || "gpt-4o";
+
+// Tours de rattrapage des sections manquantes. Le modèle économique est plus
+// variable d'une exécution à l'autre : les tours rattrapent les pièces
+// oubliées pour quelques millimes (appels `mini`). La boucle s'arrête d'elle-
+// même dès qu'un tour n'apporte rien OU que le budget de temps est épuisé.
+const MAX_COMPLETION_ROUNDS = Number(process.env.EDL_MAX_ROUNDS || 2);
+
+// Garde-fous ANTI-504. Le proxy devant le Node coupe la requête HTTP au bout
+// d'~60 s : on borne donc l'import pour rendre TOUJOURS une réponse avant.
+//   • EDL_CALL_TIMEOUT_MS : chaque appel OpenAI abandonne au bout de ce délai
+//     (résultat partiel plutôt que blocage).
+//   • EDL_BUDGET_MS : budget total ; on ne démarre pas un tour de rattrapage
+//     si le temps restant est insuffisant.
+const EDL_CALL_TIMEOUT_MS = Number(process.env.EDL_CALL_TIMEOUT_MS || 38000);
+const EDL_BUDGET_MS = Number(process.env.EDL_BUDGET_MS || 48000);
+
 let _pdfParse = null;
 let _pdfParseLoadAttempted = false;
 function getPdfParse() {
@@ -310,14 +345,10 @@ function guessCategory(label) {
   return "Autre";
 }
 
+// Renvoie directement le libellé canonique (plus d'abréviations en sortie).
 function mapStateLabel(label) {
   if (!label) return null;
-  const l = label.toLowerCase();
-  if (l.includes("bon état")) return "BE";
-  if (l.includes("état moyen")) return "EM";
-  if (l.includes("usage normal")) return "EU"; // état d'usage
-  if (l.includes("mauvais état")) return "DE"; // dégradé
-  return null;
+  return canonicalCondition(label);
 }
 
 // ─── Parser IA Vision (OpenAI Responses API avec input_file PDF) ──────
@@ -328,11 +359,26 @@ function mapStateLabel(label) {
 // Le `text.format.json_schema` force la sortie à matcher notre schéma →
 // pas de post-parsing fragile.
 
-async function parseVision({ pdfBuffer, callOpenAI }) {
+// Concatène le prompt utilisateur avec d'éventuelles précisions saisies dans
+// l'écran de relecture (« telle pièce a été oubliée », « les annexes comptent »…).
+function buildUserPrompt(basePrompt, instructions) {
+  const extra = String(instructions || "").trim();
+  if (!extra) return basePrompt;
+  return `${basePrompt}
+
+PRÉCISIONS DE L'UTILISATEUR — à respecter impérativement, elles corrigent une
+extraction précédente jugée incomplète :
+${extra.slice(0, 2000)}
+
+Reprends l'analyse COMPLÈTE du document en tenant compte de ces précisions.
+N'omets aucune pièce ni aucune section mentionnée.`;
+}
+
+async function parseVision({ pdfBuffer, callOpenAI, instructions }) {
   const base64 = pdfBuffer.toString("base64");
 
   const payload = {
-    model: "gpt-4o-mini",
+    model: VISION_MODEL,
     // Pas de detail "high" : pour un PDF entier on garde le coût en main.
     input: [
       {
@@ -349,7 +395,7 @@ async function parseVision({ pdfBuffer, callOpenAI }) {
         content: [
           {
             type: "input_text",
-            text: USER_PROMPT_VISION,
+            text: buildUserPrompt(USER_PROMPT_VISION, instructions),
           },
           {
             type: "input_file",
@@ -371,7 +417,7 @@ async function parseVision({ pdfBuffer, callOpenAI }) {
     max_output_tokens: 8000,
   };
 
-  const json = await callOpenAI(payload);
+  const json = await callOpenAI(payload, EDL_CALL_TIMEOUT_MS);
   // L'API renvoie soit `output_text` (concat des content json), soit
   // un message structuré. On extrait défensivement.
   const text = extractResponseText(json);
@@ -383,7 +429,486 @@ async function parseVision({ pdfBuffer, callOpenAI }) {
     err.status = 502;
     throw err;
   }
-  return { ...parsed, sourceFormat: "vision", confidence: 0.75 };
+  // Plafond 0.85 : une lecture visuelle ne prétend jamais à la certitude.
+  return withConfidence({ ...parsed, sourceFormat: "vision" }, 0.85);
+}
+
+// V6.4 — Analyse Vision sur des IMAGES (photos d'EDL, scans).
+// `images` : array de { mime, buffer } — pour gérer les EDL multi-pages
+// photographiés en plusieurs clichés.
+// ─── Passe de CONTRÔLE D'EXHAUSTIVITÉ ─────────────────────────────────────
+//
+// Sur un formulaire dense, une extraction en une passe oublie régulièrement
+// des pièces entières. On demande donc au modèle, EN PARALLÈLE de l'extraction
+// (donc sans coût de latence), la simple LISTE des intitulés de pièces visibles
+// — tâche bien plus facile et fiable que l'extraction complète. On compare
+// ensuite, et on ne relance une extraction ciblée que sur ce qui manque.
+const SECTIONS_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    sections: {
+      type: "array",
+      description: "Intitulés EXACTS de toutes les pièces/sections du document",
+      items: { type: "string" },
+    },
+  },
+  required: ["sections"],
+};
+
+async function listSections({ images, callOpenAI }) {
+  try {
+    const payload = {
+      model: VISION_MODEL,
+      input: [
+        {
+          role: "system",
+          content: [{
+            type: "input_text",
+            text: "Tu inventories les intitulés de sections d'un état des lieux. Tu ne décris rien d'autre.",
+          }],
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "input_text",
+              text: `Liste TOUS les intitulés de pièces / sections présents dans ce document d'état des lieux (ex : ENTRÉE, CUISINE, SÉJOUR 1, CHAMBRE 1, CHAMBRE 2, SALLE DE BAIN, TOILETTE 1, HALL/COULOIR, DÉPENDANCES…).
+Le document peut être pivoté de 90° : lis-le dans le bon sens.
+N'invente rien, ne déduis rien : uniquement les intitulés réellement imprimés.`,
+            },
+            ...images.map((img) => ({
+              type: "input_image",
+              image_url: `data:${img.mime || "image/jpeg"};base64,${img.buffer.toString("base64")}`,
+              detail: "high",
+            })),
+          ],
+        },
+      ],
+      text: { format: { type: "json_schema", name: "Sections", strict: true, schema: SECTIONS_SCHEMA } },
+      max_output_tokens: 1200,
+    };
+    const json = await callOpenAI(payload, EDL_CALL_TIMEOUT_MS);
+    const parsed = JSON.parse(extractResponseText(json) || "{}");
+    return Array.isArray(parsed.sections) ? parsed.sections.filter(Boolean) : [];
+  } catch (e) {
+    console.warn("[edlImport] passe d'exhaustivité indisponible :", e.message);
+    return [];
+  }
+}
+
+// ─── Passe MÉTA dédiée ────────────────────────────────────────────────────
+//
+// Les identités (locataire, adresse, date) sont manuscrites et concentrées
+// dans le cartouche d'en-tête. En extraction par tuile, la fusion « première
+// valeur non vide » laissait gagner une mauvaise lecture venue d'une tuile
+// périphérique. On interroge donc le cartouche séparément, et cette lecture
+// fait autorité.
+const META_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    address: { type: ["string", "null"] },
+    postalCode: { type: ["string", "null"] },
+    city: { type: ["string", "null"] },
+    inspectionType: { type: ["string", "null"], enum: ["entry", "exit", "inventory", null] },
+    date: { type: ["string", "null"], description: "ISO YYYY-MM-DD" },
+    tenantEntrantName: { type: ["string", "null"] },
+    tenantSortantName: { type: ["string", "null"] },
+    landlordName: { type: ["string", "null"] },
+    agencyName: { type: ["string", "null"] },
+    // Les relevés de compteurs sont un petit bloc chiffré dense, voisin du
+    // cartouche : en extraction par tuile ils se perdaient ou ressortaient
+    // faux (un « 3 » au lieu de « 5343 »). On les lit ici, avec attention.
+    meterElectricityHP: { type: ["string", "null"] },
+    meterElectricityHC: { type: ["string", "null"] },
+    meterGasIndex: { type: ["string", "null"] },
+    meterWaterColdIndex: { type: ["string", "null"] },
+    meterWaterHotIndex: { type: ["string", "null"] },
+  },
+  required: [
+    "address", "postalCode", "city", "inspectionType", "date",
+    "tenantEntrantName", "tenantSortantName", "landlordName", "agencyName",
+    "meterElectricityHP", "meterElectricityHC", "meterGasIndex",
+    "meterWaterColdIndex", "meterWaterHotIndex",
+  ],
+};
+
+async function extractMeta({ images, callOpenAI }) {
+  try {
+    const payload = {
+      model: META_MODEL,
+      input: [
+        {
+          role: "system",
+          content: [{
+            type: "input_text",
+            text: "Tu lis le cartouche d'identité d'un état des lieux français. Tu ne remplis que ces champs.",
+          }],
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "input_text",
+              text: `Repère le cartouche d'en-tête de cet état des lieux et lis UNIQUEMENT :
+adresse du logement, code postal, ville, type (entrée/sortie), date, locataire entrant,
+locataire sortant, bailleur, agence, ET les relevés de compteurs.
+Ces champs sont MANUSCRITS : lis-les caractère par caractère, avec la plus grande attention.
+Le document peut être pivoté de 90°.
+La date est souvent écrite JJ/MM/AAAA (ex : 26 08 2025) → convertis en AAAA-MM-JJ.
+
+COMPTEURS — cherche le bloc « COMPTEURS » / « RELEVÉ ». Chaque ligne (Électrique,
+Gaz, Eau Chaude, Eau Froide) porte un index chiffré manuscrit, généralement de 4 à
+6 chiffres (ex : 5343, 2888, 20211). Recopie le nombre ENTIER, tous les chiffres —
+ne tronque jamais à un seul chiffre. Si une ligne n'a pas d'index lisible, mets null.
+
+Si un champ est absent ou illisible, mets null — n'invente jamais.`,
+            },
+            ...images.map((img) => ({
+              type: "input_image",
+              image_url: `data:${img.mime || "image/jpeg"};base64,${img.buffer.toString("base64")}`,
+              detail: "high",
+            })),
+          ],
+        },
+      ],
+      text: { format: { type: "json_schema", name: "EdlMeta", strict: true, schema: META_SCHEMA } },
+      max_output_tokens: 800,
+    };
+    const json = await callOpenAI(payload, EDL_CALL_TIMEOUT_MS);
+    const parsed = JSON.parse(extractResponseText(json) || "{}");
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch (e) {
+    console.warn("[edlImport] passe méta indisponible :", e.message);
+    return null;
+  }
+}
+
+function normLabel(s) {
+  return String(s || "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+/** Sections annoncées par le contrôle mais absentes de l'extraction. */
+function findMissingSections(sections, rooms) {
+  const have = (rooms || []).map((r) => normLabel(r.name));
+  return sections.filter((s) => {
+    const n = normLabel(s);
+    if (!n) return false;
+    return !have.some((h) => h === n || h.includes(n) || n.includes(h));
+  });
+}
+
+async function parseVisionImages({ images, callOpenAI, instructions, sourceFormat, tiled, tileLabel }) {
+  if (!Array.isArray(images) || images.length === 0) {
+    const err = new Error("Aucune image fournie");
+    err.status = 400;
+    throw err;
+  }
+
+  // Construit le tableau de blocs image pour le user message
+  const imageBlocks = images.map((img, idx) => ({
+    type: "input_image",
+    // OpenAI Responses : data URL inline accepté pour les images
+    image_url: `data:${img.mime || "image/jpeg"};base64,${img.buffer.toString("base64")}`,
+    // detail "auto" : laisse OpenAI décider — économique sur petites images, précis sur grandes
+    detail: "high", // important : on veut lire les annotations manuscrites précisément
+  }));
+
+  const payload = {
+    model: VISION_MODEL,
+    input: [
+      {
+        role: "system",
+        content: [{ type: "input_text", text: SYSTEM_PROMPT_VISION }],
+      },
+      {
+        role: "user",
+        content: [
+          {
+            type: "input_text",
+            text: buildUserPrompt(
+              tiled
+                ? `Cette image est une DÉCOUPE HAUTE RÉSOLUTION${tileLabel ? ` (portion ${tileLabel})` : ""} d'un formulaire d'état des lieux organisé en grille pièces × éléments.
+Le document peut être pivoté de 90° : lis-le dans le bon sens.
+Extrais TOUT ce qui est visible dans CETTE portion, et RIEN d'autre — n'invente aucune pièce qui n'y figure pas.
+Pour chaque bloc de pièce visible (ENTRÉE, CUISINE, SÉJOUR, CHAMBRE, SALLE DE BAIN, TOILETTE, HALL…), parcours chacune de ses lignes : MURS, SOLS, PLAFONDS, HUISSERIES, ÉLECTRICITÉ, ÉQUIPEMENTS, ROBINETTERIE…
+Les états sont des coches manuscrites dans les colonnes BE / EM / D / HS :
+BE = "Bon état", EM = "État moyen", D = "Mauvais état", HS = "Hors service".
+Une pièce partiellement visible doit quand même être remontée avec ce qu'on en voit.
+Si le bloc COMPTEURS / RELEVÉ apparaît dans cette portion, relève les index
+chiffrés manuscrits (électricité HP/HC, gaz, eau froide, eau chaude) dans meters.
+Reprends IMPÉRATIVEMENT toutes les annotations manuscrites :
+ • celles rattachées à un élément précis → champ notes de cet élément ;
+ • celles d'un bloc « Observations : » d'une pièce → globalComment de la pièce ;
+ • les blocs généraux (OBSERVATIONS, CONTRATS DIVERS, remarques en marge)
+   → champ generalObservations.
+Ces commentaires portent souvent l'essentiel du constat : ne les ignore jamais.
+TRANSCRIS-LES LITTÉRALEMENT, mot pour mot. Ne reformule pas, ne résume pas, et
+n'ajoute aucun commentaire de ton cru : si aucune annotation n'est écrite, laisse
+le champ vide plutôt que d'inventer une description.`
+                : images.length > 1
+                  ? `Analyse ces ${images.length} photos/scans qui forment ensemble un EDL multi-pages. Extrais TOUTES les informations dans le JSON imposé. Lis les annotations manuscrites en plus du texte imprimé.`
+                  : USER_PROMPT_VISION,
+              instructions,
+            ),
+          },
+          ...imageBlocks,
+        ],
+      },
+    ],
+    text: {
+      format: {
+        type: "json_schema",
+        name: "NormalizedEDL",
+        strict: true,
+        schema: VISION_JSON_SCHEMA,
+      },
+    },
+    max_output_tokens: 8000,
+  };
+
+  const json = await callOpenAI(payload, EDL_CALL_TIMEOUT_MS);
+  const text = extractResponseText(json);
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch (e) {
+    const err = new Error("Réponse IA non JSON : " + (text || "").slice(0, 200));
+    err.status = 502;
+    throw err;
+  }
+  return withConfidence(
+    {
+      ...parsed,
+      sourceFormat:
+        sourceFormat || (images.length > 1 ? "vision-multi-image" : "vision-image"),
+    },
+    0.85,
+  );
+}
+
+/** Fusionne plusieurs extractions partielles en un seul NormalizedEDL. */
+function mergeEdls(parts) {
+  const out = {
+    meta: {}, meters: {}, boiler: {}, smokeDetector: { present: null, rooms: [] },
+    keys: [], rooms: [],
+  };
+  const byRoom = new Map();
+
+  for (const part of parts) {
+    if (!part) continue;
+    // Méta : la première valeur non vide gagne.
+    for (const [k, v] of Object.entries(part.meta || {})) {
+      if (out.meta[k] === undefined || out.meta[k] === null || out.meta[k] === "") {
+        if (v !== null && v !== undefined && v !== "") out.meta[k] = v;
+      }
+    }
+    for (const [k, v] of Object.entries(part.meters || {})) {
+      if (v && !out.meters[k]) out.meters[k] = v;
+    }
+    if (part.boiler && Object.keys(part.boiler).length && !Object.keys(out.boiler).length) {
+      out.boiler = part.boiler;
+    }
+    if (part.smokeDetector?.present !== null && part.smokeDetector?.present !== undefined) {
+      out.smokeDetector = part.smokeDetector;
+    }
+    if (Array.isArray(part.keys)) out.keys.push(...part.keys);
+    // Observations libres : on concatène celles trouvées sur chaque tuile.
+    if (part.generalObservations && String(part.generalObservations).trim()) {
+      const txt = String(part.generalObservations).trim();
+      if (!out.generalObservations) out.generalObservations = txt;
+      else if (!out.generalObservations.includes(txt)) out.generalObservations += "\n" + txt;
+    }
+
+    // Pièces : dédup par nom normalisé, fusion des éléments.
+    for (const room of part.rooms || []) {
+      const key = normLabel(room.name);
+      if (!key) continue;
+      if (!byRoom.has(key)) {
+        byRoom.set(key, { ...room, items: [...(room.items || [])] });
+      } else {
+        const tgt = byRoom.get(key);
+        const seen = new Set(
+          (tgt.items || []).map((i) => normLabel(`${i.category} ${i.nature}`)),
+        );
+        for (const it of room.items || []) {
+          const ik = normLabel(`${it.category} ${it.nature}`);
+          if (!seen.has(ik)) { seen.add(ik); tgt.items.push(it); }
+        }
+        if (!tgt.globalComment && room.globalComment) tgt.globalComment = room.globalComment;
+      }
+    }
+  }
+  out.rooms = Array.from(byRoom.values());
+  return out;
+}
+
+/**
+ * Lecture d'un PDF scanné.
+ *
+ * Stratégie : rasterisation haute définition, découpe en tuiles, puis
+ * extraction TUILE PAR TUILE **en parallèle**. Une passe unique sur un
+ * formulaire dense sature le modèle et lui fait omettre des pièces entières ;
+ * en restreignant chaque appel à une zone, la lecture devient nettement plus
+ * fiable — et le parallélisme garde le temps de réponse d'un seul appel.
+ * Un inventaire des sections tourne simultanément et déclenche, si besoin, un
+ * rattrapage ciblé des pièces manquantes.
+ */
+async function visionFromPdf({ pdfBuffer, callOpenAI, instructions }) {
+  const deadline = Date.now() + EDL_BUDGET_MS;
+  let tiles = [];
+  try {
+    tiles = await rasterizePdf(pdfBuffer);
+  } catch (e) {
+    console.warn("[edlImport] rasterisation échouée :", e.message);
+  }
+
+  if (tiles.length === 0) {
+    // Pas de Ghostscript → ancien chemin (PDF brut, moins précis).
+    return await parseVision({ pdfBuffer, callOpenAI, instructions });
+  }
+
+  const sourceFormat = `vision-raster-${tiles.length}tuiles`;
+
+  // Extractions par tuile + inventaire des sections + lecture du cartouche,
+  // tous menés en parallèle.
+  const [parts, sections, metaPass] = await Promise.all([
+    Promise.all(
+      tiles.map((t, i) =>
+        parseVisionImages({
+          images: [t],
+          callOpenAI,
+          instructions,
+          tiled: true,
+          tileLabel: `${i + 1}/${tiles.length}`,
+          sourceFormat,
+        }).catch((e) => {
+          console.warn(`[edlImport] tuile ${i + 1} échouée : ${e.message}`);
+          return null;
+        }),
+      ),
+    ),
+    listSections({ images: tiles, callOpenAI }),
+    extractMeta({ images: tiles, callOpenAI }),
+  ]);
+
+  const merged = mergeEdls(parts);
+  merged.sourceFormat = sourceFormat;
+
+  // La passe dédiée fait autorité sur le cartouche d'identité ET sur les
+  // relevés de compteurs (lecture ciblée, modèle précis).
+  if (metaPass) {
+    const METER_KEYS = new Set([
+      "meterElectricityHP", "meterElectricityHC", "meterGasIndex",
+      "meterWaterColdIndex", "meterWaterHotIndex",
+    ]);
+    for (const [k, v] of Object.entries(metaPass)) {
+      if (v === null || v === undefined || String(v).trim() === "") continue;
+      if (METER_KEYS.has(k)) continue; // traités juste après
+      merged.meta[k] = v;
+    }
+    merged.meters = merged.meters || {};
+    const set = (path, val) => {
+      if (val === null || val === undefined || String(val).trim() === "") return;
+      const [grp, key] = path;
+      merged.meters[grp] = { ...(merged.meters[grp] || {}), [key]: String(val).trim() };
+    };
+    set(["electricity", "hp"], metaPass.meterElectricityHP);
+    set(["electricity", "hc"], metaPass.meterElectricityHC);
+    set(["gas", "index"], metaPass.meterGasIndex);
+    set(["waterCold", "index"], metaPass.meterWaterColdIndex);
+    set(["waterHot", "index"], metaPass.meterWaterHotIndex);
+  }
+  console.log(
+    `[edlImport] tuiles=${tiles.length} pièces=${merged.rooms.length} sections détectées=${sections.length}`,
+  );
+
+  // ── Boucle de complétion ────────────────────────────────────────────────
+  // On relance un rattrapage ciblé tant que l'inventaire signale des pièces
+  // absentes ET que chaque tour apporte du nouveau. On privilégie ici
+  // l'exhaustivité au temps de réponse.
+  const MAX_ROUNDS = MAX_COMPLETION_ROUNDS;
+  let current = merged;
+  const recovered = [];
+
+  for (let round = 1; round <= MAX_ROUNDS; round++) {
+    const missing = findMissingSections(sections, current.rooms);
+    if (missing.length === 0) break;
+
+    // Garde-fou anti-504 : ne pas démarrer un tour qui risque de dépasser le
+    // budget → on rend le résultat partiel (l'écran de validation permet
+    // d'ajouter/relancer les pièces manquantes à la main).
+    const remaining = deadline - Date.now();
+    if (remaining < EDL_CALL_TIMEOUT_MS + 3000) {
+      console.warn(
+        `[edlImport] budget épuisé (${Math.round(remaining / 1000)}s restantes) — rattrapage interrompu, ${missing.length} section(s) non traitée(s)`,
+      );
+      break;
+    }
+
+    console.log(`[edlImport] complétion tour ${round} — manquantes : ${missing.join(", ")}`);
+    let patches;
+    try {
+      patches = await Promise.all(
+        tiles.map((t, i) =>
+          parseVisionImages({
+            images: [t],
+            callOpenAI,
+            tiled: true,
+            tileLabel: `${i + 1}/${tiles.length}`,
+            sourceFormat,
+            instructions: `Extrais UNIQUEMENT les pièces suivantes si elles apparaissent dans cette portion : ${missing.join(", ")}.
+Relis chacune de leurs lignes (MURS, SOLS, PLAFONDS, HUISSERIES, ÉLECTRICITÉ, ÉQUIPEMENTS…) et leurs coches d'état.
+Si aucune de ces pièces n'apparaît dans cette portion, renvoie rooms vide.`,
+          }).catch(() => null),
+        ),
+      );
+    } catch (e) {
+      console.warn(`[edlImport] tour ${round} échoué : ${e.message}`);
+      break;
+    }
+
+    const before = current.rooms.length;
+    const next = mergeEdls([current, ...patches.filter(Boolean)]);
+    next.sourceFormat = sourceFormat;
+    const added = next.rooms
+      .map((r) => r.name)
+      .filter((n) => !current.rooms.some((m) => normLabel(m.name) === normLabel(n)));
+    current = next;
+    recovered.push(...added);
+
+    // Aucun apport → inutile d'insister, l'information n'est pas lisible.
+    if (current.rooms.length === before) {
+      console.log(`[edlImport] tour ${round} sans nouvelle pièce — arrêt`);
+      break;
+    }
+  }
+
+  const stillMissing = findMissingSections(sections, current.rooms);
+  console.log(
+    `[edlImport] final : ${current.rooms.length} pièces (${recovered.length} récupérées, ${stillMissing.length} introuvables)`,
+  );
+
+  return withConfidence(
+    {
+      ...current,
+      detectedSections: sections,
+      recoveredSections: recovered,
+      missingSections: stillMissing,
+    },
+    0.85,
+  );
+}
+
+// Wrapper helper : import à partir d'images (auto-route vers parseVisionImages)
+async function importEDLFromImages(images, { callOpenAI, instructions }) {
+  return await parseVisionImages({ images, callOpenAI, instructions });
 }
 
 function extractResponseText(json) {
@@ -402,13 +927,130 @@ function extractResponseText(json) {
   return "";
 }
 
+// ─── Vocabulaire d'états CONTRÔLÉ ─────────────────────────────────────────
+//
+// Le moteur de comparaison (et les suggestions de travaux) classe les états
+// par gravité. Si l'extraction renvoie des abréviations brutes ("BE", "EU",
+// "HS"…), rien n'est reconnu et AUCUNE dégradation n'est détectée.
+// On impose donc une liste fermée, unique pour toutes les routes d'import.
+const CANONICAL_CONDITIONS = [
+  "Neuf",
+  "Bon état",
+  "État moyen",
+  "État d'usage",
+  "Mauvais état",
+  "Hors service",
+];
+
+// Table de correspondance : abréviations et variantes → libellé canonique.
+const CONDITION_ALIASES = {
+  nf: "Neuf", neuf: "Neuf",
+  be: "Bon état", b: "Bon état", bon: "Bon état", "bon etat": "Bon état",
+  "tres bon etat": "Bon état", p: "Bon état", propre: "Bon état",
+  em: "État moyen", moyen: "État moyen", "etat moyen": "État moyen",
+  passable: "État moyen", acceptable: "État moyen",
+  eu: "État d'usage", "usage normal": "État d'usage", "etat d usage": "État d'usage",
+  "etat d'usage": "État d'usage", use: "État d'usage", usage: "État d'usage",
+  s: "État d'usage", sale: "État d'usage",
+  de: "Mauvais état", degrade: "Mauvais état", ma: "Mauvais état",
+  mauvais: "Mauvais état", "mauvais etat": "Mauvais état",
+  "tres degrade": "Mauvais état", abime: "Mauvais état",
+  hs: "Hors service", "hors service": "Hors service", casse: "Hors service",
+  ko: "Hors service", "a remplacer": "Hors service",
+};
+
+/**
+ * Ramène n'importe quel libellé d'état vers le vocabulaire canonique.
+ * Retourne la valeur d'origine si elle n'est pas reconnue (on ne perd rien).
+ */
+function canonicalCondition(raw) {
+  if (raw === null || raw === undefined) return null;
+  const s = String(raw).trim();
+  if (!s) return null;
+  if (CANONICAL_CONDITIONS.includes(s)) return s;
+  const key = s
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9' ]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (CONDITION_ALIASES[key]) return CONDITION_ALIASES[key];
+  // Recherche par inclusion (ex. "BE (quelques traces)" → "Bon état")
+  for (const [alias, canon] of Object.entries(CONDITION_ALIASES)) {
+    if (alias.length >= 2 && new RegExp(`\\b${alias}\\b`).test(key)) return canon;
+  }
+  return s; // inconnu → conservé tel quel, signalé comme non reconnu en aval
+}
+
+// ─── Score de fiabilité RÉEL ──────────────────────────────────────────────
+//
+// Auparavant codé en dur (0.75 pour toute extraction vision), ce qui affichait
+// la même fiabilité pour un scan impeccable et pour un EDL manuscrit illisible.
+// On mesure désormais la couverture effective de l'extraction :
+//   • complétude des méta (adresse, date, type, locataire)
+//   • présence d'une vraie structure de pièces
+//   • part des éléments dont l'état est reconnu (le plus discriminant)
+// `ceiling` plafonne le score selon la route : un parser déterministe peut
+// approcher la certitude, une lecture visuelle ne le doit jamais.
+function computeConfidence(edl, ceiling) {
+  const meta = edl.meta || {};
+  const rooms = Array.isArray(edl.rooms) ? edl.rooms : [];
+  const items = rooms.flatMap((r) => (Array.isArray(r.items) ? r.items : []));
+
+  const metaFields = [
+    meta.address,
+    meta.date,
+    meta.inspectionType,
+    meta.tenantEntrantName || meta.tenantSortantName,
+  ];
+  const metaScore = metaFields.filter(Boolean).length / metaFields.length;
+
+  // 4 pièces ou plus = structure jugée complète.
+  const roomScore = rooms.length === 0 ? 0 : Math.min(1, rooms.length / 4);
+
+  const recognized = items.filter((it) => {
+    const s = canonicalCondition(it.stateExit) || canonicalCondition(it.stateEntry);
+    return s && CANONICAL_CONDITIONS.includes(s);
+  });
+  const stateScore = items.length === 0 ? 0 : recognized.length / items.length;
+
+  const raw = 0.25 * metaScore + 0.25 * roomScore + 0.5 * stateScore;
+  const confidence = Math.max(0.05, Math.round(raw * ceiling * 100) / 100);
+
+  return {
+    confidence,
+    quality: {
+      roomsCount: rooms.length,
+      itemsCount: items.length,
+      recognizedStates: recognized.length,
+      unrecognizedStates: items.length - recognized.length,
+      missingMeta: ["address", "date", "inspectionType", "tenant"].filter(
+        (_, i) => !metaFields[i],
+      ),
+    },
+  };
+}
+
+/** Attache un score de fiabilité mesuré à un NormalizedEDL. */
+function withConfidence(edl, ceiling) {
+  const { confidence, quality } = computeConfidence(edl, ceiling);
+  return { ...edl, confidence, quality };
+}
+
 const SYSTEM_PROMPT_VISION = `Tu es un expert en immobilier français spécialisé dans l'analyse des états des lieux (EDL).
 Tu reçois un PDF d'EDL qui peut être : un PDF scanné, un formulaire à cases à cocher rempli à la main, ou un PDF généré numériquement.
 Ton job : extraire TOUTES les informations utiles dans un JSON strict respectant le schéma fourni.
 
 Règles de lecture :
 - Les cases à cocher : ✗ / ✓ / X / croix manuscrite = cochée. Vide = non cochée.
-- États : BE = Bon état, EM = État moyen, DE = Dégradé, HS = Hors service, EU = État d'usage, Ma = Mauvais, NF = Neuf, B = Bon, P = Propre, S = Sale.
+- États — IMPÉRATIF : pour stateEntry / stateExit tu dois répondre avec EXACTEMENT
+  l'un de ces six libellés, jamais l'abréviation lue dans le document :
+  "Neuf" | "Bon état" | "État moyen" | "État d'usage" | "Mauvais état" | "Hors service".
+  Conversion à appliquer : NF/Neuf → "Neuf" ; BE/B/Bon/Propre → "Bon état" ;
+  EM/Moyen/Passable → "État moyen" ; EU/"usage normal"/Sale → "État d'usage" ;
+  DE/Dégradé/Ma/Mauvais/Abîmé → "Mauvais état" ; HS/Cassé/"à remplacer" → "Hors service".
+  Si l'état est illisible ou absent, mets null (jamais d'invention).
 - Fonctionnement : OUI / NON / Non testé / F (fonctionne) / NF (ne fonctionne pas) / NV (non vérifiable).
 - Les commentaires manuscrits SONT importants : associe-les à l'item concerné dans la colonne notes.
 - Si un champ n'est pas lisible ou absent, mets null (jamais d'invention).
@@ -495,6 +1137,11 @@ const VISION_JSON_SCHEMA = {
       },
       required: ["present", "rooms"],
     },
+    // Blocs d'observations libres du document (OBSERVATIONS, CONTRATS DIVERS,
+    // remarques manuscrites générales). Sans ce champ, ces commentaires — qui
+    // portent souvent l'essentiel du constat — n'étaient tout simplement pas
+    // retranscrits.
+    generalObservations: { type: ["string", "null"] },
     keys: {
       type: "array",
       items: {
@@ -527,8 +1174,11 @@ const VISION_JSON_SCHEMA = {
                   enum: ["Sol", "Mur", "Plafond", "Plinthe", "Menuiserie", "Rangement", "Électricité", "Plomberie", "Chauffage", "Ameublement", "Autre"],
                 },
                 nature: { type: "string" },
-                stateEntry: { type: ["string", "null"] },
-                stateExit: { type: ["string", "null"] },
+                // Vocabulaire CONTRÔLÉ : le moteur de comparaison classe les
+                // états via ces libellés exacts. Toute abréviation lue dans le
+                // document (BE, EU, HS…) doit être convertie ici.
+                stateEntry: { type: ["string", "null"], enum: [...CANONICAL_CONDITIONS, null] },
+                stateExit: { type: ["string", "null"], enum: [...CANONICAL_CONDITIONS, null] },
                 working: { type: ["string", "null"] },
                 notes: { type: ["string", "null"] },
                 quantity: { type: ["integer", "null"] },
@@ -541,7 +1191,7 @@ const VISION_JSON_SCHEMA = {
       },
     },
   },
-  required: ["meta", "meters", "boiler", "smokeDetector", "keys", "rooms"],
+  required: ["meta", "meters", "boiler", "smokeDetector", "generalObservations", "keys", "rooms"],
 };
 
 function meterSchema() {
@@ -566,7 +1216,14 @@ function meterSchema() {
  * @param {{ callOpenAI: function }} options
  * @returns {Promise<NormalizedEDL>}
  */
-async function importEDL(pdfBuffer, { callOpenAI }) {
+async function importEDL(pdfBuffer, { callOpenAI, instructions }) {
+  // Si l'utilisateur fournit des précisions, c'est qu'une extraction précédente
+  // était incomplète : on force la lecture visuelle (plus souple qu'un parser
+  // à règles, et seule capable de tenir compte des consignes).
+  if (String(instructions || "").trim()) {
+    return await visionFromPdf({ pdfBuffer, callOpenAI, instructions });
+  }
+
   let text = "";
   const pdfParse = getPdfParse();
   if (pdfParse) {
@@ -585,14 +1242,16 @@ async function importEDL(pdfBuffer, { callOpenAI }) {
   if (format === "snexi") {
     const parsed = parseSnexi(text);
     // Si le parser n'a pas vu de pièces (variation de format), on retombe
-    // sur l'IA pour ne pas livrer un import quasi-vide à l'agent.
+    // sur la lecture visuelle pour ne pas livrer un import quasi-vide.
     if (parsed.rooms.length === 0) {
-      return await parseVision({ pdfBuffer, callOpenAI });
+      return await visionFromPdf({ pdfBuffer, callOpenAI });
     }
-    return parsed;
+    // Parser déterministe sur format connu → plafond de confiance élevé.
+    return withConfidence(parsed, 0.98);
   }
-  // Tous les autres formats → IA Vision (scanné, formulaire, manuscrit).
-  return await parseVision({ pdfBuffer, callOpenAI });
+  // Tous les autres formats (scanné, formulaire à cocher, manuscrit) →
+  // rasterisation haute définition + lecture visuelle + contrôle d'exhaustivité.
+  return await visionFromPdf({ pdfBuffer, callOpenAI });
 }
 
 // ─── Conversion NormalizedEDL → payload.report FOXSCAN ────────────────
@@ -647,6 +1306,37 @@ function splitTenants(rawName) {
   return { principal, additional };
 }
 
+/**
+ * Convertit les compteurs du schéma d'extraction vers le tableau `meters`
+ * attendu par FOXSCAN : [{ kind, indexValue, unit, location, notes }].
+ *
+ * Sans cette conversion, les relevés extraits restaient dans des champs plats
+ * (meterWaterColdIndex…) que ni le PDF ni l'app ne lisent — ils étaient donc
+ * invisibles bien que correctement lus sur le document.
+ */
+function buildMetersArray(meters) {
+  const m = meters || {};
+  const out = [];
+  const push = (kind, index, unit, src) => {
+    const val = String(index ?? "").trim();
+    if (!val) return;
+    out.push({
+      kind,
+      indexValue: val,
+      unit: unit || "",
+      location: src?.location || "",
+      notes: src?.notes || "",
+      meterNumber: src?.number || src?.serial || "",
+    });
+  };
+  push("Eau froide", m.waterCold?.index, "m³", m.waterCold);
+  push("Eau chaude", m.waterHot?.index, "m³", m.waterHot);
+  push("Électricité (HP)", m.electricity?.hp, "kWh", m.electricity);
+  push("Électricité (HC)", m.electricity?.hc, "kWh", m.electricity);
+  if (m.gas?.present !== false) push("Gaz", m.gas?.index, "m³", m.gas);
+  return out;
+}
+
 function toFoxscanReport(edl, { reportId, projectId }) {
   const meta = edl.meta || {};
   const insp = meta.inspectionType === "exit" ? "Sortie"
@@ -662,13 +1352,27 @@ function toFoxscanReport(edl, { reportId, projectId }) {
 
   const roomConditions = (edl.rooms || []).map((r) => ({
     roomName: r.name,
-    items: (r.items || []).map((it) => ({
-      label: `${it.category} - ${it.nature}`.replace(/ - $/, ""),
-      conditionExit: it.stateExit || null,
-      conditionEntry: it.stateEntry || null,
-      notes: [it.notes, it.working ? `Fonctionnement : ${it.working}` : ""]
-        .filter(Boolean).join(" — "),
-    })),
+    items: (r.items || []).map((it) => {
+      // ALIGNEMENT sur la structure FOXSCAN native pour que le comparateur
+      // apparie les éléments : FOXSCAN nomme l'élément dans `designation`
+      // (+ `category`) et les remarques dans `observation`. On reproduit ce
+      // schéma. La clé d'appariement est `designation` — donc SANS le préfixe
+      // de catégorie, qui empêchait tout match (« Menuiserie - Porte » ≠ « Porte »).
+      const nature = String(it.nature || "").trim();
+      const designation = nature || String(it.category || "").trim();
+      const notes = [it.notes, it.working ? `Fonctionnement : ${it.working}` : ""]
+        .filter(Boolean).join(" — ");
+      return {
+        designation,
+        category: it.category || "",
+        label: designation, // affichage écran de validation
+        // États dans le vocabulaire canonique compris par le comparateur.
+        conditionExit: canonicalCondition(it.stateExit),
+        conditionEntry: canonicalCondition(it.stateEntry),
+        observation: notes,
+        notes,
+      };
+    }),
     photoFileNames: [],
     globalNotes: r.globalComment || "",
   }));
@@ -698,7 +1402,15 @@ function toFoxscanReport(edl, { reportId, projectId }) {
     inspectionDate: meta.date || null,
     roomConditions,
     inspectionPhotoFileNames: [],
-    notes: `Importé depuis PDF externe (${edl.sourceFormat}). Vérifier et compléter sur place.`,
+    // Observations libres du document (blocs OBSERVATIONS / CONTRATS DIVERS,
+    // remarques manuscrites en marge) — remontées telles quelles.
+    generalObservations: edl.generalObservations || "",
+    notes: [
+      edl.generalObservations || "",
+      `Importé depuis PDF externe (${edl.sourceFormat}). Vérifier et compléter sur place.`,
+    ]
+      .filter(Boolean)
+      .join("\n\n"),
     isFinalized: false,
     signedByTenant: false,
     signedByOwner: false,
@@ -715,6 +1427,10 @@ function toFoxscanReport(edl, { reportId, projectId }) {
     boilerNotes: "",
     tenantReserves: "",
     // V5 — Compteurs
+    // Tableau `meters` au format FOXSCAN — c'est CE champ que lisent le
+    // générateur PDF et l'app ; les champs plats ci-dessous ne sont exploités
+    // par personne et ne servent qu'à la rétrocompatibilité.
+    meters: buildMetersArray(edl.meters),
     meterWaterColdIndex: edl.meters?.waterCold?.index || "",
     meterWaterHotIndex: edl.meters?.waterHot?.index || "",
     meterElectricityHP: edl.meters?.electricity?.hp || "",
@@ -729,8 +1445,13 @@ function toFoxscanReport(edl, { reportId, projectId }) {
 
 module.exports = {
   importEDL,
+  importEDLFromImages,    // V6.4 — Import depuis photos/scans
   toFoxscanReport,
   classifyFormat,         // exporté pour tests
   parseSnexi,             // exporté pour tests
+  parseVisionImages,      // exporté pour tests
   VISION_JSON_SCHEMA,
+  CANONICAL_CONDITIONS,   // vocabulaire d'états contrôlé (partagé avec l'API)
+  canonicalCondition,
+  computeConfidence,
 };

@@ -29,6 +29,18 @@ foxscan-web-deploy.zip
 # Claude Code (local)
 .claude/
 
+# Deploy backups (créés par scripts/deploy_all.sh)
+.deploy-backups/
+
+# Next.js / Vite output
+.next/
+out/
+.turbo/
+.vercel/
+
+# Build artifacts TypeScript
+*.tsbuildinfo
+
 # Clés privées (Apple .p8, certificats, etc.)
 *.p8
 *.pem

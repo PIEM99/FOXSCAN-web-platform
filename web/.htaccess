@@ -7,9 +7,144 @@ PassengerRestartDir /home/u630423897/domains/foxscan.fr/nodejs/tmp
 SetEnv NODE_OPTIONS "--require /home/u630423897/domains/foxscan.fr/public_html/.builds/config/preload-timestamp.js"
 SetEnv LSNODE_CONSOLE_LOG console.log
 
+
 RewriteEngine On
 
-# Bloque l'accès direct au dossier de build
+# ── REDIRECTIONS VANITY URL (Apple App Store, branding) ──────────────────────
+# URLs courtes pour la fiche App Store, le marketing et l'email signature.
+# Toutes en 301 pour préserver le SEO et permettre aux liens externes de marcher.
+RewriteRule ^confidentialite/?$ /legal/confidentialite.html [R=301,L]
+RewriteRule ^centre-aide/?$ /support/aide.html [R=301,L]
+RewriteRule ^aide/?$ /support/aide.html [R=301,L]
+RewriteRule ^contact/?$ /support/contact.html [R=301,L]
+RewriteRule ^cgu/?$ /legal/cgu.html [R=301,L]
+RewriteRule ^cgv/?$ /legal/cgv.html [R=301,L]
+RewriteRule ^mentions-legales/?$ /legal/mentions-legales.html [R=301,L]
+# /privacy : forme utilisée par LegalConsentView.swift dans l'app iOS.
+# Sans cette règle, l'utilisateur accepte des conditions qu'il ne peut pas lire
+# (404) — et Apple exige un lien de confidentialité fonctionnel (5.1.1).
+RewriteRule ^privacy/?$ /legal/confidentialite.html [R=301,L]
+
+# Pages secteur retirées (août 2026). Elles étaient indexées : on renvoie vers
+# l'accueil plutôt que de servir un 404 aux visiteurs et aux robots.
+RewriteRule ^sectors/.*$ / [R=301,L]
+RewriteRule ^rgpd/?$ /legal/rgpd.html [R=301,L]
+
+# URLs Stripe Checkout (success / cancel post-paiement)
+RewriteRule ^checkout/success/?$ /checkout/success.html [L]
+RewriteRule ^checkout/cancel/?$ /checkout/cancel.html [L]
+
+# ── MIME types 3D : indispensable pour AR Quick Look iOS Safari ──────────────
+# iOS Safari ne déclenche AR Quick Look que si le serveur renvoie le bon Content-Type.
+<IfModule mod_mime.c>
+  AddType model/vnd.usdz+zip .usdz
+  AddType model/vnd.pixar.usd .usda .usdc
+  AddType model/gltf-binary .glb
+  AddType model/gltf+json .gltf
+  AddType application/octet-stream .reality
+</IfModule>
+# Cache des assets 3D : 7 jours (modèle stable)
+<FilesMatch "\.(usdz|glb|gltf|reality)$">
+  Header set Cache-Control "public, max-age=604800"
+  Header set Access-Control-Allow-Origin "*"
+</FilesMatch>
+
+# ── SÉCURITÉ : bloquer l'accès direct aux fichiers sensibles ─────────────────
+# Aucun de ces fichiers ne doit être accessible via HTTP, même si quelqu'un
+# devine leur URL (par ex. https://foxscan.fr/.env).
+# EXCEPTION : /.well-known/ est légitime (security.txt RFC 9116, ACME challenges, etc.)
+RewriteCond %{REQUEST_URI} !^/\.well-known/
+RewriteRule "(^|/)\." - [F,L]
+RewriteRule ^\.builds - [F,L]
+RewriteRule (^|/)(\.env|\.git|node_modules|data|tmp)(/|$) - [F,L]
+<FilesMatch "(\.env|\.htaccess|\.htpasswd|\.bak|\.sql|\.json\.bak|package-lock\.json|composer\.lock)$">
+  Require all denied
+</FilesMatch>
+
+# ── SÉCURITÉ : Force HTTPS (avant tout) ──────────────────────────────────────
+<IfModule mod_rewrite.c>
+  RewriteCond %{HTTPS} off
+  RewriteCond %{HTTP:X-Forwarded-Proto} !https
+  RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+</IfModule>
+
+# ── SÉCURITÉ : désactiver signature serveur (limite leak info) ───────────────
+ServerSignature Off
+
+# ── SÉCURITÉ : désactiver directory listing ──────────────────────────────────
+Options -Indexes
+Options -MultiViews
+Options +SymLinksIfOwnerMatch
+
+# ── SÉCURITÉ : ETag off (évite info leak + comparaison fingerprint) ──────────
+FileETag None
+
+# ── SÉCURITÉ : headers HTTP ajoutés par Apache ───────────────────────────────
+# Défense en profondeur — protection XSS, clickjacking, MIME sniffing, etc.
+<IfModule mod_headers.c>
+  # === HSTS — Force HTTPS pendant 2 ans + preload list (Chrome/Firefox) ===
+  Header always set Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" "expr=%{HTTPS} == 'on'"
+
+  # === Anti-MIME-sniffing ===
+  Header always set X-Content-Type-Options "nosniff"
+
+  # === Anti-clickjacking (legacy, CSP frame-ancestors prend le relais) ===
+  Header always set X-Frame-Options "DENY"
+
+  # === Referrer minimal — protège la vie privée des visiteurs ===
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+  # === Permissions API — bloque les features browser non utilisées ===
+  Header always set Permissions-Policy "accelerometer=(), camera=(), display-capture=(), encrypted-media=(), fullscreen=(self), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), publickey-credentials-get=(), screen-wake-lock=(), sync-xhr=(self), usb=(), web-share=(self), xr-spatial-tracking=()"
+
+  # === CSP — Content Security Policy (anti-XSS) ===
+  # 'unsafe-inline' nécessaire pour les styles/scripts inlinés dans v9.html.
+  # cdnjs autorisé pour Three.js (rendu 3D des sectors).
+  # appleid.cdn-apple.com + accounts.google.com pour Sign In with Apple/Google.
+  # gstatic + ajax.googleapis pour les CDN Google.
+  # js.stripe.com pour les paiements.
+  # images.unsplash.com pour les photos d'illustration.
+  Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://appleid.cdn-apple.com https://accounts.google.com https://*.gstatic.com https://ajax.googleapis.com https://js.stripe.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://appleid.cdn-apple.com; font-src 'self' https://fonts.gstatic.com https://appleid.cdn-apple.com; img-src 'self' https://images.unsplash.com https://*.apple.com https://*.gstatic.com data: blob:; connect-src 'self' https://api-adresse.data.gouv.fr https://appleid.apple.com https://accounts.google.com https://www.googleapis.com https://api.foxscan.fr https://api.stripe.com; media-src 'self'; object-src 'none'; frame-src https://appleid.apple.com https://accounts.google.com https://js.stripe.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://appleid.apple.com; upgrade-insecure-requests"
+
+  # === Cross-Origin isolation — relaxé pour autoriser les popups OAuth ===
+  # same-origin-allow-popups : nécessaire pour Sign In with Apple/Google qui ouvrent des popups
+  # cross-origin pour CORP : laisse charger les ressources externes (CDN Apple, Google)
+  # COEP retiré : "credentialless" cassait le chargement du SDK Apple
+  Header always set Cross-Origin-Opener-Policy "same-origin-allow-popups"
+  Header always set Cross-Origin-Resource-Policy "cross-origin"
+  # Header Cross-Origin-Embedder-Policy retiré (bloquait Apple/Google SDKs)
+
+  # === Legacy : XSS auditor (Chrome legacy) ===
+  Header always set X-XSS-Protection "1; mode=block"
+
+  # === Anti-DNS-prefetch fuite ===
+  Header always set X-DNS-Prefetch-Control "off"
+
+  # === Block Adobe Flash/PDF cross-domain ===
+  Header always set X-Permitted-Cross-Domain-Policies "none"
+
+  # === Retire les headers qui leakent info serveur ===
+  Header always unset X-Powered-By
+  Header always unset Server
+
+  # === Cache long pour assets statiques ===
+  <FilesMatch "\.(woff2?|ttf|eot|jpg|jpeg|png|gif|webp|svg|ico)$">
+    Header set Cache-Control "public, max-age=2592000, immutable"
+  </FilesMatch>
+  # Pas de cache pour HTML/JS/CSS (push updates rapides)
+  <FilesMatch "\.(html|js|css)$">
+    Header set Cache-Control "no-cache, must-revalidate"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+  </FilesMatch>
+</IfModule>
+
+# ── COMPRESSION : réduit la taille transférée ────────────────────────────────
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json text/xml application/xml image/svg+xml
+</IfModule>
+
+# Bloque l'accès direct au dossier de build interne Hostinger
 RewriteRule ^\.builds - [F,L]
 
 # Priorité aux fichiers/dossiers statiques qui existent réellement.
@@ -19,3 +154,7 @@ RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
 
 DirectoryIndex index.html
+
+# Pages d'erreur custom (optionnel)
+ErrorDocument 403 "Accès interdit"
+ErrorDocument 404 "Page introuvable"
