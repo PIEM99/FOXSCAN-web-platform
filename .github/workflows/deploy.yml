@@ -1,5 +1,12 @@
 name: Deploy to Hostinger
 
+# ATTENTION — chaque push sur main recopie web/ et apps/api/ TELS QUE COMMITÉS
+# par-dessus la production. Un fichier déployé à la main mais non commité
+# revient donc à son ancienne version au push suivant (arrivé le 24/09 et le
+# 01/10/2026 : page d'accueil, connexion, lib/edlImport.js, server.js).
+# Règle : ce qui est mis en ligne à la main se commite dans la foulée.
+# Depuis le commit 26d829f, main = production pour tous les fichiers suivis.
+
 on:
   push:
     branches: [main]
