@@ -1759,6 +1759,40 @@ function upsertByID(items, id, payload) {
   return items[items.length - 1];
 }
 
+// ── Protection du contenu des états des lieux ──────────────────────────────
+//
+// Constaté en production (sauvegardes du 29/09/2026) : un rapport finalisé à
+// 10 h 21 perdait son contenu à 10 h 53 — chaque fichier exporté (PDF, photo)
+// remplaçait `payload` par la fiche de l'export — puis repassait « en cours »
+// à 15 h 42, quand un vieux brouillon du même rapport remontait d'un autre
+// appareil. Deux règles :
+//   1. un export ne touche JAMAIS au contenu d'un rapport qui existe ;
+//   2. un brouillon ne remplace pas un rapport finalisé (sauf réouverture
+//      explicite depuis l'app : `reopened: true`).
+
+/** Vrai contenu d'état des lieux (et non la fiche d'un export). */
+function isInspectionPayload(payload) {
+  return !!payload && typeof payload === "object" && Array.isArray(payload.roomConditions);
+}
+
+function isReportFinalized(reportRow) {
+  return !!reportRow && (reportRow.isFinalized === true || reportRow.payload?.isFinalized === true);
+}
+
+/**
+ * Rattache un export à son rapport. Si le rapport porte déjà un vrai contenu,
+ * on n'y touche pas (seul le nom du PDF est tenu à jour) ; sinon on crée la
+ * fiche minimale, comme avant.
+ */
+function attachExportToReport(reports, reportID, stub) {
+  const existing = reports.find((r) => r.id === reportID);
+  if (existing && isInspectionPayload(existing.payload)) {
+    if (/\.pdf$/i.test(String(stub.fileName || ""))) existing.fileName = stub.fileName;
+    return existing;
+  }
+  return upsertByID(reports, reportID, stub);
+}
+
 function parseJsonSafe(value) {
   try {
     return JSON.parse(value);
@@ -6261,6 +6295,26 @@ app.post("/inspections/sync", (req, res) => {
     projectStatus = "completed";
   }
 
+  // ── GARDE-FOU : un état des lieux signé ne repasse pas en brouillon ───────
+  // Un appareil qui a gardé une vieille copie non finalisée du même rapport
+  // ne doit pas l'imposer au serveur. Seule une réouverture voulue depuis
+  // l'app (`reopened: true`) ou une nouvelle version finalisée passe.
+  // Réponse 200 : l'app considère l'envoi comme traité et ne le rejoue pas.
+  const existingReportRow = (store.reports || []).find((r) => r.id === reportID);
+  if (isReportFinalized(existingReportRow) && report.isFinalized !== true && body.reopened !== true) {
+    console.warn(
+      `[/inspections/sync] brouillon ignoré — rapport ${reportID} déjà finalisé ` +
+      `(user=${userID} project=${projectID})`
+    );
+    return res.json({
+      ok: true,
+      id: reportID,
+      projectID,
+      ignored: "finalized",
+      message: "Rapport déjà finalisé : brouillon ignoré",
+    });
+  }
+
   // Si projet existe déjà, on PRÉSERVE les champs d'archivage / programmation
   // déjà stockés (jamais écrasés par une re-sync mobile).
   const existingProject = store.projects.find((p) => p.id === projectID);
@@ -6383,7 +6437,7 @@ app.post("/exports", (req, res) => {
   });
 
   if (body.reportID) {
-    upsertByID(store.reports, body.reportID, {
+    attachExportToReport(store.reports, body.reportID, {
       userID,
       projectID: body.projectID || "",
       projectName: "Projet exporté",
@@ -7204,7 +7258,7 @@ app.post(
           )
         );
         if (reportID) {
-          upsertByID(fresh.reports, reportID, {
+          attachExportToReport(fresh.reports, reportID, {
             userID: user.id,
             projectID: projectID || "",
             projectName: projectNameMeta || propertyAddress || "Projet exporté",
@@ -8271,20 +8325,31 @@ app.get("/api/projects/:projectID/inspections", requireCurrentUser, (req, res) =
     const reports = (store.reports || [])
       .filter((r) => r.projectID === projectID && r.userID === user.id)
       .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")))
-      .map((r) => ({
-        id: r.id,
-        projectID: r.projectID,
-        fileName: r.fileName || `${r.id}.pdf`,
-        createdAt: r.createdAt,
-        // Métadonnées de surface pour affichage liste sans déballer payload
-        tenantName: r.tenantName || r.payload?.tenantName || null,
-        isFinalized: r.isFinalized === true || r.payload?.isFinalized === true,
-        finalizedAt: r.finalizedAt || r.payload?.finalizedAt || null,
-        inspectionType: r.payload?.inspectionType || null,
-        address: r.address || null,
-        // Payload complet pour navigation détaillée
-        payload: r.payload || null,
-      }));
+      .map((r) => {
+        // L'app réinjecte `payload` tel quel comme état des lieux : on ne lui
+        // sert jamais la fiche d'un export à la place. Si le contenu a été
+        // perdu ici, on reprend celui gardé sur le projet (même rapport),
+        // sinon rien — l'app ignore un rapport sans contenu.
+        let payload = r.payload || null;
+        if (!isInspectionPayload(payload)) {
+          const kept = project.payload && project.payload.report;
+          payload = kept && kept.id === r.id && isInspectionPayload(kept) ? kept : null;
+        }
+        return {
+          id: r.id,
+          projectID: r.projectID,
+          fileName: r.fileName || `${r.id}.pdf`,
+          createdAt: r.createdAt,
+          // Métadonnées de surface pour affichage liste sans déballer payload
+          tenantName: r.tenantName || r.payload?.tenantName || null,
+          isFinalized: r.isFinalized === true || r.payload?.isFinalized === true,
+          finalizedAt: r.finalizedAt || r.payload?.finalizedAt || null,
+          inspectionType: r.payload?.inspectionType || null,
+          address: r.address || null,
+          // Payload complet pour navigation détaillée
+          payload,
+        };
+      });
 
     return res.json({
       ok: true,
