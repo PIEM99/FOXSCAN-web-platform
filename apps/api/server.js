@@ -1828,6 +1828,9 @@ function normalizeOpenAIOutputText(responseBody) {
   return chunks.join("\n").trim();
 }
 
+// Délai accordé à une analyse de photos demandée par l'app (cf. /ai/responses).
+const AI_RESPONSES_TIMEOUT_MS = 150000;
+
 async function callOpenAIResponses(payload, timeoutMs = 60000) {
   if (!settings.openaiApiKey) {
     const err = new Error("OPENAI_API_KEY is not configured on server");
@@ -1916,7 +1919,16 @@ app.post("/ai/responses", requireCurrentUser, async (req, res, next) => {
 
     Object.keys(payload).forEach((k) => payload[k] === undefined && delete payload[k]);
 
-    const upstream = await callOpenAIResponses(payload);
+    // L'analyse d'une pièce part avec ses photos d'ensemble et leurs
+    // agrandissements vers un modèle à raisonnement : 40 à 90 s courants. Les
+    // 60 s par défaut la coupaient (504) ; l'app, de son côté, attend 180 s.
+    const startedAt = Date.now();
+    const upstream = await callOpenAIResponses(payload, AI_RESPONSES_TIMEOUT_MS);
+    console.log(
+      `[/ai/responses] user=${req._user?.id || "?"} model=${upstream.model || payload.model} ` +
+      `durée=${((Date.now() - startedAt) / 1000).toFixed(1)}s ` +
+      `entrée=${upstream?.usage?.input_tokens || 0} sortie=${upstream?.usage?.output_tokens || 0}`
+    );
     const outputText = normalizeOpenAIOutputText(upstream);
     const outputJson = extractJsonObjectFromText(outputText);
 
